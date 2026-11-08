@@ -1,0 +1,24 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://github.com/liuzix/RNNTranslator/schemas/tables/duration.schema.json",
+ "title": "tables/duration.tbl row",
+ "description": "unit noun | japanese counter (two years -> ２年間).",
+ "type": "object",
+ "properties": {
+  "unit": {
+   "type": "string",
+   "pattern": "^\\S(.*\\S)?$",
+   "description": "a surface token of the corpus (lowercased Stanford tokenization): may be a multiword token, an apostrophe form or punctuation"
+  },
+  "counter": {
+   "type": "string",
+   "minLength": 1,
+   "pattern": "^\\S(.*\\S)?$"
+  }
+ },
+ "required": [
+  "unit",
+  "counter"
+ ],
+ "additionalProperties": false
+}

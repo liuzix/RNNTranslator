@@ -1,0 +1,28 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://github.com/liuzix/RNNTranslator/schemas/tables/modals.schema.json",
+ "title": "tables/modals.tbl row",
+ "description": "surface | modal class; past forms are recognized by the parser.",
+ "type": "object",
+ "properties": {
+  "surface": {
+   "type": "string",
+   "pattern": "^\\S(.*\\S)?$",
+   "description": "a surface token of the corpus (lowercased Stanford tokenization): may be a multiword token, an apostrophe form or punctuation"
+  },
+  "class": {
+   "enum": [
+    "can",
+    "must",
+    "should",
+    "may",
+    "will"
+   ]
+  }
+ },
+ "required": [
+  "surface",
+  "class"
+ ],
+ "additionalProperties": false
+}

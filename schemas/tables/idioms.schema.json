@@ -1,0 +1,144 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://github.com/liuzix/RNNTranslator/schemas/tables/idioms.schema.json",
+ "title": "tables/idioms.tbl row",
+ "description": "A verb idiom as a surface pattern. kind phrasal / phrasal+np: 'verb particle'; after: 'verb NP particle'; idiom: 'verb words... NP' with the object's particle; tail: 'verb NP words...' with the object's particle.",
+ "type": "object",
+ "properties": {
+  "kind": {
+   "enum": [
+    "phrasal",
+    "phrasal+np",
+    "after",
+    "idiom",
+    "tail"
+   ]
+  },
+  "pattern": {
+   "type": "string",
+   "pattern": "^[a-z][a-z' -]*( [A-Za-z' -]+)*$"
+  },
+  "japanese": {
+   "type": "string",
+   "minLength": 1,
+   "pattern": "^\\S(.*\\S)?$"
+  },
+  "class": {
+   "enum": [
+    "g",
+    "i",
+    "s",
+    "k",
+    "aru",
+    "fixed"
+   ]
+  },
+  "particle": {
+   "type": "string",
+   "enum": [
+    "を",
+    "に",
+    "が",
+    "と",
+    "で",
+    "の",
+    "から",
+    "について",
+    "-",
+    ""
+   ]
+  }
+ },
+ "required": [
+  "kind",
+  "pattern",
+  "japanese",
+  "class"
+ ],
+ "additionalProperties": false,
+ "allOf": [
+  {
+   "if": {
+    "properties": {
+     "kind": {
+      "enum": [
+       "phrasal",
+       "phrasal+np"
+      ]
+     }
+    }
+   },
+   "then": {
+    "properties": {
+     "pattern": {
+      "pattern": "^[a-z][a-z'-]* [a-z]+$"
+     }
+    },
+    "not": {
+     "required": [
+      "particle"
+     ]
+    }
+   }
+  },
+  {
+   "if": {
+    "properties": {
+     "kind": {
+      "const": "after"
+     }
+    }
+   },
+   "then": {
+    "properties": {
+     "pattern": {
+      "pattern": "^[a-z][a-z'-]* NP [a-z]+$"
+     }
+    },
+    "not": {
+     "required": [
+      "particle"
+     ]
+    }
+   }
+  },
+  {
+   "if": {
+    "properties": {
+     "kind": {
+      "const": "idiom"
+     }
+    }
+   },
+   "then": {
+    "required": [
+     "particle"
+    ],
+    "properties": {
+     "pattern": {
+      "pattern": "^[a-z][a-z'-]*( [a-zA-Z'-]+)+ NP$"
+     }
+    }
+   }
+  },
+  {
+   "if": {
+    "properties": {
+     "kind": {
+      "const": "tail"
+     }
+    }
+   },
+   "then": {
+    "required": [
+     "particle"
+    ],
+    "properties": {
+     "pattern": {
+      "pattern": "^[a-z][a-z'-]* NP( [a-zA-Z'-]+)+$"
+     }
+    }
+   }
+  }
+ ]
+}

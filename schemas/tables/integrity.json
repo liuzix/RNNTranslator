@@ -1,0 +1,192 @@
+{
+ "$schema": "../integrity.schema.json",
+ "description": "Cross-row rules the per-row schemas cannot state. unique: no two rows share these fields. references: every value of `from` (each item, for a list field; the first token, for a pattern) must occur as `to.field` in a row of `to.table` matching `to.where`. level error fails the check; warn is reported — today several tables name verbs the lexicon lacks, which makes those rows unreachable.",
+ "unique": [
+  {
+   "table": "pronouns",
+   "fields": [
+    "surface"
+   ]
+  },
+  {
+   "table": "determiners",
+   "fields": [
+    "surface"
+   ]
+  },
+  {
+   "table": "numbers",
+   "fields": [
+    "surface"
+   ]
+  },
+  {
+   "table": "prepositions",
+   "fields": [
+    "surface"
+   ]
+  },
+  {
+   "table": "wh",
+   "fields": [
+    "surface"
+   ]
+  },
+  {
+   "table": "modals",
+   "fields": [
+    "surface"
+   ]
+  },
+  {
+   "table": "contractions",
+   "fields": [
+    "surface"
+   ]
+  },
+  {
+   "table": "duration",
+   "fields": [
+    "unit"
+   ]
+  },
+  {
+   "table": "complements",
+   "fields": [
+    "english"
+   ]
+  },
+  {
+   "table": "godan",
+   "fields": [
+    "ending"
+   ]
+  },
+  {
+   "table": "verb_classes",
+   "fields": [
+    "verb"
+   ]
+  },
+  {
+   "table": "use",
+   "fields": [
+    "noun",
+    "verbs"
+   ]
+  },
+  {
+   "table": "connectives",
+   "fields": [
+    "kind",
+    "english"
+   ]
+  },
+  {
+   "table": "adjectives",
+   "fields": [
+    "pattern"
+   ]
+  },
+  {
+   "table": "idioms",
+   "fields": [
+    "kind",
+    "pattern"
+   ]
+  },
+  {
+   "table": "lexicon",
+   "fields": [
+    "word",
+    "pos",
+    "japanese"
+   ]
+  }
+ ],
+ "references": [
+  {
+   "from": {
+    "table": "verb_classes",
+    "field": "verb"
+   },
+   "to": {
+    "table": "lexicon",
+    "field": "word",
+    "where": {
+     "pos": "v"
+    }
+   },
+   "level": "warn"
+  },
+  {
+   "from": {
+    "table": "use",
+    "field": "noun"
+   },
+   "to": {
+    "table": "lexicon",
+    "field": "word",
+    "where": {
+     "pos": "n"
+    }
+   },
+   "level": "warn"
+  },
+  {
+   "from": {
+    "table": "use",
+    "field": "verbs"
+   },
+   "to": {
+    "table": "lexicon",
+    "field": "word",
+    "where": {
+     "pos": "v"
+    }
+   },
+   "level": "warn"
+  },
+  {
+   "from": {
+    "table": "idioms",
+    "field": "pattern",
+    "token": 0
+   },
+   "to": {
+    "table": "lexicon",
+    "field": "word",
+    "where": {
+     "pos": "v"
+    }
+   },
+   "level": "warn"
+  },
+  {
+   "from": {
+    "table": "complements",
+    "field": "english"
+   },
+   "to": {
+    "table": "lexicon",
+    "field": "word",
+    "where": {
+     "pos": "v"
+    }
+   },
+   "level": "warn"
+  },
+  {
+   "from": {
+    "table": "adjectives",
+    "field": "pattern",
+    "token": -1
+   },
+   "to": {
+    "table": "prepositions",
+    "field": "surface"
+   },
+   "level": "error"
+  }
+ ]
+}

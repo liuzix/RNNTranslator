@@ -1,0 +1,23 @@
+{
+ "$schema": "../schemas/corpus-lock.schema.json",
+ "repo": "https://github.com/odashi/small_parallel_enja.git",
+ "commit": "312408a11c5fbcbc09443bebb18121f7efdcd61e",
+ "files": {
+  "dev.en": {
+   "sha256": "04a2673449770657fd5e3b963cb856be3130923212b6db8ac7eaeef18f06c041",
+   "lines": 500
+  },
+  "dev.ja": {
+   "sha256": "cd534f56b8639dc130f86a365e5ec0aa70042000bdd740a622fbbf8b6be4acca",
+   "lines": 500
+  },
+  "test.en": {
+   "sha256": "45edb380749ec2b49cca7618fc5a7595fc9f791180672ba466b90c873a4aa8bf",
+   "lines": 500
+  },
+  "test.ja": {
+   "sha256": "d37dc460a81b064e4106c8913eb11fa300da05cf3f58a7a5bbfec7e20947ddef",
+   "lines": 500
+  }
+ }
+}

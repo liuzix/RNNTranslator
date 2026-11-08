@@ -5,10 +5,18 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import rules_ja as R
 
 D = os.environ.get("ENJA_DATA", os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "small_parallel_enja")) + os.sep
-def load(name, n=None):
+def keep(e):
+    """the harness's sentence filter: one sentence per line, ending in . ? or !"""
+    return bool(e) and e[-1] in (".", "?", "!") and not any(t in (".", "?", "!") for t in e[:-1])
+
+def load_indexed(name):
+    """[(line number in <name>.en, English tokens, Japanese)] for the lines the filter keeps"""
     en = [l.split() for l in open(D + name + ".en", encoding="utf-8")]
     ja = ["".join(l.split()) for l in open(D + name + ".ja", encoding="utf-8")]
-    pairs = [(e, j) for e, j in zip(en, ja) if e[-1] in (".", "?", "!") and not any(t in (".", "?", "!") for t in e[:-1])]
+    return [(i, e, j) for i, (e, j) in enumerate(zip(en, ja), 1) if keep(e)]
+
+def load(name, n=None):
+    pairs = [(e, j) for i, e, j in load_indexed(name)]
     return pairs[:n] if n else pairs
 
 def char_bleu(hyps, refs, n=4):

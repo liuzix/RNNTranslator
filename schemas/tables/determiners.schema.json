@@ -1,0 +1,23 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://github.com/liuzix/RNNTranslator/schemas/tables/determiners.schema.json",
+ "title": "tables/determiners.tbl row",
+ "description": "determiner | japanese (empty = dropped).",
+ "type": "object",
+ "properties": {
+  "surface": {
+   "type": "string",
+   "pattern": "^\\S(.*\\S)?$",
+   "description": "a surface token of the corpus (lowercased Stanford tokenization): may be a multiword token, an apostrophe form or punctuation"
+  },
+  "japanese": {
+   "type": "string",
+   "pattern": "^(\\S(.*\\S)?)?$"
+  }
+ },
+ "required": [
+  "surface",
+  "japanese"
+ ],
+ "additionalProperties": false
+}

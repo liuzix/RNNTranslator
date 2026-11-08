@@ -1,0 +1,22 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://github.com/liuzix/RNNTranslator/schemas/tables/contractions.schema.json",
+ "title": "tables/contractions.tbl row",
+ "description": "token before 't | the auxiliary it stands for.",
+ "type": "object",
+ "properties": {
+  "surface": {
+   "type": "string",
+   "pattern": "^[a-z]+$"
+  },
+  "auxiliary": {
+   "type": "string",
+   "pattern": "^[a-z]+$"
+  }
+ },
+ "required": [
+  "surface",
+  "auxiliary"
+ ],
+ "additionalProperties": false
+}

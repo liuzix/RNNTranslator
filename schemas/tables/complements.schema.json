@@ -1,0 +1,32 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://github.com/liuzix/RNNTranslator/schemas/tables/complements.schema.json",
+ "title": "tables/complements.tbl row",
+ "description": "How a complement-taking verb (or a parser-internal key such as be_to) wraps the verb it governs: a template over the governed verb's forms, and the class of the result.",
+ "type": "object",
+ "properties": {
+  "english": {
+   "type": "string",
+   "pattern": "^[a-z][a-z_ ]*$"
+  },
+  "template": {
+   "type": "string",
+   "pattern": "^(\\{(dic|stem|te|ta|vol|inner)\\}|[^{}])+$"
+  },
+  "class": {
+   "enum": [
+    "v1",
+    "v5",
+    "na",
+    "fixed",
+    "ia"
+   ]
+  }
+ },
+ "required": [
+  "english",
+  "template",
+  "class"
+ ],
+ "additionalProperties": false
+}

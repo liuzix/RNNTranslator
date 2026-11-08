@@ -1,0 +1,47 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://github.com/liuzix/RNNTranslator/schemas/tables/connectives.schema.json",
+ "title": "tables/connectives.tbl row",
+ "description": "kind | English | Japanese connective. subord opens a subordinate clause (Japanese goes after the clause); coord joins clauses (empty = te-form chain); hearsay is a sentence-final tail.",
+ "type": "object",
+ "properties": {
+  "kind": {
+   "enum": [
+    "subord",
+    "coord",
+    "hearsay"
+   ]
+  },
+  "english": {
+   "type": "string",
+   "pattern": "^\\S(.*\\S)?$",
+   "description": "a surface token of the corpus (lowercased Stanford tokenization): may be a multiword token, an apostrophe form or punctuation"
+  },
+  "japanese": {
+   "type": "string",
+   "pattern": "^(\\S(.*\\S)?)?$"
+  }
+ },
+ "required": [
+  "kind",
+  "english",
+  "japanese"
+ ],
+ "additionalProperties": false,
+ "if": {
+  "properties": {
+   "kind": {
+    "not": {
+     "const": "coord"
+    }
+   }
+  }
+ },
+ "then": {
+  "properties": {
+   "japanese": {
+    "minLength": 1
+   }
+  }
+ }
+}

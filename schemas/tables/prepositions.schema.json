@@ -1,0 +1,30 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://github.com/liuzix/RNNTranslator/schemas/tables/prepositions.schema.json",
+ "title": "tables/prepositions.tbl row",
+ "description": "preposition | particle under an action verb | particle under a state or motion verb.",
+ "type": "object",
+ "properties": {
+  "surface": {
+   "type": "string",
+   "pattern": "^\\S(.*\\S)?$",
+   "description": "a surface token of the corpus (lowercased Stanford tokenization): may be a multiword token, an apostrophe form or punctuation"
+  },
+  "action": {
+   "type": "string",
+   "minLength": 1,
+   "pattern": "^\\S(.*\\S)?$"
+  },
+  "state": {
+   "type": "string",
+   "minLength": 1,
+   "pattern": "^\\S(.*\\S)?$"
+  }
+ },
+ "required": [
+  "surface",
+  "action",
+  "state"
+ ],
+ "additionalProperties": false
+}

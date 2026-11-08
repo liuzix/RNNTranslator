@@ -1,0 +1,35 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://github.com/liuzix/RNNTranslator/schemas/tables/pronouns.schema.json",
+ "title": "tables/pronouns.tbl row",
+ "description": "surface | japanese | role: s subject, o object, so either, p possessive, r reflexive, op object-or-possessive.",
+ "type": "object",
+ "properties": {
+  "surface": {
+   "type": "string",
+   "pattern": "^\\S(.*\\S)?$",
+   "description": "a surface token of the corpus (lowercased Stanford tokenization): may be a multiword token, an apostrophe form or punctuation"
+  },
+  "japanese": {
+   "type": "string",
+   "minLength": 1,
+   "pattern": "^\\S(.*\\S)?$"
+  },
+  "role": {
+   "enum": [
+    "s",
+    "o",
+    "so",
+    "p",
+    "r",
+    "op"
+   ]
+  }
+ },
+ "required": [
+  "surface",
+  "japanese",
+  "role"
+ ],
+ "additionalProperties": false
+}

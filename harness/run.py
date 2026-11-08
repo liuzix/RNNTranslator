@@ -8,10 +8,12 @@ replays without running.  Nothing an action did not declare can reach it, so a h
 
     python harness/run.py fetch-corpus            clone the pinned corpus commit into .cache/corpus/ and verify its hashes
     python harness/run.py check [--staged] [--full]
-                                                  run the checks (on the index when --staged), compare with harness/baseline.json
+                                                  the static checks (schemas, README file tree), then the actions (on the
+                                                  index when --staged), compared with harness/baseline.json
     python harness/run.py baseline [--staged]     run the checks and write harness/baseline.json (commit it with the change)
     python harness/run.py install-hooks           point git at .githooks/ so pre-commit runs `check --staged`
 
+Static checks (fast, run every time, not cached): harness/check_schemas.py and harness/check_tree.py.
 Actions (inputs listed in ACTIONS below):
     rules    coverage and char-BLEU of the rule transducer on dev and test, and every output
     matrix   the hybrid matrix parser compiled on dev+test and cross-tabulated against the bounded rule parser
@@ -37,15 +39,10 @@ def sha256_file(path):
         for chunk in iter(lambda: f.read(1 << 20), b""): h.update(chunk)
     return h.hexdigest()
 
-def read_corpus_lock():
-    lock = {"sha256": {}}
-    for line in open(os.path.join(ROOT, "harness", "corpus.lock"), encoding="utf-8"):
-        line = line.split("#", 1)[0].strip()
-        if not line: continue
-        k, v = [s.strip() for s in line.split("=", 1)]
-        if k.startswith("sha256 "): lock["sha256"][k.split()[1]] = v
-        else: lock[k] = v
-    return lock
+def read_corpus_lock(root=ROOT):
+    """harness/corpus.lock.json (schema: schemas/corpus-lock.schema.json) -> {repo, commit, sha256: {file: hash}}"""
+    doc = json.load(open(os.path.join(root, "harness", "corpus.lock.json"), encoding="utf-8"))
+    return {"repo": doc["repo"], "commit": doc["commit"], "sha256": {f: spec["sha256"] for f, spec in doc["files"].items()}}
 
 def corpus_dir(lock): return os.path.join(CACHE, "corpus", lock["commit"])
 
@@ -144,12 +141,22 @@ def run_action(name, spec, src_root, exe, pyver, lock_hash, corpus, args, force=
     finally:
         shutil.rmtree(sandbox, ignore_errors=True)
 
-def run_all(staged, full, force=False):
+def static_checks(exe, src_root, corpus, staged, skip_baseline=False):
+    """schemas and the README file tree, on the tree under test; exit 1 on an error"""
+    ok = True
+    for script, extra in (("harness/check_schemas.py", ["--corpus", corpus, "--quiet"] + (["--skip-baseline"] if skip_baseline else [])), ("harness/check_tree.py", ["--repo", ROOT] + (["--staged"] if staged else []))):
+        proc = subprocess.run([exe, os.path.join(src_root, script), "--root", src_root, *extra], cwd=ROOT, capture_output=True, text=True)
+        if proc.stdout.strip(): print(proc.stdout.rstrip())
+        if proc.returncode != 0: ok = False; print(proc.stderr.rstrip()[-1500:])
+    if not ok: sys.exit("static checks failed")
+
+def run_all(staged, full, force=False, skip_baseline=False):
     exe, pyver = venv_python()
     lock_hash = sha256_file(os.path.join(ROOT, "uv.lock"))
     corpus = fetch_corpus()
     src_root, tmp = source_tree(staged)
     try:
+        static_checks(exe, src_root, corpus, staged, skip_baseline)
         results = {}
         for name, spec in ACTIONS.items():
             args = list(spec["args"])
@@ -234,7 +241,7 @@ def main():
     if a.cmd == "fetch-corpus": fetch_corpus(a.src)
     elif a.cmd == "install-hooks": install_hooks()
     else:
-        results = run_all(a.staged, a.full, a.force)
+        results = run_all(a.staged, a.full, a.force, skip_baseline=(a.cmd == "baseline"))
         if a.cmd == "baseline": write_baseline(results, a.staged)
         else:
             base = BASELINE

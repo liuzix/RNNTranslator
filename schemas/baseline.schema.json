@@ -1,0 +1,268 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://github.com/liuzix/RNNTranslator/schemas/baseline.schema.json",
+ "title": "harness baseline",
+ "description": "harness/baseline.json: the metrics the pre-commit hook guards, the detail they were taken from, and every rule-transducer output (sentence -> Japanese, empty = refused) at the last accepted commit. check_schemas also verifies that every cited sentence is in the pinned corpus split and that the metrics agree with the outputs.",
+ "type": "object",
+ "required": [
+  "taken",
+  "metrics",
+  "detail",
+  "outputs"
+ ],
+ "additionalProperties": false,
+ "properties": {
+  "taken": {
+   "type": "string",
+   "pattern": "^\\d{4}-\\d{2}-\\d{2} at [0-9a-f]{7,40}( \\(staged\\))?$"
+  },
+  "metrics": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "rules.dev.covered",
+    "rules.dev.bleu_all",
+    "rules.test.covered",
+    "rules.test.bleu_all",
+    "matrix.identical",
+    "matrix.silent_misfires",
+    "np.mismatches"
+   ],
+   "properties": {
+    "rules.dev.covered": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "rules.dev.bleu_all": {
+     "type": "number"
+    },
+    "rules.test.covered": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "rules.test.bleu_all": {
+     "type": "number"
+    },
+    "matrix.identical": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "matrix.silent_misfires": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "np.mismatches": {
+     "type": "integer",
+     "minimum": 0
+    }
+   }
+  },
+  "detail": {
+   "type": "object",
+   "required": [
+    "rules",
+    "matrix",
+    "np"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "rules": {
+     "type": "object",
+     "required": [
+      "dev",
+      "test"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "dev": {
+       "type": "object",
+       "required": [
+        "n",
+        "covered",
+        "coverage",
+        "bleu_all",
+        "bleu_covered",
+        "failures"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "n": {
+         "type": "integer",
+         "minimum": 0
+        },
+        "covered": {
+         "type": "integer",
+         "minimum": 0
+        },
+        "coverage": {
+         "type": "number",
+         "minimum": 0,
+         "maximum": 1
+        },
+        "bleu_all": {
+         "type": "number"
+        },
+        "bleu_covered": {
+         "type": "number"
+        },
+        "failures": {
+         "type": "object",
+         "additionalProperties": {
+          "type": "integer",
+          "minimum": 0
+         }
+        }
+       }
+      },
+      "test": {
+       "type": "object",
+       "required": [
+        "n",
+        "covered",
+        "coverage",
+        "bleu_all",
+        "bleu_covered",
+        "failures"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "n": {
+         "type": "integer",
+         "minimum": 0
+        },
+        "covered": {
+         "type": "integer",
+         "minimum": 0
+        },
+        "coverage": {
+         "type": "number",
+         "minimum": 0,
+         "maximum": 1
+        },
+        "bleu_all": {
+         "type": "number"
+        },
+        "bleu_covered": {
+         "type": "number"
+        },
+        "failures": {
+         "type": "object",
+         "additionalProperties": {
+          "type": "integer",
+          "minimum": 0
+         }
+        }
+       }
+      }
+     }
+    },
+    "matrix": {
+     "type": "object",
+     "required": [
+      "identical",
+      "wrong_frame",
+      "matrix_parses_refused",
+      "refused_parseable",
+      "both_refuse",
+      "cell",
+      "per_split",
+      "summary"
+     ],
+     "properties": {
+      "identical": {
+       "type": "integer",
+       "minimum": 0
+      },
+      "wrong_frame": {
+       "type": "integer",
+       "minimum": 0
+      },
+      "matrix_parses_refused": {
+       "type": "integer",
+       "minimum": 0
+      },
+      "refused_parseable": {
+       "type": "integer",
+       "minimum": 0
+      },
+      "both_refuse": {
+       "type": "integer",
+       "minimum": 0
+      },
+      "cell": {
+       "type": "object",
+       "required": [
+        "state_units",
+        "input_units",
+        "nnz",
+        "rules"
+       ]
+      },
+      "per_split": {
+       "type": "object"
+      },
+      "summary": {
+       "type": "string"
+      }
+     }
+    },
+    "np": {
+     "type": "object",
+     "required": [
+      "cases",
+      "mismatches",
+      "max_len",
+      "alphabet"
+     ],
+     "properties": {
+      "cases": {
+       "type": "integer",
+       "minimum": 0
+      },
+      "mismatches": {
+       "type": "integer",
+       "minimum": 0
+      },
+      "max_len": {
+       "type": "integer",
+       "minimum": 0
+      },
+      "alphabet": {
+       "type": "integer",
+       "minimum": 0
+      }
+     }
+    }
+   }
+  },
+  "outputs": {
+   "type": "object",
+   "required": [
+    "dev",
+    "test"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "dev": {
+     "type": "object",
+     "additionalProperties": {
+      "type": "string"
+     },
+     "propertyNames": {
+      "pattern": "^[1-9]\\d*: \\S(.*\\S)?$"
+     }
+    },
+    "test": {
+     "type": "object",
+     "additionalProperties": {
+      "type": "string"
+     },
+     "propertyNames": {
+      "pattern": "^[1-9]\\d*: \\S(.*\\S)?$"
+     }
+    }
+   },
+   "description": "per split, '<line in the split's .en file>: <sentence>' -> the transducer's Japanese ('' = refused); check_schemas verifies each key against the pinned corpus"
+  }
+ }
+}

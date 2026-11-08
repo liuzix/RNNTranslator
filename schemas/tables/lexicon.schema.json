@@ -1,0 +1,179 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://github.com/liuzix/RNNTranslator/schemas/tables/lexicon.schema.json",
+ "title": "tables/lexicon.tbl row",
+ "description": "One lexicon entry: word | pos | japanese | extra..., where the tail depends on pos — a verb carries its conjugation class and optionally its past and past-participle forms; a noun carries its class; every other pos has no tail. Japanese may be empty only for a conjunction the parser spells itself or an interjection that is dropped.",
+ "type": "object",
+ "properties": {
+  "word": {
+   "type": "string",
+   "pattern": "^\\S(.*\\S)?$",
+   "description": "a surface token of the corpus (lowercased Stanford tokenization): may be a multiword token, an apostrophe form or punctuation"
+  },
+  "pos": {
+   "enum": [
+    "v",
+    "n",
+    "a",
+    "na",
+    "fx",
+    "adv",
+    "t",
+    "p",
+    "int",
+    "conj",
+    "det"
+   ]
+  },
+  "japanese": {
+   "type": "string",
+   "pattern": "^(\\S(.*\\S)?)?$"
+  },
+  "extra": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   }
+  }
+ },
+ "required": [
+  "word",
+  "pos",
+  "japanese"
+ ],
+ "additionalProperties": false,
+ "allOf": [
+  {
+   "if": {
+    "properties": {
+     "pos": {
+      "const": "v"
+     }
+    }
+   },
+   "then": {
+    "required": [
+     "extra"
+    ],
+    "properties": {
+     "extra": {
+      "oneOf": [
+       {
+        "prefixItems": [
+         {
+          "enum": [
+           "g",
+           "i",
+           "s",
+           "k",
+           "fixed"
+          ]
+         }
+        ],
+        "minItems": 1,
+        "maxItems": 1
+       },
+       {
+        "prefixItems": [
+         {
+          "enum": [
+           "g",
+           "i",
+           "s",
+           "k",
+           "fixed"
+          ]
+         },
+         {
+          "type": "string",
+          "pattern": "^\\S(.*\\S)?$",
+          "description": "a surface token of the corpus (lowercased Stanford tokenization): may be a multiword token, an apostrophe form or punctuation"
+         },
+         {
+          "type": "string",
+          "pattern": "^\\S(.*\\S)?$",
+          "description": "a surface token of the corpus (lowercased Stanford tokenization): may be a multiword token, an apostrophe form or punctuation"
+         }
+        ],
+        "minItems": 3,
+        "maxItems": 3
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "if": {
+    "properties": {
+     "pos": {
+      "const": "n"
+     }
+    }
+   },
+   "then": {
+    "required": [
+     "extra"
+    ],
+    "properties": {
+     "extra": {
+      "prefixItems": [
+       {
+        "enum": [
+         "h",
+         "a",
+         "t",
+         "p"
+        ]
+       }
+      ],
+      "minItems": 1,
+      "maxItems": 1
+     }
+    }
+   }
+  },
+  {
+   "if": {
+    "properties": {
+     "pos": {
+      "not": {
+       "enum": [
+        "v",
+        "n"
+       ]
+      }
+     }
+    }
+   },
+   "then": {
+    "not": {
+     "required": [
+      "extra"
+     ]
+    }
+   }
+  },
+  {
+   "if": {
+    "properties": {
+     "pos": {
+      "not": {
+       "enum": [
+        "conj",
+        "int"
+       ]
+      }
+     }
+    }
+   },
+   "then": {
+    "properties": {
+     "japanese": {
+      "minLength": 1
+     }
+    }
+   }
+  }
+ ]
+}

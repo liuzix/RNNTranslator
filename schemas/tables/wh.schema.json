@@ -1,0 +1,34 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://github.com/liuzix/RNNTranslator/schemas/tables/wh.schema.json",
+ "title": "tables/wh.tbl row",
+ "description": "question word | japanese | role: o object, s subject, loc place, t time/reason, adv manner.",
+ "type": "object",
+ "properties": {
+  "surface": {
+   "type": "string",
+   "pattern": "^\\S(.*\\S)?$",
+   "description": "a surface token of the corpus (lowercased Stanford tokenization): may be a multiword token, an apostrophe form or punctuation"
+  },
+  "japanese": {
+   "type": "string",
+   "minLength": 1,
+   "pattern": "^\\S(.*\\S)?$"
+  },
+  "role": {
+   "enum": [
+    "o",
+    "s",
+    "loc",
+    "t",
+    "adv"
+   ]
+  }
+ },
+ "required": [
+  "surface",
+  "japanese",
+  "role"
+ ],
+ "additionalProperties": false
+}

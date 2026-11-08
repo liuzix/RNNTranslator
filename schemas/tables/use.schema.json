@@ -1,0 +1,60 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://github.com/liuzix/RNNTranslator/schemas/tables/use.schema.json",
+ "title": "tables/use.tbl row",
+ "description": "The noun carries the verb: light verbs + noun -> the Japanese verb the noun selects, its class, the particle on the noun (\"-\" drops the noun), and an optional 'stative' marker (-> ている).",
+ "type": "object",
+ "properties": {
+  "noun": {
+   "type": "string",
+   "pattern": "^\\S(.*\\S)?$",
+   "description": "a surface token of the corpus (lowercased Stanford tokenization): may be a multiword token, an apostrophe form or punctuation"
+  },
+  "verbs": {
+   "type": "array",
+   "minItems": 1,
+   "items": {
+    "type": "string",
+    "pattern": "^\\S(.*\\S)?$",
+    "description": "a surface token of the corpus (lowercased Stanford tokenization): may be a multiword token, an apostrophe form or punctuation"
+   },
+   "uniqueItems": true
+  },
+  "japanese": {
+   "type": "string",
+   "minLength": 1,
+   "pattern": "^\\S(.*\\S)?$"
+  },
+  "class": {
+   "enum": [
+    "g",
+    "i",
+    "s",
+    "k",
+    "aru",
+    "fixed"
+   ]
+  },
+  "particle": {
+   "enum": [
+    "を",
+    "に",
+    "が",
+    "と",
+    "で",
+    "-"
+   ]
+  },
+  "stative": {
+   "const": "stative"
+  }
+ },
+ "required": [
+  "noun",
+  "verbs",
+  "japanese",
+  "class",
+  "particle"
+ ],
+ "additionalProperties": false
+}

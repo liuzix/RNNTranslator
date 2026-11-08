@@ -1,0 +1,42 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://github.com/liuzix/RNNTranslator/schemas/tables/godan.schema.json",
+ "title": "tables/godan.tbl row",
+ "description": "Godan conjugation rows: dictionary ending | a-row | i-row | e-row | o-row | te-form ending.",
+ "type": "object",
+ "properties": {
+  "ending": {
+   "type": "string",
+   "pattern": "^[うくぐすつぬぶむる]$"
+  },
+  "a": {
+   "type": "string",
+   "pattern": "^[ぁ-ん]+$"
+  },
+  "i": {
+   "type": "string",
+   "pattern": "^[ぁ-ん]+$"
+  },
+  "e": {
+   "type": "string",
+   "pattern": "^[ぁ-ん]+$"
+  },
+  "o": {
+   "type": "string",
+   "pattern": "^[ぁ-ん]+$"
+  },
+  "te": {
+   "type": "string",
+   "pattern": "^[ぁ-ん]+$"
+  }
+ },
+ "required": [
+  "ending",
+  "a",
+  "i",
+  "e",
+  "o",
+  "te"
+ ],
+ "additionalProperties": false
+}

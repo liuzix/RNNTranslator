@@ -1,0 +1,48 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://github.com/liuzix/RNNTranslator/schemas/tables/adjectives.schema.json",
+ "title": "tables/adjectives.tbl row",
+ "description": "Adjective + preposition idioms (be fond of NP -> NPが好きだ): the pattern is 'adjective preposition', the class says what the Japanese is (a: i-adjective stem without い; na; fx fixed predicate; v verb), and the particle goes on the NP.",
+ "type": "object",
+ "properties": {
+  "pattern": {
+   "type": "string",
+   "pattern": "^[a-z][a-z' -]* [a-z]+$"
+  },
+  "japanese": {
+   "type": "string",
+   "minLength": 1,
+   "pattern": "^\\S(.*\\S)?$"
+  },
+  "class": {
+   "enum": [
+    "a",
+    "na",
+    "fx",
+    "v"
+   ]
+  },
+  "particle": {
+   "type": "string",
+   "enum": [
+    "を",
+    "に",
+    "が",
+    "と",
+    "で",
+    "の",
+    "から",
+    "について",
+    "-",
+    ""
+   ]
+  }
+ },
+ "required": [
+  "pattern",
+  "japanese",
+  "class",
+  "particle"
+ ],
+ "additionalProperties": false
+}

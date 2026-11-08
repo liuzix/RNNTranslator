@@ -1,8 +1,0 @@
-# The evaluation corpus, pinned. `python harness/run.py fetch-corpus` clones this commit into .cache/corpus/ and
-# refuses any file whose sha256 differs; the checks then see exactly these bytes and nothing else from the clone.
-repo = https://github.com/odashi/small_parallel_enja.git
-commit = 312408a11c5fbcbc09443bebb18121f7efdcd61e
-sha256 dev.en  = 04a2673449770657fd5e3b963cb856be3130923212b6db8ac7eaeef18f06c041
-sha256 dev.ja  = cd534f56b8639dc130f86a365e5ec0aa70042000bdd740a622fbbf8b6be4acca
-sha256 test.en = 45edb380749ec2b49cca7618fc5a7595fc9f791180672ba466b90c873a4aa8bf
-sha256 test.ja = d37dc460a81b064e4106c8913eb11fa300da05cf3f58a7a5bbfec7e20947ddef

@@ -214,7 +214,6 @@ thank|v|感謝する|s
 blame|v|責める|i
 remain|v|残る|g
 appear|v|現れる|i
-grow|v|育つ|g|grew|grown
 shine|v|輝く|g|shone|shone
 hurry|v|急ぐ|g
 apple|n|りんご|t
@@ -312,7 +311,6 @@ success|n|成功|t
 failure|n|失敗|t
 mistake|n|間違い|t
 mistakes|n|間違い|t
-chance|n|機会|t
 reason|n|理由|t
 way|n|道|t
 thing|n|こと|t
@@ -424,7 +422,6 @@ taxi|n|タクシー|t
 plane|n|飛行機|t
 airplane|n|飛行機|t
 bicycle|n|自転車|t
-ticket|n|切符|t
 fire|n|火事|t
 war|n|戦争|t
 peace|n|平和|t
@@ -706,7 +703,6 @@ become|v|なる|g|became|become
 gain|v|得る|i
 earn|v|稼ぐ|g
 receive|v|受け取る|g
-throw|v|投げる|i|threw|thrown
 obey|v|従う|g
 care|v|気にする|s
 regret|v|後悔する|s
@@ -716,7 +712,6 @@ reply|v|返事する|s
 prefer|v|好む|g
 drop|v|落とす|g
 bother|v|悩ます|g
-earn|v|稼ぐ|g
 shout|v|叫ぶ|g
 result|v|結果になる|g
 jump|v|飛ぶ|g
@@ -747,7 +742,6 @@ absent|v|欠席する|s
 acknowledge|v|認める|i
 cooperate|v|協力する|s
 refer|v|言及する|s
-return|v|帰る|g
 sunday|n|日曜日|t
 monday|n|月曜日|t
 tuesday|n|火曜日|t
@@ -807,11 +801,9 @@ pain|n|痛み|t
 koala|n|コアラ|a
 pleasure|n|喜び|t
 piece|n|一片|t
-favor|n|お願い|t
 air|n|空気|t
 ambulance|n|救急車|t
 cookies|n|クッキー|t
-stars|n|星|t
 sort|n|種類|t
 statement|n|声明|t
 vegetables|n|野菜|t
@@ -868,7 +860,6 @@ ring|v|鳴る|g|rang|rung
 account|v|説明する|s
 one|n|もの|t
 need|n|必要|t
-win|v|勝つ|g|won|won
 let|v|許す|g|let|let
 telephone|v|電話する|s
 last friday|t|この前の金曜日
@@ -883,7 +874,6 @@ this sunday|t|今度の日曜日
 this saturday|t|今度の土曜日
 this friday|t|今度の金曜日
 this monday|t|今度の月曜日
-this morning|t|今朝
 in the future|t|将来
 rather well|adv|かなりよく
 rest|n|休息|t
@@ -966,7 +956,6 @@ buckets|n|バケツ|t
 butter|n|バター|t
 canada|n|カナダ|p
 cherry|n|桜|t
-cherry tree|n|桜の木|t
 church|n|教会|p
 coins|n|硬貨|t
 college|n|大学|p
@@ -986,7 +975,6 @@ ease|n|容易さ|t
 enemies|n|敵|h
 excess|n|過度|t
 express|n|速達|t
-fare|n|運賃|t
 foot|n|足|t
 force|n|力|t
 freedom|n|自由|t
@@ -1100,7 +1088,6 @@ off|adv|離れて
 born|fx|生まれた
 ten-year-old|fx|十歳の
 on foot|adv|徒歩で
-in advance|adv|前もって
 as soon as possible|adv|できるだけ早く
 on occasion|adv|時々
 on duty|adv|勤務中で

@@ -1,0 +1,48 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://github.com/liuzix/RNNTranslator/schemas/tables/verb_classes.schema.json",
+ "title": "tables/verb_classes.tbl row",
+ "description": "verb | classes: a class is a column of the verb table the parser reads by name (VC[name]); the set of names is closed.",
+ "type": "object",
+ "properties": {
+  "verb": {
+   "type": "string",
+   "pattern": "^\\S(.*\\S)?$",
+   "description": "a surface token of the corpus (lowercased Stanford tokenization): may be a multiword token, an apostrophe form or punctuation"
+  },
+  "classes": {
+   "type": "array",
+   "minItems": 1,
+   "uniqueItems": true,
+   "items": {
+    "enum": [
+     "to_comp",
+     "not_to",
+     "ing_comp",
+     "that_comp",
+     "that_only",
+     "wh_comp",
+     "if_comp",
+     "control",
+     "causative",
+     "perception",
+     "copular",
+     "dative",
+     "comitative",
+     "ni_location",
+     "ni_where",
+     "motion",
+     "posture",
+     "stative",
+     "ga",
+     "change"
+    ]
+   }
+  }
+ },
+ "required": [
+  "verb",
+  "classes"
+ ],
+ "additionalProperties": false
+}

@@ -1,0 +1,56 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://github.com/liuzix/RNNTranslator/schemas/corpus-lock.schema.json",
+ "title": "pinned evaluation corpus",
+ "description": "harness/corpus.lock.json: the git repository and commit the corpus is fetched from, and for each file the checks read, its sha256 and line count. fetch-corpus clones exactly this commit and refuses any file whose hash differs; the check actions see only these files.",
+ "type": "object",
+ "required": [
+  "repo",
+  "commit",
+  "files"
+ ],
+ "additionalProperties": false,
+ "properties": {
+  "$schema": {
+   "type": "string"
+  },
+  "repo": {
+   "type": "string",
+   "pattern": "^https://[^\\s]+\\.git$"
+  },
+  "commit": {
+   "type": "string",
+   "pattern": "^[0-9a-f]{40}$"
+  },
+  "files": {
+   "type": "object",
+   "required": [
+    "dev.en",
+    "dev.ja",
+    "test.en",
+    "test.ja"
+   ],
+   "additionalProperties": false,
+   "patternProperties": {
+    "^(dev|test)\\.(en|ja)$": {
+     "type": "object",
+     "required": [
+      "sha256",
+      "lines"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "sha256": {
+       "type": "string",
+       "pattern": "^[0-9a-f]{64}$"
+      },
+      "lines": {
+       "type": "integer",
+       "minimum": 1
+      }
+     }
+    }
+   }
+  }
+ }
+}
