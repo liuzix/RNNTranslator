@@ -58,7 +58,10 @@ rules as AND units (L3), next control, shift and write gates (L4), keep/write/cr
 the new state as a sum. Weights are in {−2, −1, +1}.
 
 `np_module.py` was checked exhaustively against `Parser.parse_np`: 2,315,036 window cases (83 token
-classes, sequences of 1–3 plus the end, four call contexts), 0 mismatches. The remaining silent misfires
+classes, sequences of 1–3 plus the end, four call contexts), 0 mismatches; 1,827,904 length-4 cases over 26
+NP-internal tokens found one divergence, all of one shape (adverb + adjective + adjective + noun), where the
+module's two adjective slots are full and it refuses loudly where `parse_np` concatenates — the measured
+capacity, not a misfire. The remaining silent misfires
 (25) are all in the extracted clause-level rules, whose guards are only as complete as the corpus; the next
 modules to translate by hand are the PP machine, `predicate` and `copula_predicate`.
 
