@@ -1,0 +1,23 @@
+{
+ "$schema": "../../schemas/suite.schema.json",
+ "class": "D",
+ "title": "Gerunds",
+ "description": "A V-ing clause as a noun phrase (〜こと): as subject, as the object of give up, after a preposition.",
+ "cases": [
+  {
+   "sentence": "driving too fast is dangerous .",
+   "expect": "あまりに速く運転することは危険だ。",
+   "citation": "test 303"
+  },
+  {
+   "sentence": "he gave up going abroad .",
+   "expect": "彼は海外に行くことを諦めた。",
+   "citation": "test 277"
+  },
+  {
+   "sentence": "don 't be afraid of making mistakes .",
+   "expect": "間違いをすることを恐れないでください。",
+   "citation": "test 350"
+  }
+ ]
+}

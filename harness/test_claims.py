@@ -127,7 +127,8 @@ def _fake_world(tmp, dev_outputs, matrix_outputs, negatives, adjudications=None)
     results = {"rules": {"dev": {"n": 2, "covered": sum(1 for v in dev_outputs.values() if v), "bleu_all": 1.0, "outputs": dev_outputs, "refusals": {k: "x" for k, v in dev_outputs.items() if not v}},
                          "test": {"n": 0, "covered": 0, "bleu_all": 0.0, "outputs": {}, "refusals": {}}},
                "matrix": {"identical": 0, "wrong_frame": 0, "matrix_parses_refused": 0, "outputs": {"dev": matrix_outputs, "test": {}}},
-               "np": {"mismatches": 0}, "negatives": {"accepted": 0, "controls_refused_by_rules": 0, "matrix_accepted": 0, "rows": negatives}}
+               "np": {"mismatches": 0}, "negatives": {"accepted": 0, "controls_refused_by_rules": 0, "matrix_accepted": 0, "rows": negatives},
+               "suites": {"classes": {}, "cases": 0, "right": 0, "closed": 0, "open": 0, "rows": []}}
     return corpus, os.path.join(tmp, "src"), results
 
 def test_lattice_order(root):
@@ -164,6 +165,43 @@ def test_precommit_hook_runs_check(root):
         assert gate({k1: "私は猫が好きだ。", k2: ""}, {k1: "私は猫が好きだ。", k2: ""}, adj=[{"citation": "dev 2: he came .", "verdict": "wrong", "output": "彼が来た。", "reason": "wrong particle"}])   # judged wrong: refusing it is up
         assert not gate({k1: "", k2: "彼が来た。"}, {k1: "", k2: ""})                                               # RIGHT -> REFUSED is down
         assert not gate({k1: "私は猫が好きだ。", k2: "彼が来た。"}, {k1: "私は猫が好きだ。", k2: ""}, negatives=[dict(neg[0], **{"sentence.rules": "私は行く。"})])   # a negative accepted is down
+    finally: shutil.rmtree(tmp)
+
+def test_suites_are_items(root):
+    """every suite case is a lattice item `suite <class> <sentence>` on WRONG < REFUSED < RIGHT, RIGHT exactly when the output is
+    the expectation; a cited case's expectation adjudicates that output right for the corpus sentence; a case moving down is refused"""
+    import importlib.util, io, contextlib
+    spec = importlib.util.spec_from_file_location("lattice", os.path.join(root, "harness", "lattice.py")); LT = importlib.util.module_from_spec(spec); spec.loader.exec_module(LT)
+    assert LT.CHAINS["suite"] == ["WRONG", "REFUSED", "RIGHT"] and LT.TOP["suite"] == "RIGHT"
+    assert LT.cmp("suite", "REFUSED", "RIGHT") == "up" and LT.cmp("suite", "RIGHT", "WRONG") == "down" and LT.cmp("suite", "WRONG", "REFUSED") == "up"
+    # every case of every suite file is an item, and the level is computed from output vs expectation
+    import glob
+    cases = [(json.load(open(p, encoding="utf-8")), p) for p in sorted(glob.glob(os.path.join(root, "harness", "suites", "*.json")))]
+    assert cases, "no suites"
+    rows = [{"class": s["class"], "sentence": c["sentence"], "expect": c["expect"], "output": c["expect"] if i % 3 == 0 else ("" if i % 3 == 1 else "x"),
+             "level": ["RIGHT", "REFUSED", "WRONG"][i % 3]} for s, _ in cases for i, c in enumerate(s["cases"])]
+    L = LT.levels({}, {}, [], 0, {"dev": {}, "test": {}}, {}, {}, rows)
+    for r in rows: assert L[f"suite {r['class']} {r['sentence']}"] == ("suite", r["level"], r["output"])
+    assert sum(1 for k in L if k.startswith("suite ")) == sum(len(s["cases"]) for s, _ in cases)
+    # the expectation of a cited case is a right verdict for that corpus sentence
+    tmp = tempfile.mkdtemp()
+    try:
+        sd = os.path.join(tmp, "suites"); os.makedirs(sd)
+        json.dump({"class": "Z", "title": "t", "cases": [{"sentence": "he came .", "expect": "彼が来た。", "citation": "dev 2"}]}, open(os.path.join(sd, "Z.json"), "w", encoding="utf-8"), ensure_ascii=False)
+        verdicts, _ = LT.load_adjudications(os.path.join(tmp, "none.json"), sd)
+        assert verdicts["dev 2: he came ."] == {"彼が来た。": "right"}
+        # the gate: a suite case RIGHT -> REFUSED or RIGHT -> WRONG is down; REFUSED -> RIGHT is up
+        runner = _runner(root)
+        k1, k2 = "1: i like cats .", "2: he came ."
+        row = {"class": "Z", "sentence": "he came .", "expect": "彼が来た。", "output": "彼が来た。", "level": "RIGHT", "reason": None, "citation": "dev 2"}
+        corpus, src, base = _fake_world(tmp, {k1: "私は猫が好きだ。", k2: "彼が来た。"}, {k1: "私は猫が好きだ。", k2: ""}, [])
+        base["suites"] = {"classes": {"Z": {"title": "t", "cases": 1, "right": 1, "refused": 0, "wrong": 0, "closed": True}}, "cases": 1, "right": 1, "closed": 1, "open": 0, "rows": [row]}
+        bp = os.path.join(src, "harness", "baseline.json"); json.dump(runner.as_document(base), open(bp, "w", encoding="utf-8"), ensure_ascii=False)
+        def gate(level, output):
+            _, src2, res = _fake_world(tmp, {k1: "私は猫が好きだ。", k2: "彼が来た。"}, {k1: "私は猫が好きだ。", k2: ""}, [])
+            res["suites"] = dict(base["suites"], rows=[dict(row, level=level, output=output)])
+            with contextlib.redirect_stdout(io.StringIO()): return runner.compare(res, bp, corpus, src2)
+        assert gate("RIGHT", "彼が来た。") and not gate("REFUSED", "") and not gate("WRONG", "彼は来た。")
     finally: shutil.rmtree(tmp)
 
 def test_sandbox_holds_only_declared_inputs(root):

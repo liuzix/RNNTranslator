@@ -29,7 +29,10 @@
     "np.mismatches",
     "negatives.accepted",
     "negatives.controls_refused",
-    "negatives.matrix_accepted"
+    "negatives.matrix_accepted",
+    "suites.right",
+    "suites.cases",
+    "suites.closed"
    ],
    "properties": {
     "rules.dev.covered": {
@@ -69,6 +72,18 @@
     "negatives.matrix_accepted": {
      "type": "integer",
      "minimum": 0
+    },
+    "suites.right": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "suites.cases": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "suites.closed": {
+     "type": "integer",
+     "minimum": 0
     }
    }
   },
@@ -78,7 +93,8 @@
     "rules",
     "matrix",
     "np",
-    "negatives"
+    "negatives",
+    "suites"
    ],
    "additionalProperties": false,
    "properties": {
@@ -280,6 +296,44 @@
        "minimum": 0
       }
      }
+    },
+    "suites": {
+     "type": "object",
+     "required": [
+      "classes",
+      "cases",
+      "right",
+      "closed",
+      "open"
+     ],
+     "properties": {
+      "classes": {
+       "type": "object",
+       "additionalProperties": {
+        "type": "object",
+        "required": [
+         "title",
+         "cases",
+         "right",
+         "refused",
+         "wrong",
+         "closed"
+        ]
+       }
+      },
+      "cases": {
+       "type": "integer"
+      },
+      "right": {
+       "type": "integer"
+      },
+      "closed": {
+       "type": "integer"
+      },
+      "open": {
+       "type": "integer"
+      }
+     }
     }
    }
   },
@@ -289,7 +343,8 @@
     "rules",
     "matrix",
     "negatives",
-    "refusals"
+    "refusals",
+    "suites"
    ],
    "additionalProperties": false,
    "description": "the items of the lattice: per split, '<line>: <sentence>' -> the rule transducer's Japanese ('' = refused) and the matrix parser's; the negatives rows; the refusal reason per refused sentence",
@@ -396,6 +451,40 @@
        },
        "control": {
         "type": "string"
+       }
+      }
+     }
+    },
+    "suites": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "required": [
+       "class",
+       "sentence",
+       "expect",
+       "output",
+       "level"
+      ],
+      "properties": {
+       "class": {
+        "type": "string"
+       },
+       "sentence": {
+        "type": "string"
+       },
+       "expect": {
+        "type": "string"
+       },
+       "output": {
+        "type": "string"
+       },
+       "level": {
+        "enum": [
+         "RIGHT",
+         "REFUSED",
+         "WRONG"
+        ]
        }
       }
      }

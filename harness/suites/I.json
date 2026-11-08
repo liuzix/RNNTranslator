@@ -1,0 +1,23 @@
+{
+ "$schema": "../../schemas/suite.schema.json",
+ "class": "I",
+ "title": "Passives and absolute clauses",
+ "description": "Lexical passives as rows (held up → 強盗に遭う, cleared up → 晴れる with the weather it dropped) and the absolute clause NP V-ed , S (NPをVて、S).",
+ "cases": [
+  {
+   "sentence": "the bank was held up last night .",
+   "expect": "銀行は昨夜強盗に遭った。",
+   "citation": "test 142"
+  },
+  {
+   "sentence": "it 's already cleared up .",
+   "expect": "もう晴れた。",
+   "citation": "test 140"
+  },
+  {
+   "sentence": "his work finished , he went to bed .",
+   "expect": "彼の仕事を終えて、彼は寝た。",
+   "citation": "test 468"
+  }
+ ]
+}

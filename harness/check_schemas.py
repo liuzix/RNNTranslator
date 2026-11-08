@@ -7,6 +7,7 @@
                             (the same filter the harness applies), each split cited completely, and the metrics must agree
                             with the outputs they summarise
     harness/adjudications.json against schemas/adjudications.schema.json; every citation must be a pinned corpus line
+    harness/suites/*.json    against schemas/suite.schema.json; a cited case must be that line of the pinned corpus
 
 Exit 1 on any error; reference violations declared level "warn" are listed and do not fail.
     python harness/check_schemas.py [--root DIR] [--corpus DIR] [--quiet]
@@ -124,6 +125,25 @@ def check_adjudications(root, corpus_dir):
         if n > 1: errors.append(f"adjudication repeated: {k}")
     return errors
 
+def check_suites(root, corpus_dir):
+    import glob
+    errors = []; cites = {}
+    for path in sorted(glob.glob(os.path.join(root, "harness", "suites", "*.json"))):
+        doc = load(path); rel = os.path.relpath(path, root)
+        errors += validate(doc, os.path.join(root, "schemas", "suite.schema.json"), rel)
+        if errors: continue
+        if doc["class"] != os.path.basename(path)[:-5]: errors.append(f"{rel}: class {doc['class']!r} does not match the file name")
+        seen = set()
+        for case in doc["cases"]:
+            if case["sentence"] in seen: errors.append(f"{rel}: repeated sentence {case['sentence']!r}")
+            seen.add(case["sentence"])
+            if case.get("citation") and corpus_dir:
+                split, line = case["citation"].split()
+                if os.path.exists(os.path.join(corpus_dir, split + ".en")):
+                    if split not in cites: cites[split] = corpus_citations(corpus_dir, split)
+                    if f"{line}: {case['sentence']}" not in cites[split]: errors.append(f"{rel}: {case['citation']!r} is not the line of {case['sentence']!r} in the pinned corpus")
+    return errors
+
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--root", default=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     ap.add_argument("--corpus", help="directory with the pinned corpus files (default: .cache/corpus/<commit> under the repo)"); ap.add_argument("--quiet", action="store_true")
@@ -139,7 +159,7 @@ def main():
     if os.path.exists(os.path.join(root, "harness", "negatives.json")):
         errs += validate(load(os.path.join(root, "harness", "negatives.json")), os.path.join(root, "schemas", "negatives.schema.json"), "harness/negatives.json")
     b_err = [] if a.skip_baseline else check_baseline(root, corpus)
-    b_err += check_adjudications(root, corpus)
+    b_err += check_adjudications(root, corpus) + check_suites(root, corpus)
     errors = list(dict.fromkeys(errs + t_err + b_err))
     for w in t_warn: print("warning:", w)
     for e in errors[:20]: print("error:", e)

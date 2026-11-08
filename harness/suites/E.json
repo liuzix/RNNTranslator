@@ -1,0 +1,23 @@
+{
+ "$schema": "../../schemas/suite.schema.json",
+ "class": "E",
+ "title": "Degree and superlative",
+ "description": "The superlative (一番 ADJ), no less ADJ than NP (NPに劣らず ADJ), and more N1 than N2 (N2より N1の方が多い).",
+ "cases": [
+  {
+   "sentence": "she is the happiest in her class .",
+   "expect": "彼女は彼女のクラスで一番幸せだ。",
+   "citation": "test 68"
+  },
+  {
+   "sentence": "he is no less kind than his sister .",
+   "expect": "彼は彼の姉に劣らず優しい。",
+   "citation": "test 3"
+  },
+  {
+   "sentence": "there are more girls than boys in our school .",
+   "expect": "私たちの学校には少年より少女の方が多い。",
+   "citation": "test 113"
+  }
+ ]
+}

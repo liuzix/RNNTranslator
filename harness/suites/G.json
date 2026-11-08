@@ -1,0 +1,23 @@
+{
+ "$schema": "../../schemas/suite.schema.json",
+ "class": "G",
+ "title": "Complement patterns",
+ "description": "be about to V (Vするところだ), make X ADJ (XをADJくする), hear + bare clause (〜と聞いている).",
+ "cases": [
+  {
+   "sentence": "i 'm about to tell you the answer .",
+   "expect": "私はあなたに答えを話すところだ。",
+   "citation": "test 7"
+  },
+  {
+   "sentence": "the news made her very sad .",
+   "expect": "ニュースは彼女をとても悲しくさせた。",
+   "citation": "test 168"
+  },
+  {
+   "sentence": "i hear he has been ill since last month .",
+   "expect": "彼は先月から病気だと聞いている。",
+   "citation": "test 426"
+  }
+ ]
+}

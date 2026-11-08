@@ -35,12 +35,15 @@ The lexical layer merges multiword tokens and gives each token its readings from
 │   ├── eval_negatives.py             action: published ungrammatical sentences refused, their controls accepted
 │   ├── eval_np.py                    action: np_module against parse_np over all windows
 │   ├── eval_rules.py                 action: coverage and char-BLEU of the transducer
+│   ├── eval_suites.py                action: the acceptance suites, each case against its expectation
 │   ├── facts.py                      the facts the README may cite
 │   ├── lattice.py                    the item order: chains, levels, comparison, frontier
 │   ├── negatives.json                the ungrammatical sentences, their controls, phenomena and sources
 │   ├── probe_sandbox.py              a probe action for the sandbox test
 │   ├── render_diagram.py             renders docs/*.puml with the pinned PlantUML jar
 │   ├── run.py                        the action cache, sandbox, baseline comparison, corpus fetch
+│   ├── suites/
+│   │   └── *.json                    one acceptance suite per residual class
 │   ├── test_claims.py                the tests the README's claims are pinned to
 │   └── trace_rules.py                step the hybrid rule set through one sentence
 ├── schemas/
@@ -52,7 +55,8 @@ The lexical layer merges multiword tokens and gives each token its readings from
 │   ├── corpus-lock.schema.json
 │   ├── diagram-lock.schema.json
 │   ├── integrity.schema.json         the format of integrity.json
-│   └── negatives.schema.json
+│   ├── negatives.schema.json
+│   └── suite.schema.json
 ├── tables/
 │   └── *.tbl                         the tables, each a small DSL file with its own header
 ├── .gitattributes
@@ -95,7 +99,25 @@ The `rules` action measures coverage and char-BLEU of the transducer on dev and 
 
 The state of the project is a product of small chains, one per item, and a change is an improvement exactly when no item moves down. A corpus sentence is WRONG, REFUSED or RIGHT, where RIGHT is the reference or an adjudicated acceptable output and an input adjudicated ungrammatical has refusal as its top; an output nobody has judged is UNKNOWN, below RIGHT but incomparable with the rest, so that a change away from it demands a verdict in `harness/adjudications.json`. The matrix parser on a sentence is MISFIRE, GAP or AGREE against the rule parser, a negative is ACCEPTED or REFUSED, a control is REFUSED or ACCEPTED, and the exhaustive NP check is MISMATCHES or MATCH. Coverage and quality are views of this state, not gates. The frontier is the set of items below the top of their chain, grouped by what blocks them, and `uv run python harness/run.py frontier` prints it from the committed baseline.
 
-Today the 2,045 items stand at: sentences RIGHT 22, UNKNOWN 687, REFUSED 286, WRONG 0; matrix AGREE 765, GAP 198, MISFIRE 32; negatives REFUSED 18 of 18 and controls ACCEPTED 18; 2 adjudications so far. The frontier holds 1,206 items in 19 groups.
+Today the 2,045 items stand at: sentences RIGHT 22, UNKNOWN 687, REFUSED 286, WRONG 0; matrix AGREE 765, GAP 198, MISFIRE 32; negatives REFUSED 18 of 18 and controls ACCEPTED 18; 33 adjudications so far. The frontier holds 1,206 items in 19 groups.
+
+## Acceptance suites
+
+Each residual class of the second-round review has an acceptance suite under `harness/suites/`: sentences with the exact Japanese the transducer must produce, every case an item of the lattice, and the class is closed when every case is RIGHT. The suites hold 33 cases in 11 classes, 0 right, 0 classes closed.
+
+| class | what it covers | right / cases | status |
+| --- | --- | --- | --- |
+| B | Ditransitives beyond give | 0 / 3 | open |
+| C | Fronted adjuncts and sentence adverbs | 0 / 3 | open |
+| D | Gerunds | 0 / 3 | open |
+| E | Degree and superlative | 0 / 3 | open |
+| F | Determiner sequences and noun-phrase shapes | 0 / 3 | open |
+| G | Complement patterns | 0 / 3 | open |
+| H | Discourse, ellipsis, coordination | 0 / 3 | open |
+| I | Passives and absolute clauses | 0 / 3 | open |
+| K | Particles by verb frame | 0 / 3 | open |
+| L | Sense and reading selection | 0 / 3 | open |
+| M | Register and dropped words | 0 / 3 | open |
 
 ## Where it stands
 
@@ -144,6 +166,8 @@ Every sentence above is quoted here with what pins it: a test in `harness/test_c
 - "The matrix parser on a sentence is MISFIRE, GAP or AGREE against the rule parser, a negative is ACCEPTED or REFUSED, a control is REFUSED or ACCEPTED, and the exhaustive NP check is MISMATCHES or MATCH.": Pinned by `test_lattice_order`
 - "Coverage and quality are views of this state, not gates.": Pinned by `test_precommit_hook_runs_check`
 - "The frontier is the set of items below the top of their chain, grouped by what blocks them, and `uv run python harness/run.py frontier` prints it from the committed baseline.": Pinned by `test_frontier_command`
-- "Today the 2,045 items stand at: sentences RIGHT 22, UNKNOWN 687, REFUSED 286, WRONG 0; matrix AGREE 765, GAP 198, MISFIRE 32; negatives REFUSED 18 of 18 and controls ACCEPTED 18; 2 adjudications so far.": Pinned by `rules`
+- "Today the 2,045 items stand at: sentences RIGHT 22, UNKNOWN 687, REFUSED 286, WRONG 0; matrix AGREE 765, GAP 198, MISFIRE 32; negatives REFUSED 18 of 18 and controls ACCEPTED 18; 33 adjudications so far.": Pinned by `rules`
 - "The frontier holds 1,206 items in 19 groups.": Pinned by `rules`
+- "Each residual class of the second-round review has an acceptance suite under `harness/suites/`: sentences with the exact Japanese the transducer must produce, every case an item of the lattice, and the class is closed when every case is RIGHT.": Pinned by `test_suites_are_items`
+- "The suites hold 33 cases in 11 classes, 0 right, 0 classes closed.": Pinned by `suites`
 - "The code is MIT-licensed, and the corpus is the Tanaka Corpus via small_parallel_enja under its own terms.": Pinned by `test_license_is_mit`

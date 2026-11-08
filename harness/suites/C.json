@@ -1,0 +1,23 @@
+{
+ "$schema": "../../schemas/suite.schema.json",
+ "class": "C",
+ "title": "Fronted adjuncts and sentence adverbs",
+ "description": "Before the subject: a fixed opener (in fact, at last, of course, …) with its comma, a prepositional phrase, a time word, an adverb before an imperative.",
+ "cases": [
+  {
+   "sentence": "in fact , he is a nice fellow .",
+   "expect": "実は、彼は素敵なやつだ。",
+   "citation": "test 85"
+  },
+  {
+   "sentence": "at last , they came to a decision .",
+   "expect": "ついに、彼らは決定に達した。",
+   "citation": "test 227"
+  },
+  {
+   "sentence": "just wait for me there .",
+   "expect": "ちょっとそこで私を待ってください。",
+   "citation": "test 180"
+  }
+ ]
+}

@@ -1,0 +1,63 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://github.com/liuzix/RNNTranslator/schemas/suite.schema.json",
+ "title": "acceptance suite",
+ "description": "harness/suites/<class>.json: the acceptance suite of one residual class — sentences with the exact Japanese the transducer must produce. The suites action levels each case RIGHT / REFUSED / WRONG and the class is closed when all are RIGHT. A case that cites a corpus line ('dev 17' / 'test 160') must match that line's text (check_schemas), and its expectation then counts as a right verdict for the sentence item of the lattice.",
+ "type": "object",
+ "required": [
+  "class",
+  "title",
+  "description",
+  "cases"
+ ],
+ "additionalProperties": false,
+ "properties": {
+  "$schema": {
+   "type": "string"
+  },
+  "class": {
+   "type": "string",
+   "pattern": "^[A-Z]$"
+  },
+  "title": {
+   "type": "string",
+   "minLength": 1
+  },
+  "description": {
+   "type": "string",
+   "minLength": 1
+  },
+  "cases": {
+   "type": "array",
+   "minItems": 1,
+   "items": {
+    "type": "object",
+    "required": [
+     "sentence",
+     "expect"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "sentence": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9' ,]*[.?!]$",
+      "description": "lowercased corpus tokenization, single spaces, ending in . ? or !"
+     },
+     "expect": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^\\S.*[。？！]$"
+     },
+     "citation": {
+      "type": "string",
+      "pattern": "^(dev|test) [1-9]\\d*$",
+      "description": "the corpus split and line this sentence is, when it is one"
+     },
+     "note": {
+      "type": "string"
+     }
+    }
+   }
+  }
+ }
+}

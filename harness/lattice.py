@@ -14,6 +14,7 @@ Items and their chains (levels rise left to right; a lower index is worse):
   control <sentence>            REFUSED < ACCEPTED            (the rule parser on its grammatical control)
   negative.matrix <sentence>    ACCEPTED < REFUSED            (the matrix parser on an ungrammatical sentence)
   np.exhaustive                 MISMATCHES < MATCH            (np_module against parse_np: the mismatch count, 0 is the top)
+  suite <class> <sentence>      WRONG < REFUSED < RIGHT       (an acceptance case: RIGHT = the output equals the suite's expectation)
 
 Coverage and quality are views of this state, not gates: coverage = |RIGHT ∪ UNKNOWN| / N, quality = chrF over the outputs.
 """
@@ -22,8 +23,8 @@ import json, os, collections
 # the poset of sentence levels: pairs (lower, higher)
 SENTENCE_ORDER = {("WRONG", "REFUSED"), ("WRONG", "RIGHT"), ("REFUSED", "RIGHT"), ("UNKNOWN", "RIGHT")}
 CHAINS = {"matrix": ["MISFIRE", "GAP", "AGREE"], "negative": ["ACCEPTED", "REFUSED"], "control": ["REFUSED", "ACCEPTED"],
-          "negative.matrix": ["ACCEPTED", "REFUSED"], "np.exhaustive": ["MISMATCHES", "MATCH"]}
-TOP = {"sentence": "RIGHT", "matrix": "AGREE", "negative": "REFUSED", "control": "ACCEPTED", "negative.matrix": "REFUSED", "np.exhaustive": "MATCH"}
+          "negative.matrix": ["ACCEPTED", "REFUSED"], "np.exhaustive": ["MISMATCHES", "MATCH"], "suite": ["WRONG", "REFUSED", "RIGHT"]}
+TOP = {"sentence": "RIGHT", "matrix": "AGREE", "negative": "REFUSED", "control": "ACCEPTED", "negative.matrix": "REFUSED", "np.exhaustive": "MATCH", "suite": "RIGHT"}
 
 def cmp(kind, old, new):
     """-> 'up' | 'down' | 'same' | 'incomparable'"""
@@ -35,15 +36,20 @@ def cmp(kind, old, new):
     chain = CHAINS[kind]
     return "up" if chain.index(new) > chain.index(old) else "down"
 
-def load_adjudications(path):
-    """-> ({citation: {output: verdict}}, {citation: reason for an ungrammatical input})"""
+def load_adjudications(path, suites_dir=None):
+    """-> ({citation: {output: verdict}}, {citation: reason for an ungrammatical input}); the suites' expectations for cited
+    corpus lines count as right verdicts (suites_dir defaults to harness/suites next to the adjudications file)"""
     verdicts = collections.defaultdict(dict); ungrammatical = {}
-    if not os.path.exists(path): return verdicts, ungrammatical
-    doc = json.load(open(path, encoding="utf-8"))
-    for a in doc.get("sentences", []):
-        key = a["citation"]
-        if a["verdict"] == "input_ungrammatical": ungrammatical[key] = a["reason"]
-        else: verdicts[key][a["output"]] = a["verdict"]
+    if os.path.exists(path):
+        doc = json.load(open(path, encoding="utf-8"))
+        for a in doc.get("sentences", []):
+            key = a["citation"]
+            if a["verdict"] == "input_ungrammatical": ungrammatical[key] = a["reason"]
+            else: verdicts[key][a["output"]] = a["verdict"]
+    import glob
+    for sp in sorted(glob.glob(os.path.join(suites_dir or os.path.join(os.path.dirname(path), "suites"), "*.json"))):
+        for case in json.load(open(sp, encoding="utf-8")).get("cases", []):
+            if case.get("citation"): verdicts[f"{case['citation']}: {case['sentence']}"].setdefault(case["expect"], "right")
     return verdicts, ungrammatical
 
 def sentence_level(output, reference, key, verdicts, ungrammatical):
@@ -59,7 +65,7 @@ def matrix_level(rules_out, matrix_out):
     if rules_out and not matrix_out: return "GAP"
     return "MISFIRE"
 
-def levels(rules_outputs, matrix_outputs, negatives_rows, np_mismatches, references, verdicts, ungrammatical):
+def levels(rules_outputs, matrix_outputs, negatives_rows, np_mismatches, references, verdicts, ungrammatical, suites_rows=None):
     """every item -> (kind, level, detail).  rules_outputs / matrix_outputs: {split: {citation: output}}; references: {split: {citation: ja}}"""
     L = {}
     for split in ("dev", "test"):
@@ -73,6 +79,8 @@ def levels(rules_outputs, matrix_outputs, negatives_rows, np_mismatches, referen
         L[f"control {row['control']}"] = ("control", "ACCEPTED" if row.get("control.rules") else "REFUSED", row.get("control.rules.reason"))
         L[f"negative.matrix {row['sentence']}"] = ("negative.matrix", "ACCEPTED" if row.get("sentence.matrix") else "REFUSED", row.get("sentence.matrix"))
     L["np.exhaustive"] = ("np.exhaustive", "MATCH" if np_mismatches == 0 else "MISMATCHES", np_mismatches)
+    for row in suites_rows or []:
+        L[f"suite {row['class']} {row['sentence']}"] = ("suite", row["level"], row["output"])
     return L
 
 def compare_levels(old, new):
@@ -104,5 +112,6 @@ def frontier(L, refusal_reasons=None):
             elif lv == "UNKNOWN": groups["sentence output unjudged"].append(item)
             else: groups["sentence output wrong"].append(item)
         elif kind == "matrix": groups[f"matrix {lv.lower()}"].append(item)
+        elif kind == "suite": groups[f"suite {item.split(' ')[1]} {lv.lower()}"].append(item)
         else: groups[f"{kind} {lv.lower()}"].append(item)
     return dict(sorted(groups.items(), key=lambda kv: -len(kv[1])))

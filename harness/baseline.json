@@ -156,6 +156,103 @@
 },
 "n": 499
 }
+},
+"suites": {
+"cases": 33,
+"classes": {
+"B": {
+"cases": 3,
+"closed": false,
+"refused": 3,
+"right": 0,
+"title": "Ditransitives beyond give",
+"wrong": 0
+},
+"C": {
+"cases": 3,
+"closed": false,
+"refused": 3,
+"right": 0,
+"title": "Fronted adjuncts and sentence adverbs",
+"wrong": 0
+},
+"D": {
+"cases": 3,
+"closed": false,
+"refused": 3,
+"right": 0,
+"title": "Gerunds",
+"wrong": 0
+},
+"E": {
+"cases": 3,
+"closed": false,
+"refused": 2,
+"right": 0,
+"title": "Degree and superlative",
+"wrong": 1
+},
+"F": {
+"cases": 3,
+"closed": false,
+"refused": 3,
+"right": 0,
+"title": "Determiner sequences and noun-phrase shapes",
+"wrong": 0
+},
+"G": {
+"cases": 3,
+"closed": false,
+"refused": 3,
+"right": 0,
+"title": "Complement patterns",
+"wrong": 0
+},
+"H": {
+"cases": 3,
+"closed": false,
+"refused": 3,
+"right": 0,
+"title": "Discourse, ellipsis, coordination",
+"wrong": 0
+},
+"I": {
+"cases": 3,
+"closed": false,
+"refused": 3,
+"right": 0,
+"title": "Passives and absolute clauses",
+"wrong": 0
+},
+"K": {
+"cases": 3,
+"closed": false,
+"refused": 0,
+"right": 0,
+"title": "Particles by verb frame",
+"wrong": 3
+},
+"L": {
+"cases": 3,
+"closed": false,
+"refused": 0,
+"right": 0,
+"title": "Sense and reading selection",
+"wrong": 3
+},
+"M": {
+"cases": 3,
+"closed": false,
+"refused": 0,
+"right": 0,
+"title": "Register and dropped words",
+"wrong": 3
+}
+},
+"closed": 0,
+"open": 11,
+"right": 0,
+"summary": "suites: 0/33 cases right, 0 of 11 classes closed (open: B, C, D, E, F, G, H, I, K, L, M)"
 }
 },
 "metrics": {
@@ -168,7 +265,10 @@
 "rules.dev.bleu_all": 18.908,
 "rules.dev.covered": 310,
 "rules.test.bleu_all": 28.641,
-"rules.test.covered": 398
+"rules.test.covered": 398,
+"suites.cases": 33,
+"suites.closed": 0,
+"suites.right": 0
 },
 "outputs": {
 "matrix": {
@@ -2629,7 +2729,306 @@
 "99: he made an abrupt departure .": "彼は突然な出発を作った。",
 "9: we have this game on ice .": "私たちは氷でこの試合を持っている。"
 }
-}
 },
-"taken": "2026-11-08 at 744aa58"
+"suites": [
+{
+"citation": "test 155",
+"class": "B",
+"expect": "彼女は私に彼女の部屋を見せた。",
+"level": "REFUSED",
+"output": "",
+"reason": "VP0: tail",
+"sentence": "she showed me her room ."
+},
+{
+"citation": "test 219",
+"class": "B",
+"expect": "私のおじは私にこの本を買った。",
+"level": "REFUSED",
+"output": "",
+"reason": "VP0: tail",
+"sentence": "my uncle bought me this book ."
+},
+{
+"citation": "test 254",
+"class": "B",
+"expect": "あなたに飲み物を買わせてください。",
+"level": "REFUSED",
+"output": "",
+"reason": "PRE: tail",
+"sentence": "let me buy you a drink ."
+},
+{
+"citation": "test 85",
+"class": "C",
+"expect": "実は、彼は素敵なやつだ。",
+"level": "REFUSED",
+"output": "",
+"reason": "PRE: noun phrase",
+"sentence": "in fact , he is a nice fellow ."
+},
+{
+"citation": "test 227",
+"class": "C",
+"expect": "ついに、彼らは決定に達した。",
+"level": "REFUSED",
+"output": "",
+"reason": "PRE: noun phrase",
+"sentence": "at last , they came to a decision ."
+},
+{
+"citation": "test 180",
+"class": "C",
+"expect": "ちょっとそこで私を待ってください。",
+"level": "REFUSED",
+"output": "",
+"reason": "PRE: noun phrase",
+"sentence": "just wait for me there ."
+},
+{
+"citation": "test 303",
+"class": "D",
+"expect": "あまりに速く運転することは危険だ。",
+"level": "REFUSED",
+"output": "",
+"reason": "PRE: noun phrase",
+"sentence": "driving too fast is dangerous ."
+},
+{
+"citation": "test 277",
+"class": "D",
+"expect": "彼は海外に行くことを諦めた。",
+"level": "REFUSED",
+"output": "",
+"reason": "VP0: tail",
+"sentence": "he gave up going abroad ."
+},
+{
+"citation": "test 350",
+"class": "D",
+"expect": "間違いをすることを恐れないでください。",
+"level": "REFUSED",
+"output": "",
+"reason": "PRE: noun phrase",
+"sentence": "don 't be afraid of making mistakes ."
+},
+{
+"citation": "test 68",
+"class": "E",
+"expect": "彼女は彼女のクラスで一番幸せだ。",
+"level": "REFUSED",
+"output": "",
+"reason": "VP0: noun phrase",
+"sentence": "she is the happiest in her class ."
+},
+{
+"citation": "test 3",
+"class": "E",
+"expect": "彼は彼の姉に劣らず優しい。",
+"level": "REFUSED",
+"output": "",
+"reason": "VP0: noun phrase",
+"sentence": "he is no less kind than his sister ."
+},
+{
+"citation": "test 113",
+"class": "E",
+"expect": "私たちの学校には少年より少女の方が多い。",
+"level": "WRONG",
+"output": "少年たちより私たちの学校にもっと少女がいる。",
+"reason": null,
+"sentence": "there are more girls than boys in our school ."
+},
+{
+"citation": "test 90",
+"class": "F",
+"expect": "賢い男はそんなことを言わないだろう。",
+"level": "REFUSED",
+"output": "",
+"reason": "VP0: noun phrase",
+"sentence": "a wise man would not say such a thing ."
+},
+{
+"citation": "test 337",
+"class": "F",
+"expect": "私たちは何か新しいものが欲しい。",
+"level": "REFUSED",
+"output": "",
+"reason": "VP0: tail",
+"sentence": "we want something new ."
+},
+{
+"citation": "test 374",
+"class": "F",
+"expect": "彼女は部屋で全ての窓を閉めた。",
+"level": "REFUSED",
+"output": "",
+"reason": "VP0: noun phrase",
+"sentence": "she closed all the windows in the room ."
+},
+{
+"citation": "test 7",
+"class": "G",
+"expect": "私はあなたに答えを話すところだ。",
+"level": "REFUSED",
+"output": "",
+"reason": "VP0: noun phrase",
+"sentence": "i 'm about to tell you the answer ."
+},
+{
+"citation": "test 168",
+"class": "G",
+"expect": "ニュースは彼女をとても悲しくさせた。",
+"level": "REFUSED",
+"output": "",
+"reason": "VP0: noun phrase",
+"sentence": "the news made her very sad ."
+},
+{
+"citation": "test 426",
+"class": "G",
+"expect": "彼は先月から病気だと聞いている。",
+"level": "REFUSED",
+"output": "",
+"reason": "VP0: tail",
+"sentence": "i hear he has been ill since last month ."
+},
+{
+"citation": "test 133",
+"class": "H",
+"expect": "一体何が問題ですか。",
+"level": "REFUSED",
+"output": "",
+"reason": "PRE: wh question",
+"sentence": "what on earth is the matter ?"
+},
+{
+"citation": "test 150",
+"class": "H",
+"expect": "私は猫が好きではなくて、私の兄も好きではない。",
+"level": "REFUSED",
+"output": "",
+"reason": "VP0: tail",
+"sentence": "i do not like cats and my brother does not either ."
+},
+{
+"citation": "test 176",
+"class": "H",
+"expect": "ドアを開けてくださいませんか。",
+"level": "REFUSED",
+"output": "",
+"reason": "PRE: verb",
+"sentence": "would you please open the door ?"
+},
+{
+"citation": "test 142",
+"class": "I",
+"expect": "銀行は昨夜強盗に遭った。",
+"level": "REFUSED",
+"output": "",
+"reason": "VP0: copula predicate",
+"sentence": "the bank was held up last night ."
+},
+{
+"citation": "test 140",
+"class": "I",
+"expect": "もう晴れた。",
+"level": "REFUSED",
+"output": "",
+"reason": "VP0: copula predicate",
+"sentence": "it 's already cleared up ."
+},
+{
+"citation": "test 468",
+"class": "I",
+"expect": "彼の仕事を終えて、彼は寝た。",
+"level": "REFUSED",
+"output": "",
+"reason": "VP0: tail",
+"sentence": "his work finished , he went to bed ."
+},
+{
+"citation": "test 300",
+"class": "K",
+"expect": "彼の父は週に二回そこで食べる。",
+"level": "WRONG",
+"output": "彼の父はそこに週に二回食べる。",
+"reason": null,
+"sentence": "his father eats there twice a week ."
+},
+{
+"citation": "test 436",
+"class": "K",
+"expect": "私は質問に答えることを断る。",
+"level": "WRONG",
+"output": "私は質問を答えることを拒否する。",
+"reason": null,
+"sentence": "i refuse to answer the question ."
+},
+{
+"citation": null,
+"class": "K",
+"expect": "私は学校まで歩く。",
+"level": "WRONG",
+"output": "私は学校に歩く。",
+"reason": null,
+"sentence": "i walk to school ."
+},
+{
+"citation": "test 199",
+"class": "L",
+"expect": "私の息子は医学を勉強するためにアメリカに行った。",
+"level": "WRONG",
+"output": "私の息子はアメリカに研究の薬に行った。",
+"reason": null,
+"sentence": "my son has gone to america to study medicine ."
+},
+{
+"citation": null,
+"class": "L",
+"expect": "彼は医学を勉強する。",
+"level": "WRONG",
+"output": "彼は薬を勉強する。",
+"reason": null,
+"sentence": "he studies medicine ."
+},
+{
+"citation": "test 103",
+"class": "L",
+"expect": "駅までどのくらいありますか。",
+"level": "WRONG",
+"output": "それは駅にいますか。",
+"reason": null,
+"sentence": "how far is it to the station ?"
+},
+{
+"citation": "test 62",
+"class": "M",
+"expect": "私は母ほど早く起きない。",
+"level": "WRONG",
+"output": "私は私の母ほど早く起きない。",
+"reason": null,
+"sentence": "i don 't get up as early as my mother ."
+},
+{
+"citation": "test 32",
+"class": "M",
+"expect": "誰も彼をそれ以来見ていない。",
+"level": "WRONG",
+"output": "誰も彼をそれ以来見ていなかった。",
+"reason": null,
+"sentence": "nobody has seen him ever since ."
+},
+{
+"citation": "test 27",
+"class": "M",
+"expect": "私たちは手紙を何度も読んだ。",
+"level": "WRONG",
+"output": "私たちは手紙を何度も読む。",
+"reason": null,
+"sentence": "we read the letter again and again ."
+}
+]
+},
+"taken": "2026-11-08 at 44b65bf"
 }

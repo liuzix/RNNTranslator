@@ -1,0 +1,22 @@
+{
+ "$schema": "../../schemas/suite.schema.json",
+ "class": "L",
+ "title": "Sense and reading selection",
+ "description": "A noun's sense by the verb (medicine: 薬 to take, 医学 to study), the verb reading after to, how far … to NP (NPまでどのくらいありますか), class as クラス after a possessive.",
+ "cases": [
+  {
+   "sentence": "my son has gone to america to study medicine .",
+   "expect": "私の息子は医学を勉強するためにアメリカに行った。",
+   "citation": "test 199"
+  },
+  {
+   "sentence": "he studies medicine .",
+   "expect": "彼は医学を勉強する。"
+  },
+  {
+   "sentence": "how far is it to the station ?",
+   "expect": "駅までどのくらいありますか。",
+   "citation": "test 103"
+  }
+ ]
+}

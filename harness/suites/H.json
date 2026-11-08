@@ -1,0 +1,23 @@
+{
+ "$schema": "../../schemas/suite.schema.json",
+ "class": "H",
+ "title": "Discourse, ellipsis, coordination",
+ "description": "what on earth (一体), VP ellipsis with either (も〜ない), would you please V (Vてくださいませんか).",
+ "cases": [
+  {
+   "sentence": "what on earth is the matter ?",
+   "expect": "一体何が問題ですか。",
+   "citation": "test 133"
+  },
+  {
+   "sentence": "i do not like cats and my brother does not either .",
+   "expect": "私は猫が好きではなくて、私の兄も好きではない。",
+   "citation": "test 150"
+  },
+  {
+   "sentence": "would you please open the door ?",
+   "expect": "ドアを開けてくださいませんか。",
+   "citation": "test 176"
+  }
+ ]
+}

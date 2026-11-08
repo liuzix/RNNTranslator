@@ -1,0 +1,23 @@
+{
+ "$schema": "../../schemas/suite.schema.json",
+ "class": "F",
+ "title": "Determiner sequences and noun-phrase shapes",
+ "description": "such a N, all the N, an adjective after an indefinite pronoun (something new → 何か新しいもの).",
+ "cases": [
+  {
+   "sentence": "a wise man would not say such a thing .",
+   "expect": "賢い男はそんなことを言わないだろう。",
+   "citation": "test 90"
+  },
+  {
+   "sentence": "we want something new .",
+   "expect": "私たちは何か新しいものが欲しい。",
+   "citation": "test 337"
+  },
+  {
+   "sentence": "she closed all the windows in the room .",
+   "expect": "彼女は部屋で全ての窓を閉めた。",
+   "citation": "test 374"
+  }
+ ]
+}

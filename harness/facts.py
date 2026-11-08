@@ -32,6 +32,10 @@ def facts(root=ROOT):
     f["negatives.count"] = g["count"]; f["negatives.accepted"] = g["accepted"]; f["negatives.refused"] = g["count"] - g["accepted"]
     f["negatives.controls_accepted"] = g["count"] - g["controls_refused_by_rules"]; f["negatives.controls_matrix"] = g["count"] - g["controls_refused_by_matrix"]
     f["negatives.matrix_refused"] = g["count"] - g["matrix_accepted"]; f["negatives.matrix_accepted"] = g["matrix_accepted"]
+    su = base["detail"]["suites"]
+    f["suites.classes"] = len(su["classes"]); f["suites.cases"] = su["cases"]; f["suites.right"] = su["right"]; f["suites.closed"] = su["closed"]; f["suites.open"] = su["open"]
+    for cls, c in su["classes"].items():
+        f[f"suite.{cls}.title"] = c["title"]; f[f"suite.{cls}.cases"] = c["cases"]; f[f"suite.{cls}.right"] = c["right"]; f[f"suite.{cls}.status"] = "closed" if c["closed"] else "open"
     f["baseline.taken"] = base["taken"]
     # the lattice (harness/lattice.py): levels of every item in the committed baseline
     import importlib.util

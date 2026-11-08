@@ -1,0 +1,23 @@
+{
+ "$schema": "../../schemas/suite.schema.json",
+ "class": "B",
+ "title": "Ditransitives beyond give",
+ "description": "The double-object frame — first noun phrase に, second を — for the verbs that take it: show, buy, tell, lend, send, teach, pass, bring, pay, hand; and let X V with an object.",
+ "cases": [
+  {
+   "sentence": "she showed me her room .",
+   "expect": "彼女は私に彼女の部屋を見せた。",
+   "citation": "test 155"
+  },
+  {
+   "sentence": "my uncle bought me this book .",
+   "expect": "私のおじは私にこの本を買った。",
+   "citation": "test 219"
+  },
+  {
+   "sentence": "let me buy you a drink .",
+   "expect": "あなたに飲み物を買わせてください。",
+   "citation": "test 254"
+  }
+ ]
+}

@@ -35,12 +35,15 @@ The lexical layer merges multiword tokens and gives each token its readings from
 │   ├── eval_negatives.py             action: published ungrammatical sentences refused, their controls accepted
 │   ├── eval_np.py                    action: np_module against parse_np over all windows
 │   ├── eval_rules.py                 action: coverage and char-BLEU of the transducer
+│   ├── eval_suites.py                action: the acceptance suites, each case against its expectation
 │   ├── facts.py                      the facts the README may cite
 │   ├── lattice.py                    the item order: chains, levels, comparison, frontier
 │   ├── negatives.json                the ungrammatical sentences, their controls, phenomena and sources
 │   ├── probe_sandbox.py              a probe action for the sandbox test
 │   ├── render_diagram.py             renders docs/*.puml with the pinned PlantUML jar
 │   ├── run.py                        the action cache, sandbox, baseline comparison, corpus fetch
+│   ├── suites/
+│   │   └── *.json                    one acceptance suite per residual class
 │   ├── test_claims.py                the tests the README's claims are pinned to
 │   └── trace_rules.py                step the hybrid rule set through one sentence
 ├── schemas/
@@ -52,7 +55,8 @@ The lexical layer merges multiword tokens and gives each token its readings from
 │   ├── corpus-lock.schema.json
 │   ├── diagram-lock.schema.json
 │   ├── integrity.schema.json         the format of integrity.json
-│   └── negatives.schema.json
+│   ├── negatives.schema.json
+│   └── suite.schema.json
 ├── tables/
 │   └── *.tbl                         the tables, each a small DSL file with its own header
 ├── .gitattributes
@@ -96,6 +100,24 @@ The `rules` action measures coverage and char-BLEU of the transducer on dev and 
 The state of the project is a product of small chains, one per item, and a change is an improvement exactly when no item moves down. A corpus sentence is WRONG, REFUSED or RIGHT, where RIGHT is the reference or an adjudicated acceptable output and an input adjudicated ungrammatical has refusal as its top; an output nobody has judged is UNKNOWN, below RIGHT but incomparable with the rest, so that a change away from it demands a verdict in `harness/adjudications.json`. The matrix parser on a sentence is MISFIRE, GAP or AGREE against the rule parser, a negative is ACCEPTED or REFUSED, a control is REFUSED or ACCEPTED, and the exhaustive NP check is MISMATCHES or MATCH. Coverage and quality are views of this state, not gates. The frontier is the set of items below the top of their chain, grouped by what blocks them, and `uv run python harness/run.py frontier` prints it from the committed baseline.
 
 Today the {{f:lattice.items|,}} items stand at: sentences RIGHT {{f:lattice.sentence.right}}, UNKNOWN {{f:lattice.sentence.unknown}}, REFUSED {{f:lattice.sentence.refused}}, WRONG {{f:lattice.sentence.wrong}}; matrix AGREE {{f:lattice.matrix.agree}}, GAP {{f:lattice.matrix.gap}}, MISFIRE {{f:lattice.matrix.misfire}}; negatives REFUSED {{f:lattice.negative.refused}} of {{f:negatives.count}} and controls ACCEPTED {{f:lattice.control.accepted}}; {{f:lattice.adjudications}} adjudications so far. The frontier holds {{f:lattice.frontier.items|,}} items in {{f:lattice.frontier.groups}} groups.
+
+## Acceptance suites
+
+Each residual class of the second-round review has an acceptance suite under `harness/suites/`: sentences with the exact Japanese the transducer must produce, every case an item of the lattice, and the class is closed when every case is RIGHT. The suites hold {{f:suites.cases}} cases in {{f:suites.classes}} classes, {{f:suites.right}} right, {{f:suites.closed}} classes closed.
+
+| class | what it covers | right / cases | status |
+| --- | --- | --- | --- |
+| B | {{f:suite.B.title}} | {{f:suite.B.right}} / {{f:suite.B.cases}} | {{f:suite.B.status}} |
+| C | {{f:suite.C.title}} | {{f:suite.C.right}} / {{f:suite.C.cases}} | {{f:suite.C.status}} |
+| D | {{f:suite.D.title}} | {{f:suite.D.right}} / {{f:suite.D.cases}} | {{f:suite.D.status}} |
+| E | {{f:suite.E.title}} | {{f:suite.E.right}} / {{f:suite.E.cases}} | {{f:suite.E.status}} |
+| F | {{f:suite.F.title}} | {{f:suite.F.right}} / {{f:suite.F.cases}} | {{f:suite.F.status}} |
+| G | {{f:suite.G.title}} | {{f:suite.G.right}} / {{f:suite.G.cases}} | {{f:suite.G.status}} |
+| H | {{f:suite.H.title}} | {{f:suite.H.right}} / {{f:suite.H.cases}} | {{f:suite.H.status}} |
+| I | {{f:suite.I.title}} | {{f:suite.I.right}} / {{f:suite.I.cases}} | {{f:suite.I.status}} |
+| K | {{f:suite.K.title}} | {{f:suite.K.right}} / {{f:suite.K.cases}} | {{f:suite.K.status}} |
+| L | {{f:suite.L.title}} | {{f:suite.L.right}} / {{f:suite.L.cases}} | {{f:suite.L.status}} |
+| M | {{f:suite.M.title}} | {{f:suite.M.right}} / {{f:suite.M.cases}} | {{f:suite.M.status}} |
 
 ## Where it stands
 
@@ -146,4 +168,6 @@ Every sentence above is quoted here with what pins it: a test in `harness/test_c
 - "The frontier is the set of items below the top of their chain, grouped by what blocks them, and `uv run python harness/run.py frontier` prints it from the committed baseline.": Pinned by `test_frontier_command`
 - "Today the {{f:lattice.items|,}} items stand at: sentences RIGHT {{f:lattice.sentence.right}}, UNKNOWN {{f:lattice.sentence.unknown}}, REFUSED {{f:lattice.sentence.refused}}, WRONG {{f:lattice.sentence.wrong}}; matrix AGREE {{f:lattice.matrix.agree}}, GAP {{f:lattice.matrix.gap}}, MISFIRE {{f:lattice.matrix.misfire}}; negatives REFUSED {{f:lattice.negative.refused}} of {{f:negatives.count}} and controls ACCEPTED {{f:lattice.control.accepted}}; {{f:lattice.adjudications}} adjudications so far.": Pinned by `rules`
 - "The frontier holds {{f:lattice.frontier.items|,}} items in {{f:lattice.frontier.groups}} groups.": Pinned by `rules`
+- "Each residual class of the second-round review has an acceptance suite under `harness/suites/`: sentences with the exact Japanese the transducer must produce, every case an item of the lattice, and the class is closed when every case is RIGHT.": Pinned by `test_suites_are_items`
+- "The suites hold {{f:suites.cases}} cases in {{f:suites.classes}} classes, {{f:suites.right}} right, {{f:suites.closed}} classes closed.": Pinned by `suites`
 - "The code is MIT-licensed, and the corpus is the Tanaka Corpus via small_parallel_enja under its own terms.": Pinned by `test_license_is_mit`

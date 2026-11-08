@@ -1,0 +1,23 @@
+{
+ "$schema": "../../schemas/suite.schema.json",
+ "class": "M",
+ "title": "Register and dropped words",
+ "description": "A possessive on a kin term is dropped when it matches the subject (my mother → 母); a negated perfect is 〜ていない; a past-leaning adverb (again and again, yesterday) makes an ambiguous tense past.",
+ "cases": [
+  {
+   "sentence": "i don 't get up as early as my mother .",
+   "expect": "私は母ほど早く起きない。",
+   "citation": "test 62"
+  },
+  {
+   "sentence": "nobody has seen him ever since .",
+   "expect": "誰も彼をそれ以来見ていない。",
+   "citation": "test 32"
+  },
+  {
+   "sentence": "we read the letter again and again .",
+   "expect": "私たちは手紙を何度も読んだ。",
+   "citation": "test 27"
+  }
+ ]
+}

@@ -1,0 +1,22 @@
+{
+ "$schema": "../../schemas/suite.schema.json",
+ "class": "K",
+ "title": "Particles by verb frame",
+ "description": "The particle follows the verb, not the preposition: a location is で under an action verb; answer takes に; walk takes まで for its destination; frequency before place.",
+ "cases": [
+  {
+   "sentence": "his father eats there twice a week .",
+   "expect": "彼の父は週に二回そこで食べる。",
+   "citation": "test 300"
+  },
+  {
+   "sentence": "i refuse to answer the question .",
+   "expect": "私は質問に答えることを断る。",
+   "citation": "test 436"
+  },
+  {
+   "sentence": "i walk to school .",
+   "expect": "私は学校まで歩く。"
+  }
+ ]
+}

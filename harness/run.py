@@ -22,6 +22,7 @@ Actions (inputs listed in ACTIONS below):
     matrix   the hybrid matrix parser compiled on dev+test and cross-tabulated against the bounded rule parser
     np       np_module against Parser.parse_np over all windows of length <= 2 (<= 3 with --full)
     negatives  the ungrammatical sentences of harness/negatives.json refused by both parsers, their controls accepted
+    suites   the acceptance suites of harness/suites/<class>.json: each case RIGHT / REFUSED / WRONG against its expectation
 """
 import sys, os, json, hashlib, subprocess, shutil, tempfile, glob, time, argparse
 
@@ -36,6 +37,7 @@ ACTIONS = {
     "matrix": {"version": 1, "script": "harness/eval_matrix.py", "inputs": SOURCES + ["parser_matrix.py", "np_module.py"], "corpus": True, "args": []},
     "np":     {"version": 1, "script": "harness/eval_np.py",     "inputs": SOURCES + ["parser_matrix.py", "np_module.py"], "corpus": False, "args": ["--max-len", "2"]},
     "negatives": {"version": 1, "script": "harness/eval_negatives.py", "inputs": SOURCES + ["parser_matrix.py", "np_module.py", "harness/negatives.json"], "corpus": True, "args": []},
+    "suites": {"version": 1, "script": "harness/eval_suites.py", "inputs": SOURCES + ["harness/suites/*.json"], "corpus": False, "args": []},
 }
 FULL_NP_LEN = 3            # `check --full`: the np action over windows up to this length (~4 minutes)
 
@@ -198,6 +200,7 @@ def metrics(results):
     out["np.mismatches"] = n["mismatches"]
     g = results["negatives"]
     out["negatives.accepted"] = g["accepted"]; out["negatives.controls_refused"] = g["controls_refused_by_rules"]; out["negatives.matrix_accepted"] = g["matrix_accepted"]
+    s = results["suites"]; out["suites.right"] = s["right"]; out["suites.cases"] = s["cases"]; out["suites.closed"] = s["closed"]
     return out
 
 # ------------------------------------------------------------------------------------------------ the lattice (harness/lattice.py)
@@ -219,17 +222,19 @@ def item_levels(doc, corpus, src_root=ROOT):
     LT = _lattice(src_root)
     verdicts, ungrammatical = LT.load_adjudications(os.path.join(src_root, "harness", "adjudications.json"))
     return LT.levels(doc["outputs"]["rules"], doc["outputs"].get("matrix", {}), doc["outputs"].get("negatives", []),
-                     doc["detail"]["np"]["mismatches"], references(corpus), verdicts, ungrammatical)
+                     doc["detail"]["np"]["mismatches"], references(corpus), verdicts, ungrammatical, doc["outputs"].get("suites", []))
 
 def as_document(results):
     """results of the actions -> the baseline's shape"""
     return {"metrics": metrics(results),
             "detail": {"rules": {s: {k: v for k, v in results["rules"][s].items() if k not in ("outputs", "refusals")} for s in ("dev", "test")},
                        "matrix": {k: v for k, v in results["matrix"].items() if k != "outputs"}, "np": results["np"],
-                       "negatives": {k: v for k, v in results["negatives"].items() if k != "rows"}},
+                       "negatives": {k: v for k, v in results["negatives"].items() if k != "rows"},
+                       "suites": {k: v for k, v in results["suites"].items() if k != "rows"}},
             "outputs": {"rules": {s: results["rules"][s]["outputs"] for s in ("dev", "test")}, "matrix": results["matrix"].get("outputs", {}),
                         "negatives": [{k: v for k, v in r.items() if not k.endswith(".reason")} for r in results["negatives"].get("rows", [])],
-                        "refusals": {s: results["rules"][s].get("refusals", {}) for s in ("dev", "test")}}}
+                        "refusals": {s: results["rules"][s].get("refusals", {}) for s in ("dev", "test")},
+                        "suites": results["suites"].get("rows", [])}}
 
 def compare(results, baseline_path, corpus, src_root=ROOT):
     """the gate: no item may move down or into an incomparable level; the aggregate metrics are printed as views"""
