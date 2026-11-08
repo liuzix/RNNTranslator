@@ -91,7 +91,7 @@ def snapshot(c):
     s["verb"] = c.verb
     advs = [a for a in (c.adv,) if a]   # adv is an accumulated string; split on known adverb boundaries is impossible, so it is one slot value
     s["adv1"] = c.adv or None; s["adv2"] = None
-    s["subj"] = c.subj; s["subj_cls"] = c.subj_cls if c.subj else None
+    s["subj"] = c.subj; s["subj_cls"] = c.subj_cls if c.subj else None; s["subj_num"] = c.subj_num if c.subj else None
     s["obj"] = c.obj; s["iobj"] = c.iobj
     for k in range(3):
         if k < len(c.pp): s[f"pp{k+1}_part"], s[f"pp{k+1}"] = c.pp[k][0], c.pp[k][1]
@@ -144,9 +144,9 @@ def trace(toks, choices=()):
             return object.__getattribute__(self, name)
     p.main.__class__ = TracedClause
     orig_np = Parser.parse_np
-    def np_wrapped(self):
+    def np_wrapped(self, role=None):
         i0 = self.i
-        ja, cls = orig_np(self)
+        ja, cls = orig_np(self, role=role)
         np_spans.append((i0, self.i, ja, cls, self.c is self.main))
         heads.append((i0, self.i, self.last_head))
         return ja, cls
@@ -185,6 +185,16 @@ def trace(toks, choices=()):
 
 # ----------------------------------------------------------------------------------------------- predicates and induction
 ENUM_REGS = ("modal", "want", "cop_kind", "degree", "obj_particle", "wh", "purpose", "causative", "subj_cls", "time", "adv1", "ret")
+# subject-verb agreement as one predicate over the subject's number and the current token (parser_rules.agrees, mirrored):
+# true exactly when no verb reading of the token fits the subject.  Compiled as AND units over the slot and the window
+# and read by the FAIL rules that agreement_fail_rows adds at every finite-verb consumption.
+AGREE_DNF = [["slot.subj.number=3sg", "w0.vform=base", "¬w0.vform=past", "¬w0.vform=3sg", "¬w0.class=aux_be"],
+             ["slot.subj.number=non3sg", "w0.vform=3sg", "¬w0.vform=base", "¬w0.vform=past", "¬w0.class=aux_be"],
+             ["slot.subj.number=3sg", "w0.class=aux_be", "w0.surf=are"],
+             ["slot.subj.number=non3sg", "w0.class=aux_be", "w0.surf=is"]]
+def agree_bad(P):
+    """evaluate AGREE_DNF over a predicate set that holds the window predicates and slot.subj.number=<v>"""
+    return any(all((l[1:] not in P) if l.startswith("¬") else (l in P) for l in conj) for conj in AGREE_DNF)
 NOUN_EN = collections.defaultdict(set)         # Japanese noun -> the English tokens that read as it (for the USE feedback predicate)
 for _tok in R.LEX:
     for _c, _v in R.classify(_tok):
@@ -237,10 +247,13 @@ def predicates(toks, i, before, win_idx, reg_rd, pend_prep, heads=None):
             key = {"adv": "adv1"}.get(rname, rname); v = before.get(key)
             if v not in (None, "", False): P.add(f"reg.{rname}={'set' if rname in ('time', 'adv', 'adv1') else v}")
     if pend_prep: P.add(f"pend_prep={pend_prep}")
+    if before.get("subj_num") and "subj_num" in reg_rd:
+        full = predicates(toks, i, before, {i}, set(), None) | {f"slot.subj.number={before['subj_num']}"}
+        if agree_bad(full): P.add("agree.bad")
     return P
 
 FAIL = ("FAIL",)
-ALL_REGS = {"subj", "obj", "iobj", "cop", "pp", "copula", "verb", "adv", "time"} | set(FLAGS) | set(ENUM_REGS)
+ALL_REGS = {"subj", "obj", "iobj", "cop", "pp", "copula", "verb", "adv", "time", "subj_num"} | set(FLAGS) | set(ENUM_REGS)
 _last_parser = [None]
 
 # ----------------------------------------------------------------------------------------------- the hybrid: parse_np as a hand-translated module
@@ -293,7 +306,7 @@ def register_actions(before, after, tok, allow_copy=True):
     rs = dict(readings_of(tok)) if allow_copy else {}
     actions = []
     for slot in before:
-        if slot in NP_ROLES or slot == "subj_cls": continue
+        if slot in NP_ROLES or slot in ("subj_cls", "subj_num"): continue        # written by the noun-phrase module
         if before[slot] == after.get(slot): continue
         v = after.get(slot)
         if v in (None, False, "", 0): actions.append((slot, None, ("clear",))); continue
@@ -395,6 +408,7 @@ def hybrid_rows(toks):
         P_read = frozenset(predicates(toks, e["i"], before, win_idx, reg_rd, pend))
         P_all = frozenset(predicates(toks, e["i"], before, set(range(e["i"], e["i"] + WINDOW)), ALL_REGS, pend))
         rows.append((prev, P_all, P_read, (e["cp"], e["k"], norm_actions(actions))))
+        rows += agreement_fail_rows(prev, P_all, P_read, tok, e["reg_reads"])
         prev = e["cp"]
         for j in range(e["i"], e["i"] + e["k"]):
             if "prep" in dict(readings_of(toks[j])): pend = toks[j]
@@ -402,6 +416,13 @@ def hybrid_rows(toks):
     P_end = frozenset(predicates(toks, len(toks), final, set(range(len(toks), len(toks) + WINDOW)), ALL_REGS, pend))
     rows.append((prev, P_end, frozenset(), (("DONE",), 0, ())))
     return rows, roles
+
+def agreement_fail_rows(prev, P_all, P_read, tok, reg_reads):
+    """the agreement check materialised: where the rule parser evaluated subject-verb agreement (it read subj_num, which
+    it does only at a finite verb or at is/are), the refusing branch as a FAIL row — the same predicates plus agree.bad.
+    The corpus holds no violation, so without this row the induced guard could never learn the refusal."""
+    if "subj_num" not in reg_reads or "agree.bad" in P_all: return []
+    return [(prev, frozenset(set(P_all) | {"agree.bad"}), frozenset(set(P_read) | {"agree.bad"}), (FAIL, 0, ()))]
 
 def hybrid_state_after(events, snaps, np_spans, k):
     """the hybrid machine's control state after consumption event k: the event's control point, or, for the last event of a
@@ -509,6 +530,7 @@ def run_rules(rules, derived, toks, bound_per_token=12):
         if state == ("DONE",): return frame
         if state == FAIL: raise ParseFail(f"RULES: FAIL at token {i}", i)
         P = predicates(toks, i, frame_to_snapshot(frame), set(range(i, i + WINDOW)), ALL_REGS | {"ret"}, pend, heads_of(frame)) | slot_predicates(frame)
+        P.discard("agree.bad")                       # the rules read it as the derived predicate, evaluated from the slot and the window
         hits = [out for lits, out in by_prev.get(state, []) if all(eval_rule_lit(q, t, P, derived) for q, t in lits)]
         if len(hits) != 1: raise ParseFail(f"RULES: {len(hits)} rules fire at {state} token {i}", i)
         cp, k, actions = hits[0]
@@ -536,6 +558,7 @@ def build_hybrid(sentences, verbose=False):
             scope["extraction error " + type(e).__name__] += 1
     trees = induce(rows)
     mrules, derived = module_rules(roles)
+    derived["agree.bad"] = AGREE_DNF
     comp = compile_matrices(trees, extra_rules=mrules, derived=derived)
     if verbose: print("hybrid build:", dict(scope), "| data rows", len(rows), "| module rules", len(mrules), "| roles", sorted(roles))
     comp["scope"] = scope; comp["rows"] = rows
@@ -586,6 +609,7 @@ def frame_to_snapshot(frame):
     for role in NP_ROLES:
         s[role] = np_string(frame, role)
     s["subj_cls"] = frame.get("subj.cls") if s["subj"] else None
+    s["subj_num"] = (frame.get("subj.number") if frame.get("subj.number") != "none" else None) if s["subj"] else None
     return s
 
 def np_string(frame, role):
@@ -610,7 +634,7 @@ def apply_actions(frame, actions, toks, i):
     tok = toks[i] if i < len(toks) else None; rs = collections.defaultdict(list)
     for c, v in readings_of(tok): rs[c].append(v)
     for slot, v, src in actions:
-        if src[0] == "copy" and src[1] not in ("ncls",) and not rs[{"num_time": "num", "adj_pair": "adj", "pron_poss": "pron"}.get(src[1], src[1])]:
+        if src[0] == "copy" and src[1] not in ("ncls", "nnum") and not rs[{"num_time": "num", "adj_pair": "adj", "pron_poss": "pron"}.get(src[1], src[1])]:
             raise ParseFail(f"TABLE: nothing to copy into {slot} from {src[1]} at {tok!r}", i)       # the machine's crash: the rule fired on a token without that reading
     old = dict(frame)                                   # moves and clears read the state before this step, as the matrix does
     for slot, v, src in actions:
@@ -634,6 +658,7 @@ def apply_actions(frame, actions, toks, i):
             elif cls == "time": frame[slot] = rs["time"][-1]
             elif cls == "wh": frame[slot] = rs["wh"][-1]
             elif cls == "modal": frame[slot] = rs["modal"][-1][0]
+            elif cls == "nnum": frame[slot] = R.number_of(tok) or "none"
             elif cls == "verb":
                 lem, form, ja, conj = rs["verb"][0]; frame[slot] = (lem, ja, conj)
 
@@ -643,6 +668,7 @@ def frame_to_clause(frame):
     for r in ("modal", "want", "obj_particle", "wh", "purpose", "causative", "verb"): setattr(c, r, frame.get(r))
     c.degree = frame.get("degree") or ""; c.time = frame.get("time") or ""; c.adv = frame.get("adv1") or ""
     c.subj = np_string(frame, "subj"); c.subj_cls = frame.get("subj.cls") or "h"
+    c.subj_num = frame.get("subj.number") if frame.get("subj.number") != "none" else None
     c.obj = np_string(frame, "obj"); c.iobj = np_string(frame, "iobj")
     c.pp = [(frame[f"pp{k}_part"], np_string(frame, f"pp{k}")) for k in (1, 2, 3) if frame.get(f"pp{k}.noun") is not None]
     kind = frame.get("cop_kind")
@@ -664,7 +690,7 @@ class Index:
     def __contains__(self, name): return name in self.pos
     def __getitem__(self, name): return self.pos[name]
 
-COPY_SOURCES = ("noun", "ncls", "pron", "pron_poss", "det", "num", "num_time", "adj", "adj_pair", "adv", "time", "wh", "modal", "verb")
+COPY_SOURCES = ("noun", "ncls", "pron", "pron_poss", "det", "num", "num_time", "adj", "adj_pair", "adv", "time", "wh", "modal", "verb", "nnum")
 
 def source_values(tok):
     """the copy-source readings of a token, as (source, value) pairs — what the lexical layer emits for window slot 0"""
@@ -680,6 +706,7 @@ def source_values(tok):
         elif c == "wh": out.append(("wh", v))
         elif c == "modal": out.append(("modal", v[0]))
         elif c == "verb": out.append(("verb", (v[0], v[2], v[3])))
+    if any(c in ("noun", "pron") for c, v in readings_of(tok)): out.append(("nnum", R.number_of(tok) or "none"))   # the head's grammatical number
     # the rule parser takes the LAST reading of a class (dict() semantics) for noun/adj/adv/time/wh, the FIRST for pron/det/num/verb
     last = {}; first = {}
     for s, v in out:

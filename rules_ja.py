@@ -186,6 +186,18 @@ for surface, lemma, form in (("has", "have", "3sg"), ("does", "do", "3sg"), ("go
                              ("shopping", "shop", "ing"), ("dying", "die", "ing"), ("lying", "lie", "ing")):
     VERB_FORMS.setdefault(surface, []).append((lemma, form))
 
+NOUN_WORDS = {f[0] for f, n in tables.rows("lexicon") if f[1] == "n"}      # the lexicon's own noun entries (not the derived plurals)
+SG_PRON = {"he", "she", "it", "this", "that", "somebody", "someone", "everybody", "everyone", "nobody", "anybody", "anyone", "something", "everything", "nothing", "anything", "one"}
+PL_PRON = {"i", "you", "we", "they", "these", "those", "both"}
+def number_of(tok):
+    """the grammatical number a subject's head token fixes for verb agreement: '3sg', 'non3sg', or None when the token
+    does not decide it (a singular-shaped noun may be a plural like people, so only pronouns and derived plurals decide)"""
+    if tok in SG_PRON: return "3sg"
+    if tok in PL_PRON: return "non3sg"
+    if tok and any(c == "noun" for c, v in classify(tok)) and tok.endswith("s"):
+        if tok[:-1] in NOUN_WORDS or (tok.endswith("es") and tok[:-2] in NOUN_WORDS) or (tok.endswith("ies") and tok[:-3] + "y" in NOUN_WORDS): return "non3sg"
+    return None
+
 PRONOUNS = tables.build_pairs("pronouns", 3)   # tables/pronouns.tbl: surface -> (japanese, role)
 DETS = tables.build_pairs("determiners")       # tables/determiners.tbl
 PREPS = tables.build_pairs("prepositions", 3) # tables/prepositions.tbl: word -> (action particle, existence particle)

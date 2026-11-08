@@ -1,7 +1,7 @@
 """parse_np translated by hand into a sub-automaton with complete guards.
 
 The module reads the 4-token window and a few frame registers, writes the sub-slots of one noun-phrase role
-(det, poss, num, adj1, adj2, noun, noun2, cls, mono) and exits by RET or FAIL:<reason>.  Every branch of
+(det, poss, num, adj1, adj2, noun, noun2, cls, mono, compound; number for a subject) and exits by RET or FAIL:<reason>.  Every branch of
 parser_rules.Parser.parse_np is here, including its refusals; what the matrix cannot hold yet (an inner clause,
 an of-phrase, a coordination, a possessive noun phrase) exits with FAIL and says why.
 
@@ -44,7 +44,8 @@ def R(state, lits, nxt, k=1, acts=()):
 def rules_for(role):
     s = lambda sub: f"{role}.{sub}"
     det_copy = (s("det"), None, ("copy", "det")); poss_copy = (s("poss"), None, ("copy", "pron_poss"))
-    pron_head = [(s("noun"), None, ("copy", "pron")), (s("cls"), "h", ("const",))]
+    number = [(s("number"), None, ("copy", "nnum"))] if role == "subj" else []          # the head's number, for agreement (subjects only)
+    pron_head = [(s("noun"), None, ("copy", "pron")), (s("cls"), "h", ("const",))] + number
     rules = []
     # NP0 — determiner / possessive / pronoun head
     rules += [R("NP0", ["¬slot." + s("det"), "¬slot." + s("poss"), "w0.surf=a lot", "w1.surf=of"], "NP1", 2, [(s("det"), "たくさんの", ("const",))]),
@@ -59,6 +60,12 @@ def rules_for(role):
     head_ctx = [["¬d.lotof", "w0.class=pron", "¬w0.prole=p", "¬w0.prole=op", "¬w0.class=det"],
                 ["¬d.lotof", "w0.class=pron", "¬w0.prole=p", "¬w0.prole=op", "w0.class=det", "¬d.nominal1"],
                 ["¬d.lotof", "w0.class=pron", "w0.prole=op", "¬d.nominal1"]]
+    if role == "subj":
+        # subject case: an object-only or reflexive pronoun cannot be the subject (*me went, *himself saw john)
+        for hc in head_ctx[:2]:
+            for pr in ("o", "r"): rules.append(R("NP0", hc + [f"w0.prole={pr}"], "FAIL:subject case", 0))
+        rules.append(R("NP0", head_ctx[2], "FAIL:subject case", 0))
+        head_ctx = [hc + ["¬w0.prole=o", "¬w0.prole=r"] for hc in head_ctx[:2]]
     for hc in head_ctx:
         rules += [R("NP0", hc + ["¬w1.surf='s"], "RET", 1, pron_head),
                   R("NP0", hc + ["w1.surf='s", "d.personal0"], "RET", 1, pron_head),
@@ -92,7 +99,10 @@ def rules_for(role):
               R("NP2", ["¬w0.class=adv", "w0.class=adj", "¬w1.class=noun", "¬w1.class=adj"], "NP3", 0)]
     # NP3 — the head: a noun, or a bare number
     bare = ["¬w0.class=noun", "slot." + s("num"), "¬slot." + s("adj1"), "¬slot." + s("det"), "¬slot." + s("poss")]
-    rules += [R("NP3", ["w0.class=noun"], "NP4", 1, [(s("noun"), None, ("copy", "noun")), (s("cls"), None, ("copy", "ncls"))]),
+    head = [(s("noun"), None, ("copy", "noun")), (s("cls"), None, ("copy", "ncls"))]
+    measure = [(s("number"), "none", ("const",))] if role == "subj" else []        # ten years is a long time: a measure phrase takes either number
+    rules += [R("NP3", ["w0.class=noun", "¬slot." + s("num")], "NP4", 1, head + number),
+              R("NP3", ["w0.class=noun", "slot." + s("num")], "NP4", 1, head + measure),
               R("NP3", bare + ["d.pend_time"], "RET", 0, [(s("noun"), None, ("move_time", s("num"))), (s("num"), None, ("clear",)), (s("cls"), "t", ("const",))]),
               R("NP3", bare + ["¬d.pend_time"], "RET", 0, [(s("noun"), None, ("move", s("num"))), (s("num"), None, ("clear",)), (s("cls"), "t", ("const",))]),
               R("NP3", ["¬w0.class=noun", "¬slot." + s("num")], "FAIL:noun phrase", 0),
@@ -100,7 +110,7 @@ def rules_for(role):
               R("NP3", ["¬w0.class=noun", "slot." + s("num"), "¬slot." + s("adj1"), "slot." + s("det")], "FAIL:noun phrase", 0),
               R("NP3", ["¬w0.class=noun", "slot." + s("num"), "¬slot." + s("adj1"), "¬slot." + s("det"), "slot." + s("poss")], "FAIL:noun phrase", 0)]
     # NP4 — compound
-    rules += [R("NP4", ["d.compound0", "¬slot." + s("noun2")], "NP4", 1, [(s("noun2"), None, ("copy", "noun")), (s("cls"), None, ("copy", "ncls")), (s("compound"), True, ("const",))]),
+    rules += [R("NP4", ["d.compound0", "¬slot." + s("noun2")], "NP4", 1, [(s("noun2"), None, ("copy", "noun")), (s("cls"), None, ("copy", "ncls")), (s("compound"), True, ("const",))] + number),
               R("NP4", ["d.compound0", "slot." + s("noun2")], "FAIL:three nouns", 0),
               R("NP4", ["¬d.compound0"], "NP5", 0)]
     # NP5 — relative clause (an inner frame: not representable here)
@@ -188,6 +198,7 @@ def apply(slots, actions, toks, i, flags):
             elif c == "adv": slots[slot] = rs["adv"][-1]
             elif c == "noun": slots[slot] = rs["noun"][-1][0]
             elif c == "ncls": slots[slot] = rs["noun"][-1][1]
+            elif c == "nnum": slots[slot] = RJ.number_of(tok) or "none"
 
 def run_module(role, toks, i0, regs, pend, rules=None, D=None):
     """run the module from position i0; returns ("RET", i, slots, flags) or ("FAIL", reason, i)"""

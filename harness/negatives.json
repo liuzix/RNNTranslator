@@ -1,0 +1,132 @@
+{
+ "$schema": "../schemas/negatives.schema.json",
+ "description": "Ungrammatical English sentences the translator must refuse, each with a grammatical control it must accept, so the refusal is grammatical knowledge and not incapacity. Every token is in the lexicon. The source names the published example or the standard rule; adapted means the sentence was changed from the published form (vocabulary, tokenization).",
+ "sentences": [
+  {
+   "sentence": "the child seems sleeping .",
+   "control": "the child is sleeping .",
+   "phenomenon": "seem takes an adjective or an infinitive, not a present participle",
+   "source": "Chomsky 1957, Syntactic Structures, section 2.3, example (6)",
+   "adapted": false
+  },
+  {
+   "sentence": "read you a book ?",
+   "control": "did you read a book ?",
+   "phenomenon": "only an auxiliary inverts with the subject in a question",
+   "source": "Chomsky 1957, Syntactic Structures, section 2.3, example (5) 'read you a book on modern music?'",
+   "adapted": true
+  },
+  {
+   "sentence": "what did she buy a book and ?",
+   "control": "what did she buy ?",
+   "phenomenon": "extraction out of a coordinate structure (Coordinate Structure Constraint)",
+   "source": "Ross 1967, Constraints on Variables in Syntax, chapter 4",
+   "adapted": true
+  },
+  {
+   "sentence": "he will can come .",
+   "control": "he can come .",
+   "phenomenon": "at most one modal in the auxiliary",
+   "source": "Chomsky 1957, Syntactic Structures, section 7, the auxiliary rule Aux -> C (M) (have+en) (be+ing)",
+   "adapted": true
+  },
+  {
+   "sentence": "he did went home .",
+   "control": "he went home .",
+   "phenomenon": "do-support takes the bare verb; tense is marked once",
+   "source": "Chomsky 1957, Syntactic Structures, section 7 (affix hopping and do-support)",
+   "adapted": true
+  },
+  {
+   "sentence": "the train was arrived .",
+   "control": "the train arrived .",
+   "phenomenon": "an unaccusative verb has no passive",
+   "source": "Perlmutter 1978, Impersonal Passives and the Unaccusative Hypothesis; Burzio 1986, Italian Syntax",
+   "adapted": true
+  },
+  {
+   "sentence": "himself saw john .",
+   "control": "he saw john .",
+   "phenomenon": "a reflexive needs a c-commanding antecedent and cannot be the subject (Binding Principle A)",
+   "source": "Chomsky 1981, Lectures on Government and Binding",
+   "adapted": true
+  },
+  {
+   "sentence": "me went to the store .",
+   "control": "i went to the store .",
+   "phenomenon": "subject case: an object-form pronoun cannot be the subject (Case Filter)",
+   "source": "Chomsky 1981, Lectures on Government and Binding (the Case Filter, after Vergnaud)",
+   "adapted": true
+  },
+  {
+   "sentence": "him likes her .",
+   "control": "he likes her .",
+   "phenomenon": "subject case: an object-form pronoun cannot be the subject (Case Filter)",
+   "source": "Chomsky 1981, Lectures on Government and Binding (the Case Filter, after Vergnaud)",
+   "adapted": true
+  },
+  {
+   "sentence": "he have a car .",
+   "control": "he has a car .",
+   "phenomenon": "subject-verb agreement: third person singular takes -s",
+   "source": "standard English grammar (Quirk, Greenbaum, Leech and Svartvik 1985, chapter 10)",
+   "adapted": true
+  },
+  {
+   "sentence": "she go to school .",
+   "control": "she goes to school .",
+   "phenomenon": "subject-verb agreement: third person singular takes -s",
+   "source": "standard English grammar (Quirk, Greenbaum, Leech and Svartvik 1985, chapter 10)",
+   "adapted": true
+  },
+  {
+   "sentence": "you is tall .",
+   "control": "you are tall .",
+   "phenomenon": "subject-verb agreement with be",
+   "source": "standard English grammar (Quirk, Greenbaum, Leech and Svartvik 1985, chapter 10)",
+   "adapted": true
+  },
+  {
+   "sentence": "they is here .",
+   "control": "they are here .",
+   "phenomenon": "subject-verb agreement with be",
+   "source": "standard English grammar (Quirk, Greenbaum, Leech and Svartvik 1985, chapter 10)",
+   "adapted": true
+  },
+  {
+   "sentence": "i wonder what did he buy .",
+   "control": "i wonder what he bought .",
+   "phenomenon": "no subject-auxiliary inversion in an embedded question",
+   "source": "Baker 1970, Notes on the Description of English Questions",
+   "adapted": true
+  },
+  {
+   "sentence": "i him saw .",
+   "control": "i saw him .",
+   "phenomenon": "English is subject-verb-object",
+   "source": "standard English grammar",
+   "adapted": true
+  },
+  {
+   "sentence": "the a book is here .",
+   "control": "the book is here .",
+   "phenomenon": "one determiner per noun phrase",
+   "source": "standard English grammar",
+   "adapted": true
+  },
+  {
+   "sentence": "the book red is on the table .",
+   "control": "the red book is on the table .",
+   "phenomenon": "attributive adjectives precede the noun",
+   "source": "standard English grammar",
+   "adapted": true
+  },
+  {
+   "sentence": "i the book .",
+   "control": "i read the book .",
+   "phenomenon": "a clause needs a verb",
+   "source": "standard English grammar",
+   "adapted": true
+  }
+ ]
+}

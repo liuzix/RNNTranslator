@@ -95,6 +95,14 @@ def test_corpus_pinned(root):
     tracked = subprocess.run(["git", "ls-files"], cwd=ROOT, capture_output=True, text=True).stdout.split("\n")
     assert not any(p.startswith("data/") for p in tracked), "the corpus is vendored"
 
+def test_subject_case_and_agreement(root):
+    for bad in ("me went to the store .", "him likes her .", "himself saw john .", "he have a car .", "she go to school .", "they is here .", "he are here .", "the dogs is here ."):
+        try: R.translate(bad.split()); assert False, f"accepted {bad!r}"
+        except PR.ParseFail as e: assert str(e).split(" at ")[0] in ("PRE: subject case", "VP0: agreement"), (bad, str(e))
+    for good in ("i went to the store .", "he likes her .", "he saw john .", "he has a car .", "she goes to school .", "they are here .", "he put the book here .", "the dogs are here ."):
+        R.translate(good.split())
+    assert (R.number_of("he"), R.number_of("they"), R.number_of("dogs"), R.number_of("people"), R.number_of("news")) == ("3sg", "non3sg", "non3sg", None, None)
+
 def test_np_two_adjective_slots(root):
     toks = ["a lot", "absent", "absent", "bus stop", "."]
     p = PR.Parser(list(toks), []); ja, cls = p.parse_np()
@@ -111,7 +119,8 @@ def test_precommit_hook_runs_check(root):
     spec = importlib.util.spec_from_file_location("runner", os.path.join(root, "harness", "run.py")); runner = importlib.util.module_from_spec(spec); spec.loader.exec_module(runner)
     base = {"taken": "x", "metrics": {"rules.dev.covered": 10, "matrix.silent_misfires": 3}, "outputs": {}}
     tmp = tempfile.mkdtemp(); bp = os.path.join(tmp, "b.json"); json.dump(base, open(bp, "w"))
-    def results(cov, mis): return {"rules": {"dev": {"covered": cov, "bleu_all": 1, "outputs": {}}, "test": {"covered": 1, "bleu_all": 1, "outputs": {}}}, "matrix": {"identical": 1, "wrong_frame": mis, "matrix_parses_refused": 0}, "np": {"mismatches": 0}}
+    def results(cov, mis): return {"rules": {"dev": {"covered": cov, "bleu_all": 1, "outputs": {}}, "test": {"covered": 1, "bleu_all": 1, "outputs": {}}}, "matrix": {"identical": 1, "wrong_frame": mis, "matrix_parses_refused": 0}, "np": {"mismatches": 0},
+                                    "negatives": {"accepted": 0, "controls_refused_by_rules": 0, "matrix_accepted": 0}}
     import io, contextlib
     with contextlib.redirect_stdout(io.StringIO()):
         assert runner.compare(results(10, 3), bp) and not runner.compare(results(9, 3), bp) and not runner.compare(results(10, 4), bp)

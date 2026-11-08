@@ -26,7 +26,10 @@
     "rules.test.bleu_all",
     "matrix.identical",
     "matrix.silent_misfires",
-    "np.mismatches"
+    "np.mismatches",
+    "negatives.accepted",
+    "negatives.controls_refused",
+    "negatives.matrix_accepted"
    ],
    "properties": {
     "rules.dev.covered": {
@@ -54,6 +57,18 @@
     "np.mismatches": {
      "type": "integer",
      "minimum": 0
+    },
+    "negatives.accepted": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "negatives.controls_refused": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "negatives.matrix_accepted": {
+     "type": "integer",
+     "minimum": 0
     }
    }
   },
@@ -62,7 +77,8 @@
    "required": [
     "rules",
     "matrix",
-    "np"
+    "np",
+    "negatives"
    ],
    "additionalProperties": false,
    "properties": {
@@ -228,6 +244,38 @@
        "minimum": 0
       },
       "alphabet": {
+       "type": "integer",
+       "minimum": 0
+      }
+     }
+    },
+    "negatives": {
+     "type": "object",
+     "required": [
+      "count",
+      "accepted",
+      "controls_refused_by_rules",
+      "controls_refused_by_matrix",
+      "matrix_accepted"
+     ],
+     "properties": {
+      "count": {
+       "type": "integer",
+       "minimum": 1
+      },
+      "accepted": {
+       "type": "integer",
+       "minimum": 0
+      },
+      "controls_refused_by_rules": {
+       "type": "integer",
+       "minimum": 0
+      },
+      "controls_refused_by_matrix": {
+       "type": "integer",
+       "minimum": 0
+      },
+      "matrix_accepted": {
        "type": "integer",
        "minimum": 0
       }

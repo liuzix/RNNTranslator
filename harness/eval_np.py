@@ -14,7 +14,7 @@ from parser_rules import Parser, ParseFail, Clause
 TESTS = set(M.PERSONAL) | {"a lot", "a", "lot", "lots", "of", "no", "one", "'s", "course", "and", "fact", "who", "which", ",", "."}
 def sig(t):
     rs = R.classify(t); cls = tuple(sorted(set(c for c, _ in rs)))
-    ex = tuple(sorted({("ncls", v[1]) for c, v in rs if c == "noun"} | {("prole", v[1]) for c, v in rs if c == "pron"} | {("akind", v[1]) for c, v in rs if c == "adj"}))
+    ex = tuple(sorted({("ncls", v[1]) for c, v in rs if c == "noun"} | {("prole", v[1]) for c, v in rs if c == "pron"} | {("akind", v[1]) for c, v in rs if c == "adj"} | {("number", R.number_of(t))}))
     return (t if t in TESTS else "*", cls, ex)
 
 def alphabet():
@@ -40,12 +40,13 @@ def reference(seq, ctx):
     toks = list(seq) + ["."]
     p = Parser(toks, []); p.c.subj = ctx["subj"]; p.c.verb = ctx["verb"]; p.c.copula = ctx["cop"]; p.phase = ctx["phase"]; p.np_role = ctx["role"]
     made[0] = 0; depth[0] = depth[1] = 0
-    try: ja, cls = p.parse_np()
+    role = "subj" if ctx["phase"] == "PRE" else None
+    try: ja, cls = p.parse_np(role=role)
     except ParseFail as e: return ("FAIL", str(e).split(" at ")[0])
     except (IndexError, TypeError, KeyError, AttributeError) as e: return ("CRASH", type(e).__name__)
     if made[0] > 0: return ("OOS", "inner clause", ja)
     if depth[1] > 1: return ("OOS", "complex NP", ja)
-    return ("OK", p.i, ja, cls, bool(p.c.neg))
+    return ("OK", p.i, ja, cls, bool(p.c.neg), p.np_number if role == "subj" else None)
 
 def module(seq, ctx, role, rules, D):
     toks = list(seq) + ["."]
@@ -53,7 +54,9 @@ def module(seq, ctx, role, rules, D):
     pend = "at" if ctx["role"] == "pp_time" else None
     out = M.run_module(role, toks, 0, regs, pend, rules, D)
     if out[0] == "RET":
-        _, i, slots, flags = out; return ("OK", i, M.np_string(slots, role), slots.get(f"{role}.cls"), bool(flags.get("neg")))
+        _, i, slots, flags = out
+        number = slots.get(f"{role}.number") if role == "subj" else None
+        return ("OK", i, M.np_string(slots, role), slots.get(f"{role}.cls"), bool(flags.get("neg")), None if number == "none" else number)
     return ("FAIL", out[1])
 
 OOS_REASONS = {"relative clause", "of-phrase", "coordination", "possessive noun phrase", "the fact that", "three nouns", "three adjectives"}

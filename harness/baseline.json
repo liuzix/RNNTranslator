@@ -3,43 +3,43 @@
 "matrix": {
 "both_refuse": 268,
 "cell": {
-"build_seconds": 17,
-"input_units": 1547,
+"build_seconds": 19,
+"input_units": 1551,
 "layers": [
-627,
-103,
-1581,
-624,
-24437
+631,
+104,
+1792,
+622,
+24445
 ],
-"nnz": 171184,
-"rules": 1437,
+"nnz": 172743,
+"rules": 1651,
 "rules_by_kind": {
-"entry": 100,
+"entry": 99,
 "exit": 169,
-"fail": 76,
-"module": 759,
-"outer": 333
+"fail": 213,
+"module": 825,
+"outer": 345
 },
 "scope": {
-"in scope": 534,
-"out of scope": 166,
-"refused": 295
+"in scope": 533,
+"out of scope": 165,
+"refused": 297
 },
-"state_units": 12592
+"state_units": 12591
 },
-"identical": 498,
-"matrix_parses_refused": 17,
+"identical": 497,
+"matrix_parses_refused": 19,
 "per_split": {
 "dev": {
 "bleu_matrix_shared": 34.166,
 "bleu_rules_shared": 34.276,
-"both_refuse": 174,
+"both_refuse": 173,
 "examples": {
 "matrix_parses_refused": [
 "i like spring the best of the seasons . | None | 私は春に好きだ。",
 "sometimes the game lasted all day . | None | 全ての日に試合がある。",
-"he tried to speak by word or gesture . | None | 彼は言葉で話してみた。",
+"they had once helped each other . | None | 一度彼らは持っていた。",
 "my friend called me a coward . | None | 私の友達は私に臆病者を呼んだ。",
 "watch your head ! | None | あなたの頭を見てください。",
 "let him do as he likes . | None | 降参させてください。",
@@ -53,54 +53,65 @@
 ]
 },
 "identical": 233,
-"matrix_parses_refused": 12,
+"matrix_parses_refused": 13,
 "refused_parseable": 74,
 "shared": 236,
 "wrong_frame": 3
 },
 "test": {
-"bleu_matrix_shared": 36.143,
-"bleu_rules_shared": 36.661,
-"both_refuse": 94,
+"bleu_matrix_shared": 36.242,
+"bleu_rules_shared": 36.754,
+"both_refuse": 95,
 "examples": {
 "matrix_parses_refused": [
 "here is a letter for you . | None | あなたに手紙がある。",
 "it 's already cleared up . | None | それは上にまだ晴れている。",
+"no one is coming . | None | ものは来ていない。",
 "my uncle bought me this book . | None | 私のおじは私にこの本を買った。",
 "i like summer the best . | None | 私は夏に好きだ。",
 "we must take this matter into account as a whole . | None | 私たちはこの問題を心に留めなければならない。"
 ],
 "wrong_frame": [
-"i listened , but i heard nothing . | 私は聞いたが、私は何も聞かなかった。 | 私は聞きましたね。",
 "how many schools are there in your city ? | あなたの都市に学校はいくつありますか。 | あなたの都市に学校はいくついますか。",
 "any flower will do , so long as it is red . | それが赤い限り花はする。 | 花はしますね。",
 "he was afraid of his wife . | 彼は妻が怖かった。 | 彼は彼の妻で怖かった。",
 "i am very poor at sports . | 私はスポーツがとても苦手だ。 | 私はスポーツでとても貧しい。",
 "she was pleased with her new dress . | 彼女は新しいドレスを喜んでいた。 | 彼女は彼女の新しいドレスと喜んでいた。",
 "his composition was free from mistakes . | 彼の作文は間違いがない。 | 彼の作文は間違いから自由だった。",
-"is there any need for me to go there ? | 私がそこに行く必要がありますか。 | 必要がありますか。"
+"is there any need for me to go there ? | 私がそこに行く必要がありますか。 | 必要がありますか。",
+"nothing can be better than that . | 何もそれより良くない。 | 何もそれよりより良くない。"
 ]
 },
-"identical": 265,
-"matrix_parses_refused": 5,
+"identical": 264,
+"matrix_parses_refused": 6,
 "refused_parseable": 124,
-"shared": 276,
-"wrong_frame": 11
+"shared": 274,
+"wrong_frame": 10
 }
 },
 "refused_parseable": 198,
-"summary": "identical 498, wrong frame 14, matrix parses refused 17, refused parseable 198, both refuse 268; nnz 171184, rules 1437",
-"wrong_frame": 14
+"summary": "identical 497, wrong frame 13, matrix parses refused 19, refused parseable 198, both refuse 268; nnz 172743, rules 1651",
+"wrong_frame": 13
+},
+"negatives": {
+"accepted": 0,
+"controls_refused_by_matrix": 6,
+"controls_refused_by_rules": 0,
+"count": 18,
+"matrix_accepted": 3,
+"problems": [],
+"seconds": 18,
+"summary": "negatives: rules refuse 18/18 and accept 18/18 controls; matrix refuses 15/18 and accepts 12/18 controls"
 },
 "np": {
-"alphabet": 83,
-"cases": 27888,
+"alphabet": 88,
+"cases": 31328,
 "examples": [],
 "max_len": 2,
 "mismatch_kinds": 0,
 "mismatches": 0,
-"seconds": 3,
-"summary": "np_module vs parse_np: 27888 cases (len<=2, 83 tokens), 0 mismatches"
+"seconds": 4,
+"summary": "np_module vs parse_np: 31328 cases (len<=2, 88 tokens), 0 mismatches"
 },
 "rules": {
 "dev": {
@@ -112,28 +123,30 @@
 "PRE: end": 1,
 "PRE: noun phrase": 23,
 "PRE: possessive pronoun without noun": 3,
+"PRE: subject case": 3,
 "PRE: tail": 17,
-"PRE: verb": 3,
+"PRE: verb": 2,
 "VP0: copula predicate": 10,
 "VP0: noun phrase": 25,
 "VP0: passive": 3,
-"VP0: possessive pronoun without noun": 1,
-"VP0: predicate": 15,
+"VP0: predicate": 13,
 "VP0: tail": 82,
 "VP0: verb": 1
 },
 "n": 496
 },
 "test": {
-"bleu_all": 28.697,
-"bleu_covered": 35.752,
-"coverage": 0.8016,
-"covered": 400,
+"bleu_all": 28.641,
+"bleu_covered": 35.878,
+"coverage": 0.7976,
+"covered": 398,
 "failures": {
 "PRE: noun phrase": 33,
+"PRE: subject case": 1,
 "PRE: tail": 8,
 "PRE: verb": 1,
 "PRE: wh question": 3,
+"VP0: agreement": 1,
 "VP0: copula predicate": 4,
 "VP0: noun phrase": 22,
 "VP0: possessive pronoun without noun": 1,
@@ -146,13 +159,16 @@
 }
 },
 "metrics": {
-"matrix.identical": 498,
-"matrix.silent_misfires": 31,
+"matrix.identical": 497,
+"matrix.silent_misfires": 32,
+"negatives.accepted": 0,
+"negatives.controls_refused": 0,
+"negatives.matrix_accepted": 3,
 "np.mismatches": 0,
 "rules.dev.bleu_all": 18.908,
 "rules.dev.covered": 310,
-"rules.test.bleu_all": 28.697,
-"rules.test.covered": 400
+"rules.test.bleu_all": 28.641,
+"rules.test.covered": 398
 },
 "outputs": {
 "dev": {
@@ -720,7 +736,7 @@
 "158: there are all kinds of flowers in that garden .": "その庭に全ての花の種類がある。",
 "159: he had a blue jacket on .": "彼は青い上着を着ている。",
 "15: give your argument against going .": "",
-"160: no one is coming .": "一つは来ている。",
+"160: no one is coming .": "",
 "161: he has a warm heart .": "彼は暖かい心を持っている。",
 "162: she recollected the first day when she went to school .": "彼女が学校に行ったとき彼女は最初の日を思い出した。",
 "163: please take more care in the future .": "将来気をつけてください。",
@@ -1048,7 +1064,7 @@
 "454: this door won 't shut .": "このドアは閉まらない。",
 "455: we must take this matter into account as a whole .": "",
 "456: are you for the war or against it ?": "",
-"457: it is probable that he forget about it .": "彼がそれについて忘れるのはありそうだ。",
+"457: it is probable that he forget about it .": "",
 "458: he said that he goes for a long walk every morning .": "彼は毎朝彼が長い散歩のために行くと言った。",
 "459: i was astonished at the news .": "私はニュースで驚いていた。",
 "45: he doesn 't read many books .": "彼はたくさんの本を読まない。",
@@ -1155,5 +1171,5 @@
 "9: we have this game on ice .": "私たちは氷でこの試合を持っている。"
 }
 },
-"taken": "2026-11-08 at b133a04"
+"taken": "2026-11-08 at 4006dc5"
 }

@@ -6,7 +6,7 @@ RNNTranslator is an English-to-Japanese translator written as a circuit, not tra
 
 ![Architecture](docs/architecture.svg)
 
-The lexical layer merges multiword tokens and gives each token its readings from the 16 tables, and the semantic layer generates the Japanese from the frame. The parser layer has one interface and two implementations, `RuleParser` and `MatrixParser`, and the matrix implementation is meant to agree with the rule implementation wherever the matrix can represent the parse. `RuleParser` is a bounded transducer: a 4-token window, a frame stack of depth at most 2, at most 2 live readings resolved within 4 tokens, and no rewinds. `MatrixParser` runs the same machine as 5 sparse ReLU layers per step, with the clause-level control extracted from traces of the rule parser and the noun-phrase module translated by hand from `parse_np`. Two feedback edges cross the layers: the noun's use-verb rewrites the verb (she took a rest → 彼女は休んだ), and the parser's state decides which reading of a token is used (i rest → 休む, i need a rest → 休息).
+The lexical layer merges multiword tokens and gives each token its readings from the 16 tables, and the semantic layer generates the Japanese from the frame. The parser layer has one interface and two implementations, `RuleParser` and `MatrixParser`, and the matrix implementation is meant to agree with the rule implementation wherever the matrix can represent the parse. `RuleParser` is a bounded transducer: a 4-token window, a frame stack of depth at most 2, at most 2 live readings resolved within 4 tokens, and no rewinds. The rule parser refuses an object-form or reflexive pronoun as a subject and a finite verb that disagrees in number with a pronoun or plural subject. `MatrixParser` runs the same machine as 5 sparse ReLU layers per step, with the clause-level control extracted from traces of the rule parser and the noun-phrase module translated by hand from `parse_np`. Two feedback edges cross the layers: the noun's use-verb rewrites the verb (she took a rest → 彼女は休んだ), and the parser's state decides which reading of a token is used (i rest → 休む, i need a rest → 休息).
 
 ## Layout
 
@@ -31,9 +31,11 @@ The lexical layer merges multiword tokens and gives each token its readings from
 │   ├── check_tree.py                 this file tree against the tracked files
 │   ├── corpus.lock.json              the pinned corpus: commit, sha256 and line count per file
 │   ├── eval_matrix.py                action: hybrid cell compiled on dev+test, cross-tab vs the rule parser
+│   ├── eval_negatives.py             action: published ungrammatical sentences refused, their controls accepted
 │   ├── eval_np.py                    action: np_module against parse_np over all windows
 │   ├── eval_rules.py                 action: coverage and char-BLEU of the transducer
 │   ├── facts.py                      the facts the README may cite
+│   ├── negatives.json                the ungrammatical sentences, their controls, phenomena and sources
 │   ├── probe_sandbox.py              a probe action for the sandbox test
 │   ├── render_diagram.py             renders docs/*.puml with the pinned PlantUML jar
 │   ├── run.py                        the action cache, sandbox, baseline comparison, corpus fetch
@@ -46,7 +48,8 @@ The lexical layer merges multiword tokens and gives each token its readings from
 │   ├── baseline.schema.json
 │   ├── corpus-lock.schema.json
 │   ├── diagram-lock.schema.json
-│   └── integrity.schema.json         the format of integrity.json
+│   ├── integrity.schema.json         the format of integrity.json
+│   └── negatives.schema.json
 ├── tables/
 │   └── *.tbl                         the tables, each a small DSL file with its own header
 ├── .gitattributes
@@ -83,11 +86,11 @@ uv run python harness/run.py readme                # re-render README.md after e
 
 Every commit runs the harness on the staged tree through the pre-commit hook, and a regression against the committed baseline refuses the commit. Each action declares its inputs and runs in a sandbox that holds only those inputs, cached under `.cache/actions/` by the hash of the inputs, `uv.lock` and the interpreter. Every dependency is pinned with its sha256 in `uv.lock` (7 packages). The corpus is pinned to commit 312408a11c5f with a sha256 and line count per file, and is not vendored. Every table row, the corpus lock and the baseline are validated against JSON Schemas (draft 2020-12), with uniqueness and cross-table references declared in `schemas/tables/integrity.json`, and every sentence the baseline cites is verified against the pinned corpus line. The file tree above is compared with the tracked files. The architecture diagram is rendered from `docs/architecture.puml` by PlantUML 1.2025.10, pinned by the jar's sha256, and the committed SVG must match the hash recorded at render time. Every number in this README is rendered from a named fact, and every sentence is either pinned to a test or declared a hypothesis in the appendix below. Retired files leave the tree, and what is worth reading later goes into `archive/` as a compressed blob that no text search sees into. `CLAUDE.md` states the rules every agent and human follows here, and every file and check it names exists.
 
-The `rules` action measures coverage and char-BLEU of the transducer on dev and test and records every output. The `matrix` action compiles the hybrid cell on dev and test and cross-tabulates it against the rule parser. The `np` action checks `np_module` against `parse_np` over every window of at most 2 tokens, or 3 with `--full`.
+The `rules` action measures coverage and char-BLEU of the transducer on dev and test and records every output. The `matrix` action compiles the hybrid cell on dev and test and cross-tabulates it against the rule parser. The `np` action checks `np_module` against `parse_np` over every window of at most 2 tokens, or 3 with `--full`. The `negatives` action runs the 18 ungrammatical sentences of `harness/negatives.json`, taken or adapted from the syntax literature, asserts that the rule parser refuses every one and accepts every grammatical control, and counts what the matrix does with them.
 
 ## Where it stands
 
-The rule transducer translates 400 of 499 test sentences (80%) and 310 of 496 dev sentences (62%), with char-BLEU 35.8 and 34.5 inside coverage. On the 995 dev and test sentences, the two parser implementations parse 498 identically; the matrix misfires silently on 31 (14 wrong frames and 17 parses of sentences the rules refuse) and refuses 198 sentences the rules parse. The compiled cell has 1437 rules (333 extracted, 100 entry, 169 exit, 76 refusal, 759 from the noun-phrase module), 12,592 state units, 1,547 input units and 171,184 nonzeros. `np_module` agrees with `parse_np` on all 27,888 windows of at most 2 tokens over 83 token classes. Its two adjective slots refuse an adverb followed by two adjectives, where `parse_np` concatenates. Hypothesis: the remaining misfires come from the extracted clause-level rules, so the next modules to translate by hand are the PP machine, `predicate` and `copula_predicate`.
+The rule transducer translates 398 of 499 test sentences (80%) and 310 of 496 dev sentences (62%), with char-BLEU 35.9 and 34.5 inside coverage. On the 995 dev and test sentences, the two parser implementations parse 497 identically; the matrix misfires silently on 32 (13 wrong frames and 19 parses of sentences the rules refuse) and refuses 198 sentences the rules parse. The compiled cell has 1651 rules (345 extracted, 99 entry, 169 exit, 213 refusal, 825 from the noun-phrase module), 12,591 state units, 1,551 input units and 172,743 nonzeros. `np_module` agrees with `parse_np` on all 31,328 windows of at most 2 tokens over 88 token classes. Its two adjective slots refuse an adverb followed by two adjectives, where `parse_np` concatenates. The rule parser refuses all 18 negatives and accepts all 18 controls; the matrix refuses 15 of the negatives and accepts 12 of the controls, the rest falling to its extracted clause-level rules. Hypothesis: the remaining misfires come from the extracted clause-level rules, so the next modules to translate by hand are the PP machine, `predicate` and `copula_predicate`.
 
 ## License
 
@@ -103,6 +106,7 @@ Every sentence above is quoted here with what pins it: a test in `harness/test_c
 - "The lexical layer merges multiword tokens and gives each token its readings from the 16 tables, and the semantic layer generates the Japanese from the frame.": Pinned by `test_layers_roundtrip`
 - "The parser layer has one interface and two implementations, `RuleParser` and `MatrixParser`, and the matrix implementation is meant to agree with the rule implementation wherever the matrix can represent the parse.": Pinned by `test_parser_interface_two_implementations`
 - "`RuleParser` is a bounded transducer: a 4-token window, a frame stack of depth at most 2, at most 2 live readings resolved within 4 tokens, and no rewinds.": Pinned by `test_rule_parser_bounds`
+- "The rule parser refuses an object-form or reflexive pronoun as a subject and a finite verb that disagrees in number with a pronoun or plural subject.": Pinned by `test_subject_case_and_agreement`
 - "`MatrixParser` runs the same machine as 5 sparse ReLU layers per step, with the clause-level control extracted from traces of the rule parser and the noun-phrase module translated by hand from `parse_np`.": Pinned by `test_matrix_cell_shape`
 - "Two feedback edges cross the layers: the noun's use-verb rewrites the verb (she took a rest → 彼女は休んだ), and the parser's state decides which reading of a token is used (i rest → 休む, i need a rest → 休息).": Pinned by `test_feedback_edges`
 - "Every commit runs the harness on the staged tree through the pre-commit hook, and a regression against the committed baseline refuses the commit.": Pinned by `test_precommit_hook_runs_check`
@@ -118,10 +122,12 @@ Every sentence above is quoted here with what pins it: a test in `harness/test_c
 - "The `rules` action measures coverage and char-BLEU of the transducer on dev and test and records every output.": Pinned by `rules`
 - "The `matrix` action compiles the hybrid cell on dev and test and cross-tabulates it against the rule parser.": Pinned by `matrix`
 - "The `np` action checks `np_module` against `parse_np` over every window of at most 2 tokens, or 3 with `--full`.": Pinned by `np`
-- "The rule transducer translates 400 of 499 test sentences (80%) and 310 of 496 dev sentences (62%), with char-BLEU 35.8 and 34.5 inside coverage.": Pinned by `rules`
-- "On the 995 dev and test sentences, the two parser implementations parse 498 identically; the matrix misfires silently on 31 (14 wrong frames and 17 parses of sentences the rules refuse) and refuses 198 sentences the rules parse.": Pinned by `matrix`
-- "The compiled cell has 1437 rules (333 extracted, 100 entry, 169 exit, 76 refusal, 759 from the noun-phrase module), 12,592 state units, 1,547 input units and 171,184 nonzeros.": Pinned by `matrix`
-- "`np_module` agrees with `parse_np` on all 27,888 windows of at most 2 tokens over 83 token classes.": Pinned by `np`
+- "The `negatives` action runs the 18 ungrammatical sentences of `harness/negatives.json`, taken or adapted from the syntax literature, asserts that the rule parser refuses every one and accepts every grammatical control, and counts what the matrix does with them.": Pinned by `negatives`
+- "The rule transducer translates 398 of 499 test sentences (80%) and 310 of 496 dev sentences (62%), with char-BLEU 35.9 and 34.5 inside coverage.": Pinned by `rules`
+- "On the 995 dev and test sentences, the two parser implementations parse 497 identically; the matrix misfires silently on 32 (13 wrong frames and 19 parses of sentences the rules refuse) and refuses 198 sentences the rules parse.": Pinned by `matrix`
+- "The compiled cell has 1651 rules (345 extracted, 99 entry, 169 exit, 213 refusal, 825 from the noun-phrase module), 12,591 state units, 1,551 input units and 172,743 nonzeros.": Pinned by `matrix`
+- "`np_module` agrees with `parse_np` on all 31,328 windows of at most 2 tokens over 88 token classes.": Pinned by `np`
 - "Its two adjective slots refuse an adverb followed by two adjectives, where `parse_np` concatenates.": Pinned by `test_np_two_adjective_slots`
+- "The rule parser refuses all 18 negatives and accepts all 18 controls; the matrix refuses 15 of the negatives and accepts 12 of the controls, the rest falling to its extracted clause-level rules.": Pinned by `negatives`
 - "Hypothesis: the remaining misfires come from the extracted clause-level rules, so the next modules to translate by hand are the PP machine, `predicate` and `copula_predicate`.": Hypothesis
 - "The code is MIT-licensed, and the corpus is the Tanaka Corpus via small_parallel_enja under its own terms.": Pinned by `test_license_is_mit`

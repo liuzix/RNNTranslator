@@ -113,6 +113,8 @@ def main():
         here = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); corpus = os.path.join(here, ".cache", "corpus", lock.get("commit", ""))
     errs += check_corpus_lock(root, corpus)[0] if a.corpus is None else []
     t_err, t_warn, nrows = check_tables(root)
+    if os.path.exists(os.path.join(root, "harness", "negatives.json")):
+        errs += validate(load(os.path.join(root, "harness", "negatives.json")), os.path.join(root, "schemas", "negatives.schema.json"), "harness/negatives.json")
     b_err = [] if a.skip_baseline else check_baseline(root, corpus)
     errors = list(dict.fromkeys(errs + t_err + b_err))
     for w in t_warn: print("warning:", w)

@@ -20,6 +20,7 @@ Actions (inputs listed in ACTIONS below):
     rules    coverage and char-BLEU of the rule transducer on dev and test, and every output
     matrix   the hybrid matrix parser compiled on dev+test and cross-tabulated against the bounded rule parser
     np       np_module against Parser.parse_np over all windows of length <= 2 (<= 3 with --full)
+    negatives  the ungrammatical sentences of harness/negatives.json refused by both parsers, their controls accepted
 """
 import sys, os, json, hashlib, subprocess, shutil, tempfile, glob, time, argparse
 
@@ -33,6 +34,7 @@ ACTIONS = {
     "rules":  {"version": 1, "script": "harness/eval_rules.py",  "inputs": SOURCES, "corpus": True,  "args": []},
     "matrix": {"version": 1, "script": "harness/eval_matrix.py", "inputs": SOURCES + ["parser_matrix.py", "np_module.py"], "corpus": True, "args": []},
     "np":     {"version": 1, "script": "harness/eval_np.py",     "inputs": SOURCES + ["parser_matrix.py", "np_module.py"], "corpus": False, "args": ["--max-len", "2"]},
+    "negatives": {"version": 1, "script": "harness/eval_negatives.py", "inputs": SOURCES + ["parser_matrix.py", "np_module.py", "harness/negatives.json"], "corpus": True, "args": []},
 }
 FULL_NP_LEN = 3            # `check --full`: the np action over windows up to this length (~4 minutes)
 
@@ -152,11 +154,13 @@ STATIC = [
     ("harness/check_readme.py",  lambda c: []),
     ("harness/test_claims.py",   lambda c: ["--corpus", c["corpus"]]),
 ]
+READS_BASELINE = {"harness/check_readme.py", "harness/test_claims.py", "harness/check_tree.py"}   # depend on the baseline (the README is rendered from it): skipped while it is rewritten; `check` runs them
 
 def static_checks(exe, src_root, corpus, staged, skip_baseline=False):
     """the schema, tree, diagram, README and claim checks on the tree under test; exit 1 on an error"""
     ok = True; ctx = {"corpus": corpus, "staged": staged, "skip_baseline": skip_baseline}
     for script, extra in STATIC:
+        if skip_baseline and script in READS_BASELINE: continue
         proc = subprocess.run([exe, os.path.join(src_root, script), "--root", src_root, *extra(ctx)], cwd=ROOT, capture_output=True, text=True)
         if proc.stdout.strip(): print(proc.stdout.rstrip())
         if proc.returncode != 0: ok = False; print(proc.stderr.rstrip()[-1500:])
@@ -190,11 +194,13 @@ def metrics(results):
     out["matrix.identical"] = m["identical"]
     out["matrix.silent_misfires"] = m["wrong_frame"] + m["matrix_parses_refused"]
     out["np.mismatches"] = n["mismatches"]
+    g = results["negatives"]
+    out["negatives.accepted"] = g["accepted"]; out["negatives.controls_refused"] = g["controls_refused_by_rules"]; out["negatives.matrix_accepted"] = g["matrix_accepted"]
     return out
 
 # a metric regresses when it moves in the bad direction: ">=" must not drop, "<=" must not rise
 DIRECTION = {"rules.dev.covered": ">=", "rules.test.covered": ">=", "rules.dev.bleu_all": ">=", "rules.test.bleu_all": ">=",
-             "matrix.identical": ">=", "matrix.silent_misfires": "<=", "np.mismatches": "<="}
+             "matrix.identical": ">=", "matrix.silent_misfires": "<=", "np.mismatches": "<=", "negatives.accepted": "<=", "negatives.controls_refused": "<=", "negatives.matrix_accepted": "<="}
 
 def compare(results, baseline_path):
     cur = metrics(results)
@@ -231,10 +237,11 @@ def write_baseline(results, staged):
     head = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
     doc = {"taken": time.strftime("%Y-%m-%d") + f" at {head}" + (" (staged)" if staged else ""), "metrics": metrics(results),
            "detail": {"rules": {s: {k: v for k, v in results["rules"][s].items() if k != "outputs"} for s in ("dev", "test")},
-                      "matrix": results["matrix"], "np": results["np"]},
+                      "matrix": results["matrix"], "np": results["np"], "negatives": {k: v for k, v in results["negatives"].items() if k != "rows"}},
            "outputs": {s: results["rules"][s]["outputs"] for s in ("dev", "test")}}
     json.dump(doc, open(BASELINE, "w", encoding="utf-8"), ensure_ascii=False, indent=0, sort_keys=True)
     print(f"wrote {os.path.relpath(BASELINE, ROOT)}: " + ", ".join(f"{k}={v}" for k, v in doc["metrics"].items()))
+    print("now `python harness/run.py readme` if a cited number moved, then `python harness/run.py check`")
 
 def install_hooks():
     subprocess.run(["git", "config", "core.hooksPath", ".githooks"], cwd=ROOT, check=True)

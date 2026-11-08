@@ -10,6 +10,10 @@ of rules_ja, after everything it needs is defined, so a star-import gives it tho
 """
 from rules_ja import *     # tables, lexical layer, Pred/generate (semantic layer); resolved at import time from rules_ja's tail
 
+def agrees(form, subj_num):
+    """a finite verb form fits the subject's number: 3sg needs a 3sg subject, base needs a non-3sg one, past fits any"""
+    return not ((form == "3sg" and subj_num == "non3sg") or (form == "base" and subj_num == "3sg"))
+
 class ParseFail(Exception):
     """the parser layer's crash: a reading died at token `pos`"""
     def __init__(self, msg, pos=None):
@@ -30,6 +34,7 @@ HOLD = 4          # ambiguity budget: a fork must be resolved within this many t
 class Clause:
     def __init__(self):
         self.subj = None; self.subj_cls = "t"; self.subj_poss = ""; self.subj_adj = ""; self.subj_det = ""
+        self.subj_num = None       # "3sg" / "non3sg" when the subject's head decides verb agreement, else None
         self.obj = None; self.obj_poss = ""; self.obj_adj = ""; self.obj_det = ""
         self.iobj = None
         self.pp = []               # list of (prep_entry, np string)
@@ -95,7 +100,10 @@ class Parser:
         raise ParseFail(f"{self.phase}: {why} at '{self.peek()}'", self.i)
 
     # --- noun phrase: [det|poss|num] [adj]* noun | pron  -> (japanese, class) ---
-    def parse_np(self):
+    def parse_np(self, role=None):
+        """role="subj": a subject — an object-only or reflexive pronoun is refused (subject case), and the head's
+        grammatical number is left in self.np_number for the agreement check in the predicate"""
+        self.np_number = None
         tok = self.peek(); r = dict(self.readings(tok))
         nxt = dict(self.readings(self.peek(1))) if self.peek(1) else {}
         next_is_nominal = "noun" in nxt or "adj" in nxt or "num" in nxt or ("adv" in nxt and self.peek(2) and "adj" in dict(self.readings(self.peek(2))))
@@ -110,9 +118,10 @@ class Parser:
             if tok == "no": self.c.neg = True                                   # no obligation / no money -> ...ない
         elif "pron" in r:
             self.i += 1
-            ja, role = r["pron"]
-            if role == "p": self.fail("possessive pronoun without noun")
-            self.last_head = None
+            ja, prole = r["pron"]
+            if prole == "p": self.fail("possessive pronoun without noun")
+            if role == "subj" and prole in ("o", "r", "op"): self.fail("subject case")      # *me went, *himself saw john
+            self.last_head = None; self.np_number = number_of(tok)
             if self.peek() == "'s" and tok not in ("it", "he", "she", "i", "you", "we", "they", "this", "that", "who", "what", "somebody", "someone", "everybody", "everyone", "nobody", "anybody", "anyone", "one", "there", "here"):
                 if self.peek(1) and (self.has(self.peek(1), "noun") or self.has(self.peek(1), "adj")):
                     self.i += 1; return self.parse_np_rest_after_poss(ja + "の")
@@ -135,13 +144,13 @@ class Parser:
                 return num + "時" if self.np_role == "pp_time" else num, "t"
             self.fail("noun phrase")
         ja, cls = r["noun"]; self.i += 1
-        self.last_head = tok
+        self.last_head = tok; self.np_number = None if num else number_of(tok)     # a measure phrase (ten years is a long time) takes either number
         # noun-noun compound: english homework, bus stop, road map
         nr2 = dict(self.readings(self.peek())) if self.peek() else {}
         aux_next = self.peek(1) and any(self.has(self.peek(1), k) for k in ("aux_be", "aux_do", "aux_have", "modal"))
         if "noun" in nr2 and not any(k in nr2 for k in ("aux_be", "aux_do", "aux_have", "modal", "prep", "adv", "det", "pron", "adj", "time", "conj", "num")) and ("verb" not in nr2 or aux_next):
             ja2, cls2 = nr2["noun"]; self.i += 1
-            self.last_head = self.toks[self.i - 1]
+            self.last_head = self.toks[self.i - 1]; self.np_number = number_of(self.last_head)
             ja, cls = ja + "の" + ja2, cls2
         # relative clause on the last NP of the sentence: the book (that) i bought / the man who came
         nxt = self.peek(); nr = dict(self.readings(nxt)) if nxt else {}
@@ -152,16 +161,16 @@ class Parser:
             if rel_pron:
                 self.i += 1; inner.subj = None; inner.subj_cls = cls
             else:
-                sja, scls = self.parse_np(); inner.subj, inner.subj_cls = sja, scls
-            saved = self.c; self.c = inner
-            self.phase = "VP0"; self.predicate(); self.c = saved
+                sja, scls = self.parse_np(role="subj"); inner.subj, inner.subj_cls, inner.subj_num = sja, scls, self.np_number
+            saved = self.c; self.c = inner; head_number = self.np_number
+            self.phase = "VP0"; self.predicate(); self.c = saved; self.np_number = head_number
             return generate(inner, polite=False, embedded=True)[:-1] + det + poss + num + adjs + ja, cls
         # possessive 's: John 's car
         if self.peek() == "'s" and (self.peek(1) is None or self.has(self.peek(1), "end") or self.has(self.peek(1), "prep") or self.peek(1) == ","):   # tom 's -> トムのもの
             self.i += 1; return det + poss + num + adjs + ja + "のもの", "t"
         if tok == "fact" and self.peek() == "that" and self.peek(1) and self.starts_np(self.peek(1)) and not (self.c.subj == "それ" and self.c.verb is None and self.c.copula is None):     # the fact that S -> Sという事実
             self.i += 1; inner = Clause(); saved = self.c; self.c = inner
-            sja, scls = self.parse_np(); inner.subj, inner.subj_cls = sja, scls
+            sja, scls = self.parse_np(role="subj"); inner.subj, inner.subj_cls, inner.subj_num = sja, scls, self.np_number
             self.phase = "VP0"; self.predicate(); self.c = saved
             return generate(inner, polite=False, embedded=True)[:-1] + "という" + ja, cls
         if self.peek() == "'s" and self.peek(1) and ("noun" in dict(self.readings(self.peek(1))) or "adj" in dict(self.readings(self.peek(1)))):
@@ -172,10 +181,11 @@ class Parser:
         if self.peek() == "of" and self.peek(1) and self.peek(1) not in ("course",):
             self.i += 1
             of_ja, _ = self.parse_np()
-            self.last_head = tok
+            self.last_head = tok; self.np_number = number_of(tok)
             return det + poss + of_ja + "の" + num + adjs + ja, cls
         if self.peek() == "and" and self.peek(1) and self.starts_np(self.peek(1)) and not self.has(self.peek(1), "verb") and self.choose("and after a noun phrase: clause | noun phrase") == 1:
             self.i += 1; ja2, cls2 = self.parse_np()                            # name and address -> 名前と住所
+            self.np_number = "non3sg"
             return det + poss + num + adjs + ja + "と" + ja2, cls
         return det + poss + num + adjs + ja, cls
     def use_after_np(self, lemma, ja):
@@ -223,7 +233,7 @@ class Parser:
             if "please" in r: c.please = True; self.i += 1; continue
             if "aux_be" in r and self.peek(1) == "there":                                 # is there NP ?
                 c.past = r["aux_be"] == "past"; self.i += 2; c.there = True; c.question = True
-                ja, cls = self.parse_np(); c.subj, c.subj_cls = ja, cls
+                ja, cls = self.parse_np(role="subj"); c.subj, c.subj_cls, c.subj_num = ja, cls, self.np_number
                 head0 = self.last_head
                 if head0 in ("need", "reason", "time") and self.peek() == "for" and self.peek(1) and self.starts_np(self.peek(1)):
                     self.i += 1; xja, xcls = self.parse_np()
@@ -237,7 +247,7 @@ class Parser:
             if tok == "the" and self.peek(1) and (self.peek(1) == "more" or self.has(self.peek(1), "adj") and dict(self.readings(self.peek(1)))["adj"][0].startswith("より")) and self.peek(2) and self.starts_np(self.peek(2)):   # the more S1 , the more S2
                 self.i += 2
                 inner = Clause(); inner.sub = True; saved = self.c; self.c = inner
-                ja, cls = self.parse_np(); inner.subj, inner.subj_cls = ja, cls
+                ja, cls = self.parse_np(role="subj"); inner.subj, inner.subj_cls, inner.subj_num = ja, cls, self.np_number
                 self.phase = "VP0"; self.predicate(); self.c = saved
                 if self.phase != "DONE": self.phase = "PRE"
                 if self.peek() == ",": self.i += 1
@@ -270,7 +280,7 @@ class Parser:
                     else:
                         c.exclaim = nr["adj"][0]; self.i += 1
                     if self.peek() and self.starts_np(self.peek()):
-                        ja, cls = self.parse_np(); c.subj, c.subj_cls = ja, cls
+                        ja, cls = self.parse_np(role="subj"); c.subj, c.subj_cls, c.subj_num = ja, cls, self.np_number
                         if self.has(self.peek(), "aux_be"): self.i += 1
                     return self.end()
                 if tok == "what" and nxt == "time": c.wh = ("何時", "t"); self.i += 1
@@ -290,7 +300,7 @@ class Parser:
                 else: tense = self.take("aux_be")
                 c.past = tense == "past"
                 if self.has(self.peek(), "not"): self.i += 1; c.neg = True
-                ja, cls = self.parse_np(); c.subj, c.subj_cls = ja, cls
+                ja, cls = self.parse_np(role="subj"); c.subj, c.subj_cls, c.subj_num = ja, cls, self.np_number
                 head0 = self.last_head
                 if head0 in ("need", "reason", "time") and self.peek() == "for" and self.peek(1) and self.starts_np(self.peek(1)):   # is there any need for me to go ?
                     self.i += 1; xja, xcls = self.parse_np()
@@ -318,7 +328,7 @@ class Parser:
                 return self.verb_phrase(expect_base=True)
             break
         # subject
-        ja, cls = self.parse_np(); c.subj, c.subj_cls = ja, cls
+        ja, cls = self.parse_np(role="subj"); c.subj, c.subj_cls, c.subj_num = ja, cls, self.np_number
         self.phase = "VP0"
         return self.predicate()
 
@@ -345,7 +355,7 @@ class Parser:
             self.phase = "VP0"; return self.predicate()
         if ("aux_be" in r or "aux_be3" in r) and self.peek(1) and (self.starts_np(self.peek(1)) or self.has(self.peek(1), "wh")):
             tense = r.get("aux_be", "pres"); self.i += 1; c.past = tense == "past"
-            ja, cls = self.parse_np(); c.subj, c.subj_cls = ja, cls
+            ja, cls = self.parse_np(role="subj"); c.subj, c.subj_cls, c.subj_num = ja, cls, self.np_number
             if self.has(self.peek(), "not"): self.i += 1; c.neg = True
             while self.peek() and self.has(self.peek(), "time"): c.time += dict(self.readings(self.peek()))["time"]; self.i += 1
             self.copula_predicate(allow_empty=True)
@@ -361,12 +371,12 @@ class Parser:
         if "aux_do" in r:
             c.past = r["aux_do"] == "past"; self.i += 1
             if self.has(self.peek(), "not"): self.i += 1; c.neg = True
-            ja, cls = self.parse_np(); c.subj, c.subj_cls = ja, cls
+            ja, cls = self.parse_np(role="subj"); c.subj, c.subj_cls, c.subj_num = ja, cls, self.np_number
             return self.verb_phrase(expect_base=True)
         if "modal" in r:
             c.modal, _ = r["modal"]; self.i += 1
             if self.has(self.peek(), "not"): self.i += 1; c.neg = True
-            ja, cls = self.parse_np(); c.subj, c.subj_cls = ja, cls
+            ja, cls = self.parse_np(role="subj"); c.subj, c.subj_cls, c.subj_num = ja, cls, self.np_number
             while self.peek() and self.has(self.peek(), "adv") and not self.has(self.peek(), "verb") and not self.has(self.peek(), "aux_be"):
                 c.adv += dict(self.readings(self.peek()))["adv"]; self.i += 1
             if tok == "would" and self.peek() == "mind" and self.peek(1) and self.verb_form(self.peek(1)) == "ing":   # would you mind V-ing ?
@@ -375,11 +385,11 @@ class Parser:
             return self.verb_phrase(expect_base=True)
         if "aux_have" in r:
             c.past = r["aux_have"] == "past"; c.perf = True; self.i += 1
-            ja, cls = self.parse_np(); c.subj, c.subj_cls = ja, cls
+            ja, cls = self.parse_np(role="subj"); c.subj, c.subj_cls, c.subj_num = ja, cls, self.np_number
             return self.verb_phrase(expect_pp=True)
         if "aux_be" in r:
             c.past = r["aux_be"] == "past"; self.i += 1
-            ja, cls = self.parse_np(); c.subj, c.subj_cls = ja, cls
+            ja, cls = self.parse_np(role="subj"); c.subj, c.subj_cls, c.subj_num = ja, cls, self.np_number
             if self.has(self.peek(), "not"): self.i += 1; c.neg = True
             self.copula_predicate()
             return self.end()
@@ -391,6 +401,7 @@ class Parser:
         while "adv" in r and "verb" not in r and "aux_be" not in r:
             c.adv += r["adv"]; self.i += 1; tok = self.peek(); r = dict(self.readings(tok))
         if "time" in r: c.time += r["time"]; self.i += 1; tok = self.peek(); r = dict(self.readings(tok))
+        if "aux_be" in r and c.subj_num and not agrees({"is": "3sg", "are": "base"}.get(tok, "past"), c.subj_num): self.fail("agreement")   # *they is, *he are
         if "aux_be" in r or "aux_be3" in r:
             c.past = (r.get("aux_be") == "past"); self.i += 1
             if self.has(self.peek(), "not"): self.i += 1; c.neg = True
@@ -530,7 +541,7 @@ class Parser:
                 so_that = self.peek() == "that" and c.degree.endswith("とても") and self.toks[self.i - 2] == "so"
                 if self.peek() == "that": self.i += 1
                 inner = Clause(); self.c = inner
-                ja, cls = self.parse_np(); inner.subj, inner.subj_cls = ja, cls
+                ja, cls = self.parse_np(role="subj"); inner.subj, inner.subj_cls, inner.subj_num = ja, cls, self.np_number
                 self.phase = "VP0"; self.predicate(); self.c = c
                 if so_that: c.so_that = inner                                   # so hard that S -> とても難しいので S
                 elif c.subj == "それ": c.infinitive = ("extraposed", inner)     # it is true that S -> Sのは本当だ
@@ -566,7 +577,7 @@ class Parser:
                 self.tail_pp_adv(); return
             if c.subj == "それ" and self.peek() == "that" and self.peek(1) and self.starts_np(self.peek(1)):          # it is a pity that S
                 self.i += 1; inner = Clause(); self.c = inner
-                ja2, cls2 = self.parse_np(); inner.subj, inner.subj_cls = ja2, cls2
+                ja2, cls2 = self.parse_np(role="subj"); inner.subj, inner.subj_cls, inner.subj_num = ja2, cls2, self.np_number
                 self.phase = "VP0"; self.predicate(); self.c = c
                 c.infinitive = ("extraposed", inner); return
             self.tail_pp_adv(); return
@@ -577,6 +588,8 @@ class Parser:
         if "verb" not in r: self.fail("verb")
         readings = [p for cc, p in self.readings(tok) if cc == "verb"]
         lemma, form, ja, conj = readings[0]
+        if not (expect_base or expect_pp or expect_ing) and c.subj_num and not any(agrees(f, c.subj_num) for _, f, _, _ in readings):
+            self.fail("agreement")                                                 # *he have a car, *she go to school
         if lemma == "be" and not from_copula:
             self.i += 1
             self.copula_predicate(); return self.end()
@@ -646,7 +659,7 @@ class Parser:
             if self.peek() == "that": self.i += 1
             inner = Clause(); c.embedded = inner
             self.c = inner
-            ja, cls = self.parse_np(); inner.subj, inner.subj_cls = ja, cls
+            ja, cls = self.parse_np(role="subj"); inner.subj, inner.subj_cls, inner.subj_num = ja, cls, self.np_number
             self.phase = "VP0"
             self.predicate_noend()
             self.c = c
@@ -694,9 +707,9 @@ class Parser:
             self.verb_phrase(expect_ing=True, from_copula=True)
         elif self.peek() == "there" and self.peek(1) and self.has(self.peek(1), "aux_be"):
             self.i += 1; r = dict(self.readings(self.peek())); inner.past = r["aux_be"] == "past"; self.i += 1; inner.there = True
-            ja, cls = self.parse_np(); inner.subj, inner.subj_cls = ja, cls; self.tail_pp_adv()
+            ja, cls = self.parse_np(role="subj"); inner.subj, inner.subj_cls, inner.subj_num = ja, cls, self.np_number; self.tail_pp_adv()
         else:
-            ja, cls = self.parse_np(); inner.subj, inner.subj_cls = ja, cls
+            ja, cls = self.parse_np(role="subj"); inner.subj, inner.subj_cls, inner.subj_num = ja, cls, self.np_number
             self.phase = "VP0"; self.predicate()
         self.c, self.np_role = save[1], save[3]
         if self.phase != "DONE": self.phase = save[2]
@@ -713,7 +726,7 @@ class Parser:
         second = Clause(); second.coord = True
         self.c = second
         if self.peek() and self.starts_np(self.peek()) and self.peek(1) and (self.has(self.peek(1), "verb") or self.has(self.peek(1), "aux_be") or self.has(self.peek(1), "aux_do") or self.has(self.peek(1), "aux_have") or self.has(self.peek(1), "modal")):
-            ja, cls = self.parse_np(); second.subj, second.subj_cls = ja, cls
+            ja, cls = self.parse_np(role="subj"); second.subj, second.subj_cls, second.subj_num = ja, cls, self.np_number
         else:
             second.subj = None; second.subj_cls = c.subj_cls
         if self.has(self.peek(), "not") and self.peek(1) and self.has(self.peek(1), "verb"): self.i += 1; second.neg = True
@@ -738,7 +751,7 @@ class Parser:
         tok = self.peek(); r = dict(self.readings(tok))
         inner = Clause(); inner.sub = True; saved = self.c; self.c = inner
         if tok in ("if", "whether"):
-            self.i += 1; ja, cls = self.parse_np(); inner.subj, inner.subj_cls = ja, cls
+            self.i += 1; ja, cls = self.parse_np(role="subj"); inner.subj, inner.subj_cls, inner.subj_num = ja, cls, self.np_number
             self.phase = "VP0"; self.predicate(); self.c = saved
             if self.peek() == "or" and self.peek(1) == "not": self.i += 2
             body = generate(inner, polite=False, embedded=True)[:-1]
@@ -756,7 +769,7 @@ class Parser:
             body = generate(inner, polite=False, embedded=True)[:-1]
             return (body[:-1] if body.endswith("か") else body) + "べきか"
         if self.peek() and self.starts_np(self.peek()):
-            ja, cls = self.parse_np(); inner.subj, inner.subj_cls = ja, cls
+            ja, cls = self.parse_np(role="subj"); inner.subj, inner.subj_cls, inner.subj_num = ja, cls, self.np_number
             nxt = self.peek(); nr = dict(self.readings(nxt)) if nxt else {}
             after = self.peek(1); ar = dict(self.readings(after)) if after else {}
             if "aux_be" in nr and (after is None or "end" in ar or "conj" in ar or after == ","):    # where the bus stop is
@@ -771,7 +784,7 @@ class Parser:
 
     def embedded_after(self, c):
         inner = Clause(); c.embedded = inner; self.c = inner
-        ja, cls = self.parse_np(); inner.subj, inner.subj_cls = ja, cls
+        ja, cls = self.parse_np(role="subj"); inner.subj, inner.subj_cls, inner.subj_num = ja, cls, self.np_number
         self.phase = "VP0"; self.predicate_noend(); self.c = c
         return self.end()
 

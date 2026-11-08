@@ -27,6 +27,10 @@ def facts(root=ROOT):
     for kind, n in cell["rules_by_kind"].items(): f[f"cell.rules.{kind}"] = n
     n = base["detail"]["np"]
     f["np.cases"] = n["cases"]; f["np.max_len"] = n["max_len"]; f["np.mismatches"] = n["mismatches"]; f["np.alphabet"] = n["alphabet"]
+    g = base["detail"]["negatives"]
+    f["negatives.count"] = g["count"]; f["negatives.accepted"] = g["accepted"]; f["negatives.refused"] = g["count"] - g["accepted"]
+    f["negatives.controls_accepted"] = g["count"] - g["controls_refused_by_rules"]; f["negatives.controls_matrix"] = g["count"] - g["controls_refused_by_matrix"]
+    f["negatives.matrix_refused"] = g["count"] - g["matrix_accepted"]; f["negatives.matrix_accepted"] = g["matrix_accepted"]
     f["baseline.taken"] = base["taken"]
     # constants of the parser
     f["parser.window"] = PR.BUFFER; f["parser.max_depth"] = PR.MAX_DEPTH; f["parser.width"] = PR.WIDTH; f["parser.hold"] = PR.HOLD
