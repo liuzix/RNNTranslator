@@ -24,7 +24,8 @@ The lexical layer merges multiword tokens and gives each token its readings from
 │   ├── architecture.puml             the architecture diagram, source
 │   └── architecture.svg              the architecture diagram, as rendered
 ├── harness/
-│   ├── baseline.json                 metrics + every rule output at the last accepted commit
+│   ├── adjudications.json            human verdicts on outputs: right, wrong, or ungrammatical input
+│   ├── baseline.json                 every item of the lattice at the last accepted commit, metrics as views
 │   ├── check_diagram.py              the diagram files against their lock
 │   ├── check_readme.py               README.md against the template, the facts and the appendix
 │   ├── check_schemas.py              tables, corpus lock and baseline against their JSON Schemas
@@ -35,6 +36,7 @@ The lexical layer merges multiword tokens and gives each token its readings from
 │   ├── eval_np.py                    action: np_module against parse_np over all windows
 │   ├── eval_rules.py                 action: coverage and char-BLEU of the transducer
 │   ├── facts.py                      the facts the README may cite
+│   ├── lattice.py                    the item order: chains, levels, comparison, frontier
 │   ├── negatives.json                the ungrammatical sentences, their controls, phenomena and sources
 │   ├── probe_sandbox.py              a probe action for the sandbox test
 │   ├── render_diagram.py             renders docs/*.puml with the pinned PlantUML jar
@@ -45,6 +47,7 @@ The lexical layer merges multiword tokens and gives each token its readings from
 │   ├── tables/
 │   │   ├── *.schema.json             one JSON Schema per table's row
 │   │   └── integrity.json            uniqueness and cross-table references
+│   ├── adjudications.schema.json
 │   ├── baseline.schema.json
 │   ├── corpus-lock.schema.json
 │   ├── diagram-lock.schema.json
@@ -84,9 +87,15 @@ uv run python harness/run.py readme                # re-render README.md after e
 
 ## Harness
 
-Every commit runs the harness on the staged tree through the pre-commit hook, and a regression against the committed baseline refuses the commit. Each action declares its inputs and runs in a sandbox that holds only those inputs, cached under `.cache/actions/` by the hash of the inputs, `uv.lock` and the interpreter. Every dependency is pinned with its sha256 in `uv.lock` (7 packages). The corpus is pinned to commit 312408a11c5f with a sha256 and line count per file, and is not vendored. Every table row, the corpus lock and the baseline are validated against JSON Schemas (draft 2020-12), with uniqueness and cross-table references declared in `schemas/tables/integrity.json`, and every sentence the baseline cites is verified against the pinned corpus line. The file tree above is compared with the tracked files. The architecture diagram is rendered from `docs/architecture.puml` by PlantUML 1.2025.10, pinned by the jar's sha256, and the committed SVG must match the hash recorded at render time. Every number in this README is rendered from a named fact, and every sentence is either pinned to a test or declared a hypothesis in the appendix below. Retired files leave the tree, and what is worth reading later goes into `archive/` as a compressed blob that no text search sees into. `CLAUDE.md` states the rules every agent and human follows here, and every file and check it names exists.
+Every commit runs the harness on the staged tree through the pre-commit hook, and the commit is refused if any item of the lattice moves down or an unjudged output changes without a verdict. Each action declares its inputs and runs in a sandbox that holds only those inputs, cached under `.cache/actions/` by the hash of the inputs, `uv.lock` and the interpreter. Every dependency is pinned with its sha256 in `uv.lock` (7 packages). The corpus is pinned to commit 312408a11c5f with a sha256 and line count per file, and is not vendored. Every table row, the corpus lock and the baseline are validated against JSON Schemas (draft 2020-12), with uniqueness and cross-table references declared in `schemas/tables/integrity.json`, and every sentence the baseline cites is verified against the pinned corpus line. The file tree above is compared with the tracked files. The architecture diagram is rendered from `docs/architecture.puml` by PlantUML 1.2025.10, pinned by the jar's sha256, and the committed SVG must match the hash recorded at render time. Every number in this README is rendered from a named fact, and every sentence is either pinned to a test or declared a hypothesis in the appendix below. Retired files leave the tree, and what is worth reading later goes into `archive/` as a compressed blob that no text search sees into. `CLAUDE.md` states the rules every agent and human follows here, and every file and check it names exists.
 
 The `rules` action measures coverage and char-BLEU of the transducer on dev and test and records every output. The `matrix` action compiles the hybrid cell on dev and test and cross-tabulates it against the rule parser. The `np` action checks `np_module` against `parse_np` over every window of at most 2 tokens, or 3 with `--full`. The `negatives` action runs the 18 ungrammatical sentences of `harness/negatives.json`, taken or adapted from the syntax literature, asserts that the rule parser refuses every one and accepts every grammatical control, and counts what the matrix does with them.
+
+## The lattice
+
+The state of the project is a product of small chains, one per item, and a change is an improvement exactly when no item moves down. A corpus sentence is WRONG, REFUSED or RIGHT, where RIGHT is the reference or an adjudicated acceptable output and an input adjudicated ungrammatical has refusal as its top; an output nobody has judged is UNKNOWN, below RIGHT but incomparable with the rest, so that a change away from it demands a verdict in `harness/adjudications.json`. The matrix parser on a sentence is MISFIRE, GAP or AGREE against the rule parser, a negative is ACCEPTED or REFUSED, a control is REFUSED or ACCEPTED, and the exhaustive NP check is MISMATCHES or MATCH. Coverage and quality are views of this state, not gates. The frontier is the set of items below the top of their chain, grouped by what blocks them, and `uv run python harness/run.py frontier` prints it from the committed baseline.
+
+Today the 2,045 items stand at: sentences RIGHT 22, UNKNOWN 687, REFUSED 286, WRONG 0; matrix AGREE 765, GAP 198, MISFIRE 32; negatives REFUSED 18 of 18 and controls ACCEPTED 18; 2 adjudications so far. The frontier holds 1,206 items in 19 groups.
 
 ## Where it stands
 
@@ -109,7 +118,7 @@ Every sentence above is quoted here with what pins it: a test in `harness/test_c
 - "The rule parser refuses an object-form or reflexive pronoun as a subject and a finite verb that disagrees in number with a pronoun or plural subject.": Pinned by `test_subject_case_and_agreement`
 - "`MatrixParser` runs the same machine as 5 sparse ReLU layers per step, with the clause-level control extracted from traces of the rule parser and the noun-phrase module translated by hand from `parse_np`.": Pinned by `test_matrix_cell_shape`
 - "Two feedback edges cross the layers: the noun's use-verb rewrites the verb (she took a rest → 彼女は休んだ), and the parser's state decides which reading of a token is used (i rest → 休む, i need a rest → 休息).": Pinned by `test_feedback_edges`
-- "Every commit runs the harness on the staged tree through the pre-commit hook, and a regression against the committed baseline refuses the commit.": Pinned by `test_precommit_hook_runs_check`
+- "Every commit runs the harness on the staged tree through the pre-commit hook, and the commit is refused if any item of the lattice moves down or an unjudged output changes without a verdict.": Pinned by `test_precommit_hook_runs_check`
 - "Each action declares its inputs and runs in a sandbox that holds only those inputs, cached under `.cache/actions/` by the hash of the inputs, `uv.lock` and the interpreter.": Pinned by `test_sandbox_holds_only_declared_inputs`
 - "Every dependency is pinned with its sha256 in `uv.lock` (7 packages).": Pinned by `test_dependencies_hash_pinned`
 - "The corpus is pinned to commit 312408a11c5f with a sha256 and line count per file, and is not vendored.": Pinned by `test_corpus_pinned`
@@ -130,4 +139,11 @@ Every sentence above is quoted here with what pins it: a test in `harness/test_c
 - "Its two adjective slots refuse an adverb followed by two adjectives, where `parse_np` concatenates.": Pinned by `test_np_two_adjective_slots`
 - "The rule parser refuses all 18 negatives and accepts all 18 controls; the matrix refuses 15 of the negatives and accepts 12 of the controls, the rest falling to its extracted clause-level rules.": Pinned by `negatives`
 - "Hypothesis: the remaining misfires come from the extracted clause-level rules, so the next modules to translate by hand are the PP machine, `predicate` and `copula_predicate`.": Hypothesis
+- "The state of the project is a product of small chains, one per item, and a change is an improvement exactly when no item moves down.": Pinned by `test_lattice_order`
+- "A corpus sentence is WRONG, REFUSED or RIGHT, where RIGHT is the reference or an adjudicated acceptable output and an input adjudicated ungrammatical has refusal as its top; an output nobody has judged is UNKNOWN, below RIGHT but incomparable with the rest, so that a change away from it demands a verdict in `harness/adjudications.json`.": Pinned by `test_lattice_order`
+- "The matrix parser on a sentence is MISFIRE, GAP or AGREE against the rule parser, a negative is ACCEPTED or REFUSED, a control is REFUSED or ACCEPTED, and the exhaustive NP check is MISMATCHES or MATCH.": Pinned by `test_lattice_order`
+- "Coverage and quality are views of this state, not gates.": Pinned by `test_precommit_hook_runs_check`
+- "The frontier is the set of items below the top of their chain, grouped by what blocks them, and `uv run python harness/run.py frontier` prints it from the committed baseline.": Pinned by `test_frontier_command`
+- "Today the 2,045 items stand at: sentences RIGHT 22, UNKNOWN 687, REFUSED 286, WRONG 0; matrix AGREE 765, GAP 198, MISFIRE 32; negatives REFUSED 18 of 18 and controls ACCEPTED 18; 2 adjudications so far.": Pinned by `rules`
+- "The frontier holds 1,206 items in 19 groups.": Pinned by `rules`
 - "The code is MIT-licensed, and the corpus is the Tanaka Corpus via small_parallel_enja under its own terms.": Pinned by `test_license_is_mit`

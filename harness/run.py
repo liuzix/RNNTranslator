@@ -8,10 +8,11 @@ replays without running.  Nothing an action did not declare can reach it, so a h
 
     python harness/run.py fetch-corpus            clone the pinned corpus commit into .cache/corpus/ and verify its hashes
     python harness/run.py check [--staged] [--full]
-                                                  the static checks (schemas, README file tree), then the actions (on the
-                                                  index when --staged), compared with harness/baseline.json
+                                                  the static checks, then the actions (on the index when --staged), then the
+                                                  lattice comparison with harness/baseline.json: no item may move down
     python harness/run.py baseline [--staged]     run the checks and write harness/baseline.json (commit it with the change)
     python harness/run.py install-hooks           point git at .githooks/ so pre-commit runs `check --staged`
+    python harness/run.py frontier [--list]       the items not at the top of their chain, grouped by blocker (harness/lattice.py)
     python harness/run.py readme                  render README.md from docs/README.tmpl.md (numbers from harness/facts.py)
     python harness/run.py render-diagram          render docs/*.puml with the pinned PlantUML jar and update its lock
 
@@ -166,7 +167,7 @@ def static_checks(exe, src_root, corpus, staged, skip_baseline=False):
         if proc.returncode != 0: ok = False; print(proc.stderr.rstrip()[-1500:])
     if not ok: sys.exit("static checks failed")
 
-def run_all(staged, full, force=False, skip_baseline=False):
+def run_all(staged, full, force=False, skip_baseline=False, keep_tree=False):
     exe, pyver = venv_python()
     lock_hash = sha256_file(os.path.join(ROOT, "uv.lock"))
     corpus = fetch_corpus()
@@ -178,9 +179,10 @@ def run_all(staged, full, force=False, skip_baseline=False):
             args = list(spec["args"])
             if name == "np" and full: args = ["--max-len", str(FULL_NP_LEN)]
             results[name] = run_action(name, spec, src_root, exe, pyver, lock_hash, corpus, args, force)
+        if keep_tree: return results, src_root, tmp
         return results
     finally:
-        if tmp: shutil.rmtree(tmp, ignore_errors=True)
+        if tmp and not keep_tree: shutil.rmtree(tmp, ignore_errors=True)
 
 # ------------------------------------------------------------------------------------------------ the baseline
 BASELINE = os.path.join(ROOT, "harness", "baseline.json")
@@ -198,50 +200,87 @@ def metrics(results):
     out["negatives.accepted"] = g["accepted"]; out["negatives.controls_refused"] = g["controls_refused_by_rules"]; out["negatives.matrix_accepted"] = g["matrix_accepted"]
     return out
 
-# a metric regresses when it moves in the bad direction: ">=" must not drop, "<=" must not rise
-DIRECTION = {"rules.dev.covered": ">=", "rules.test.covered": ">=", "rules.dev.bleu_all": ">=", "rules.test.bleu_all": ">=",
-             "matrix.identical": ">=", "matrix.silent_misfires": "<=", "np.mismatches": "<=", "negatives.accepted": "<=", "negatives.controls_refused": "<=", "negatives.matrix_accepted": "<="}
+# ------------------------------------------------------------------------------------------------ the lattice (harness/lattice.py)
+import importlib.util as _ilu
+def _lattice(src_root=ROOT):
+    spec = _ilu.spec_from_file_location("lattice", os.path.join(src_root, "harness", "lattice.py")); mod = _ilu.module_from_spec(spec); spec.loader.exec_module(mod); return mod
 
-def compare(results, baseline_path):
-    cur = metrics(results)
+def references(corpus):
+    """{split: {citation: reference}} for the lines the harness keeps"""
+    refs = {}
+    for split in ("dev", "test"):
+        en = [l.split() for l in open(os.path.join(corpus, split + ".en"), encoding="utf-8")]
+        ja = ["".join(l.split()) for l in open(os.path.join(corpus, split + ".ja"), encoding="utf-8")]
+        refs[split] = {f"{i}: {' '.join(e)}": j for i, (e, j) in enumerate(zip(en, ja), 1) if e and e[-1] in (".", "?", "!") and not any(t in (".", "?", "!") for t in e[:-1])}
+    return refs
+
+def item_levels(doc, corpus, src_root=ROOT):
+    """the lattice levels of a baseline-shaped document (results or baseline.json), under the adjudications of src_root"""
+    LT = _lattice(src_root)
+    verdicts, ungrammatical = LT.load_adjudications(os.path.join(src_root, "harness", "adjudications.json"))
+    return LT.levels(doc["outputs"]["rules"], doc["outputs"].get("matrix", {}), doc["outputs"].get("negatives", []),
+                     doc["detail"]["np"]["mismatches"], references(corpus), verdicts, ungrammatical)
+
+def as_document(results):
+    """results of the actions -> the baseline's shape"""
+    return {"metrics": metrics(results),
+            "detail": {"rules": {s: {k: v for k, v in results["rules"][s].items() if k not in ("outputs", "refusals")} for s in ("dev", "test")},
+                       "matrix": {k: v for k, v in results["matrix"].items() if k != "outputs"}, "np": results["np"],
+                       "negatives": {k: v for k, v in results["negatives"].items() if k != "rows"}},
+            "outputs": {"rules": {s: results["rules"][s]["outputs"] for s in ("dev", "test")}, "matrix": results["matrix"].get("outputs", {}),
+                        "negatives": [{k: v for k, v in r.items() if not k.endswith(".reason")} for r in results["negatives"].get("rows", [])],
+                        "refusals": {s: results["rules"][s].get("refusals", {}) for s in ("dev", "test")}}}
+
+def compare(results, baseline_path, corpus, src_root=ROOT):
+    """the gate: no item may move down or into an incomparable level; the aggregate metrics are printed as views"""
+    LT = _lattice(src_root); cur = as_document(results)
+    print("metrics: " + ", ".join(f"{k}={v}" for k, v in cur["metrics"].items()))
     if not os.path.exists(baseline_path):
         print("no baseline yet: run `python harness/run.py baseline` and commit harness/baseline.json"); return True
     base = json.load(open(baseline_path, encoding="utf-8"))
-    bm = base["metrics"]; regressions = []; improvements = []
-    for k, d in DIRECTION.items():
-        if k not in bm: continue
-        b, c = bm[k], cur[k]
-        worse = c < b if d == ">=" else c > b
-        better = c > b if d == ">=" else c < b
-        if worse: regressions.append(f"  {k}: {b} -> {c}")
-        elif better: improvements.append(f"  {k}: {b} -> {c}")
-    changed = outputs_changed(results["rules"], base.get("outputs", {}))
-    print(f"baseline {base.get('taken', '?')}: " + ", ".join(f"{k}={v}" for k, v in cur.items()))
-    if changed: print(f"  rule outputs changed on {len(changed)} sentences" + (": " + "; ".join(changed[:3]) if changed else ""))
-    if improvements: print("improvements (raise the baseline with `python harness/run.py baseline`):\n" + "\n".join(improvements))
-    if regressions:
-        print("REGRESSIONS against the committed baseline:\n" + "\n".join(regressions))
-        print("if intended, run `python harness/run.py baseline` and stage harness/baseline.json with the change")
+    if "rules" not in base.get("outputs", {}): print("the committed baseline predates the lattice: run `python harness/run.py baseline` and commit it"); return True
+    new_L = item_levels(cur, corpus, src_root); old_L = item_levels(base, corpus, src_root)
+    d = LT.compare_levels(old_L, new_L)
+    print(f"lattice vs baseline {base.get('taken', '?')}: {len(d['up'])} item(s) up, {len(d['down'])} down, {len(d['incomparable'])} need a verdict, {len(d['added'])} added, {len(d['removed'])} removed")
+    def show(label, rows, n=6):
+        for item, olv, lv, det in rows[:n]:
+            od, nd = det if isinstance(det, tuple) else (None, det)
+            print(f"  {label} {item}: {olv} -> {lv}" + (f"   [{od or '(refused)'} -> {nd or '(refused)'}]" if od != nd else ""))
+        if len(rows) > n: print(f"  … {len(rows) - n} more")
+    show("up  ", d["up"]); show("DOWN", d["down"]); show("VERDICT", d["incomparable"]); show("REMOVED", d["removed"])
+    if d["down"] or d["incomparable"] or d["removed"]:
+        if d["incomparable"]:
+            print("an output nobody has judged changed or disappeared: record a verdict on the OLD output in harness/adjudications.json")
+            print("  (right / wrong / input_ungrammatical, with the reason), stage it, and run the check again")
+        if d["down"] or d["removed"]: print("an item moved down: fix the cause; a baseline is never lowered to pass (CLAUDE.md §4)")
         return False
-    print("no regression"); return True
-
-def outputs_changed(rules_result, base_outputs):
-    out = []
-    for split in ("dev", "test"):
-        cur = rules_result[split].get("outputs", {}); old = base_outputs.get(split, {})
-        for en, ja in cur.items():
-            if en in old and old[en] != ja: out.append(f"{en} | {old[en] or '(refused)'} -> {ja or '(refused)'}")
-    return out
+    if d["up"]: print("improvements: raise the baseline with `python harness/run.py baseline --staged` and stage it with the change")
+    print("no item moved down"); return True
 
 def write_baseline(results, staged):
     head = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
-    doc = {"taken": time.strftime("%Y-%m-%d") + f" at {head}" + (" (staged)" if staged else ""), "metrics": metrics(results),
-           "detail": {"rules": {s: {k: v for k, v in results["rules"][s].items() if k != "outputs"} for s in ("dev", "test")},
-                      "matrix": results["matrix"], "np": results["np"], "negatives": {k: v for k, v in results["negatives"].items() if k != "rows"}},
-           "outputs": {s: results["rules"][s]["outputs"] for s in ("dev", "test")}}
+    doc = as_document(results); doc["taken"] = time.strftime("%Y-%m-%d") + f" at {head}" + (" (staged)" if staged else "")
     json.dump(doc, open(BASELINE, "w", encoding="utf-8"), ensure_ascii=False, indent=0, sort_keys=True)
     print(f"wrote {os.path.relpath(BASELINE, ROOT)}: " + ", ".join(f"{k}={v}" for k, v in doc["metrics"].items()))
     print("now `python harness/run.py readme` if a cited number moved, then `python harness/run.py check`")
+
+def show_frontier(listing=False, group=None):
+    """the items of the committed baseline that are not at the top of their chain, grouped by what blocks them"""
+    LT = _lattice(); corpus = corpus_dir(read_corpus_lock())
+    if not os.path.isdir(corpus): corpus = fetch_corpus()
+    base = json.load(open(BASELINE, encoding="utf-8"))
+    L = item_levels(base, corpus)
+    reasons = {f"{s} {k}": r for s, m in base["outputs"].get("refusals", {}).items() for k, r in m.items()}
+    print(f"state ({base.get('taken', '?')}):")
+    for kind, counts in LT.summary(L).items(): print(f"  {kind:16s} " + ", ".join(f"{lv} {n}" for lv, n in counts.items()))
+    F = LT.frontier(L, reasons)
+    print(f"frontier: {sum(len(v) for v in F.values())} item(s) below the top of their chain, in {len(F)} groups")
+    for g, items in F.items():
+        if group and group not in g: continue
+        print(f"  {len(items):4d}  {g}")
+        if listing or group:
+            for it in items[:40]: print(f"          {it}")
+            if len(items) > 40: print(f"          … {len(items) - 40} more")
 
 def install_hooks():
     subprocess.run(["git", "config", "core.hooksPath", ".githooks"], cwd=ROOT, check=True)
@@ -256,23 +295,26 @@ def main():
         p = sub.add_parser(c); p.add_argument("--staged", action="store_true", help="test the index (what the commit will contain)")
         p.add_argument("--full", action="store_true", help="np: windows up to length 3 (~4 min)"); p.add_argument("--force", action="store_true", help="ignore the cache")
     sub.add_parser("install-hooks")
+    p = sub.add_parser("frontier", help="the items of the committed baseline not at the top of their chain, by blocker")
+    p.add_argument("--list", action="store_true", help="list the items of every group"); p.add_argument("--group", help="list the items of the groups whose name contains this")
     sub.add_parser("readme", help="render README.md from docs/README.tmpl.md with the current facts")
     sub.add_parser("render-diagram", help="render docs/*.puml with the pinned PlantUML jar (needs Java)")
     a = ap.parse_args()
     if a.cmd == "fetch-corpus": fetch_corpus(a.src)
     elif a.cmd == "install-hooks": install_hooks()
+    elif a.cmd == "frontier": show_frontier(a.list, a.group)
     elif a.cmd == "readme": subprocess.run([venv_python()[0], os.path.join(ROOT, "harness", "check_readme.py"), "--write"], check=True)
     elif a.cmd == "render-diagram": subprocess.run([venv_python()[0], os.path.join(ROOT, "harness", "render_diagram.py")], check=True)
     else:
-        results = run_all(a.staged, a.full, a.force, skip_baseline=(a.cmd == "baseline"))
-        if a.cmd == "baseline": write_baseline(results, a.staged)
-        else:
-            base = BASELINE
-            if a.staged:   # compare with the baseline as staged, so a baseline update commits together with its change
-                blob = subprocess.run(["git", "show", ":harness/baseline.json"], cwd=ROOT, capture_output=True, text=True)
-                if blob.returncode == 0:
-                    base = os.path.join(ensure(os.path.join(CACHE, "tmp")), "baseline.staged.json"); open(base, "w", encoding="utf-8").write(blob.stdout)
-            sys.exit(0 if compare(results, base) else 1)
+        results, src_root, tmp = run_all(a.staged, a.full, a.force, skip_baseline=(a.cmd == "baseline"), keep_tree=True)
+        try:
+            if a.cmd == "baseline": write_baseline(results, a.staged)
+            else:
+                # compare with the baseline and the adjudications as staged, so an update commits together with its change
+                base = os.path.join(src_root, "harness", "baseline.json")
+                sys.exit(0 if compare(results, base, corpus_dir(read_corpus_lock()), src_root) else 1)
+        finally:
+            if tmp: shutil.rmtree(tmp, ignore_errors=True)
 
 if __name__ == "__main__":
     main()

@@ -112,19 +112,59 @@ def test_np_two_adjective_slots(root):
     assert NPM.run_module("obj", ["a lot", "absent", "bus stop", "."], 0, {"verb": None, "cop_kind": None, "subj": None}, None)[0] == "RET"
 
 # ---------------------------------------------------------------- the harness
+def _runner(root):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("runner", os.path.join(root, "harness", "run.py")); runner = importlib.util.module_from_spec(spec); spec.loader.exec_module(runner); return runner
+
+def _fake_world(tmp, dev_outputs, matrix_outputs, negatives, adjudications=None):
+    """a corpus of two dev lines, a results dict and an adjudications file, for the gate tests"""
+    corpus = os.path.join(tmp, "corpus"); os.makedirs(corpus, exist_ok=True)
+    open(os.path.join(corpus, "dev.en"), "w", encoding="utf-8").write("i like cats .\nhe came .\n"); open(os.path.join(corpus, "dev.ja"), "w", encoding="utf-8").write("私 は 猫 が 好き だ 。\n彼 は 来 た 。\n")
+    open(os.path.join(corpus, "test.en"), "w", encoding="utf-8").write(""); open(os.path.join(corpus, "test.ja"), "w", encoding="utf-8").write("")
+    src = os.path.join(tmp, "src", "harness"); os.makedirs(src, exist_ok=True)
+    shutil.copy(os.path.join(ROOT, "harness", "lattice.py"), src)
+    json.dump({"sentences": adjudications or []}, open(os.path.join(src, "adjudications.json"), "w", encoding="utf-8"), ensure_ascii=False)
+    results = {"rules": {"dev": {"n": 2, "covered": sum(1 for v in dev_outputs.values() if v), "bleu_all": 1.0, "outputs": dev_outputs, "refusals": {k: "x" for k, v in dev_outputs.items() if not v}},
+                         "test": {"n": 0, "covered": 0, "bleu_all": 0.0, "outputs": {}, "refusals": {}}},
+               "matrix": {"identical": 0, "wrong_frame": 0, "matrix_parses_refused": 0, "outputs": {"dev": matrix_outputs, "test": {}}},
+               "np": {"mismatches": 0}, "negatives": {"accepted": 0, "controls_refused_by_rules": 0, "matrix_accepted": 0, "rows": negatives}}
+    return corpus, os.path.join(tmp, "src"), results
+
+def test_lattice_order(root):
+    """the item order: WRONG < REFUSED < RIGHT, UNKNOWN below RIGHT and incomparable with the rest; the other chains total"""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("lattice", os.path.join(root, "harness", "lattice.py")); LT = importlib.util.module_from_spec(spec); spec.loader.exec_module(LT)
+    assert LT.cmp("sentence", "WRONG", "REFUSED") == "up" and LT.cmp("sentence", "REFUSED", "RIGHT") == "up" and LT.cmp("sentence", "WRONG", "RIGHT") == "up"
+    assert LT.cmp("sentence", "RIGHT", "REFUSED") == "down" and LT.cmp("sentence", "RIGHT", "UNKNOWN") == "down"
+    assert LT.cmp("sentence", "UNKNOWN", "REFUSED") == "incomparable" and LT.cmp("sentence", "REFUSED", "UNKNOWN") == "incomparable" and LT.cmp("sentence", "UNKNOWN", "WRONG") == "incomparable"
+    assert LT.cmp("sentence", "UNKNOWN", "RIGHT") == "up" and LT.cmp("matrix", "GAP", "AGREE") == "up" and LT.cmp("matrix", "AGREE", "MISFIRE") == "down" and LT.cmp("negative", "REFUSED", "ACCEPTED") == "down"
+    V = {"k": {"bad": "wrong", "ok": "right"}}; U = {"u": "ungrammatical"}
+    assert LT.sentence_level("ref", "ref", "k", V, U) == "RIGHT" and LT.sentence_level("", "ref", "k", V, U) == "REFUSED" and LT.sentence_level("bad", "ref", "k", V, U) == "WRONG"
+    assert LT.sentence_level("ok", "ref", "k", V, U) == "RIGHT" and LT.sentence_level("new", "ref", "k", V, U) == "UNKNOWN"
+    assert LT.sentence_level("", "ref", "u", V, U) == "RIGHT" and LT.sentence_level("anything", "ref", "u", V, U) == "WRONG"
+    assert LT.matrix_level("a", "a") == "AGREE" and LT.matrix_level("", "") == "AGREE" and LT.matrix_level("a", "") == "GAP" and LT.matrix_level("", "b") == "MISFIRE" and LT.matrix_level("a", "b") == "MISFIRE"
+
 def test_precommit_hook_runs_check(root):
+    """the hook runs the check on the staged tree, and the gate refuses a down move or an unjudged change"""
     hook = open(os.path.join(root, ".githooks", "pre-commit"), encoding="utf-8").read()
     assert "harness/run.py check --staged" in hook and "uv lock --check" in hook
-    import importlib.util
-    spec = importlib.util.spec_from_file_location("runner", os.path.join(root, "harness", "run.py")); runner = importlib.util.module_from_spec(spec); spec.loader.exec_module(runner)
-    base = {"taken": "x", "metrics": {"rules.dev.covered": 10, "matrix.silent_misfires": 3}, "outputs": {}}
-    tmp = tempfile.mkdtemp(); bp = os.path.join(tmp, "b.json"); json.dump(base, open(bp, "w"))
-    def results(cov, mis): return {"rules": {"dev": {"covered": cov, "bleu_all": 1, "outputs": {}}, "test": {"covered": 1, "bleu_all": 1, "outputs": {}}}, "matrix": {"identical": 1, "wrong_frame": mis, "matrix_parses_refused": 0}, "np": {"mismatches": 0},
-                                    "negatives": {"accepted": 0, "controls_refused_by_rules": 0, "matrix_accepted": 0}}
-    import io, contextlib
-    with contextlib.redirect_stdout(io.StringIO()):
-        assert runner.compare(results(10, 3), bp) and not runner.compare(results(9, 3), bp) and not runner.compare(results(10, 4), bp)
-    shutil.rmtree(tmp)
+    runner = _runner(root); import io, contextlib
+    tmp = tempfile.mkdtemp()
+    try:
+        neg = [{"sentence": "me go .", "control": "i go .", "sentence.rules": None, "sentence.matrix": None, "control.rules": "私は行く。", "control.matrix": "私は行く。"}]
+        k1, k2 = "1: i like cats .", "2: he came ."
+        corpus, src, base_results = _fake_world(tmp, {k1: "私は猫が好きだ。", k2: "彼が来た。"}, {k1: "私は猫が好きだ。", k2: ""}, neg)
+        bp = os.path.join(src, "harness", "baseline.json"); json.dump(runner.as_document(base_results), open(bp, "w", encoding="utf-8"), ensure_ascii=False)
+        def gate(dev_outputs, matrix_outputs, negatives=neg, adj=None):
+            _, src2, res = _fake_world(tmp, dev_outputs, matrix_outputs, negatives, adj)
+            with contextlib.redirect_stdout(io.StringIO()): return runner.compare(res, bp, corpus, src2)
+        assert gate({k1: "私は猫が好きだ。", k2: "彼が来た。"}, {k1: "私は猫が好きだ。", k2: ""})                   # same state passes
+        assert gate({k1: "私は猫が好きだ。", k2: "彼が来た。"}, {k1: "私は猫が好きだ。", k2: "彼が来た。"})           # matrix GAP -> AGREE is up
+        assert not gate({k1: "私は猫が好きだ。", k2: ""}, {k1: "私は猫が好きだ。", k2: ""})                          # UNKNOWN -> REFUSED needs a verdict
+        assert gate({k1: "私は猫が好きだ。", k2: ""}, {k1: "私は猫が好きだ。", k2: ""}, adj=[{"citation": "dev 2: he came .", "verdict": "wrong", "output": "彼が来た。", "reason": "wrong particle"}])   # judged wrong: refusing it is up
+        assert not gate({k1: "", k2: "彼が来た。"}, {k1: "", k2: ""})                                               # RIGHT -> REFUSED is down
+        assert not gate({k1: "私は猫が好きだ。", k2: "彼が来た。"}, {k1: "私は猫が好きだ。", k2: ""}, negatives=[dict(neg[0], **{"sentence.rules": "私は行く。"})])   # a negative accepted is down
+    finally: shutil.rmtree(tmp)
 
 def test_sandbox_holds_only_declared_inputs(root):
     import importlib.util
@@ -141,6 +181,12 @@ def test_sandbox_holds_only_declared_inputs(root):
     key1, _ = runner.action_key("probe", spec_, root, ["pyproject.toml", "harness/probe_sandbox.py"], {}, "lock", "py", [])
     key2, _ = runner.action_key("probe", spec_, root, ["pyproject.toml", "harness/probe_sandbox.py"], {}, "lock2", "py", [])
     assert key1 != key2
+
+def test_frontier_command(root):
+    """`run.py frontier` prints the state per chain and the groups of the frontier from the committed baseline"""
+    out = subprocess.run([sys.executable, os.path.join(root, "harness", "run.py"), "frontier"], capture_output=True, text=True, cwd=root)
+    assert out.returncode == 0, out.stderr[-500:]
+    assert "state (" in out.stdout and "frontier:" in out.stdout and "sentence" in out.stdout and "matrix" in out.stdout
 
 def test_dependencies_hash_pinned(root):
     text = open(os.path.join(root, "uv.lock"), encoding="utf-8").read()

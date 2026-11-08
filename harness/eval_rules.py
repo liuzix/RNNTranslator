@@ -11,18 +11,19 @@ import rules_ja as R, run_rules as H
 
 def evaluate(split):
     rows = H.load_indexed(split)
-    outputs = {}; fails = collections.Counter()            # "<line>: <sentence>" -> Japanese ("" = refused)
+    outputs = {}; fails = collections.Counter(); refusals = {}   # "<line>: <sentence>" -> Japanese ("" = refused); refusals -> reason
     for line, en, ja in rows:
         key = f"{line}: {' '.join(en)}"
         try: outputs[key] = R.translate(en)
-        except R.ParseFail as e: outputs[key] = ""; fails[str(e).split(" at ")[0][:40]] += 1
+        except R.ParseFail as e:
+            outputs[key] = ""; reason = str(e).split(" at ")[0][:40]; fails[reason] += 1; refusals[key] = reason
     pairs = [(en, ja) for _, en, ja in rows]
     refs = [ja for _, ja in pairs]; hyps = [outputs[f"{line}: {' '.join(en)}"] for line, en, ja in rows]
     ok = [(h, r) for h, r in zip(hyps, refs) if h]
     b_all = H.char_bleu(hyps, refs)[0]
     b_ok = H.char_bleu([h for h, _ in ok], [r for _, r in ok])[0] if ok else 0.0
     return {"n": len(pairs), "covered": len(ok), "coverage": round(len(ok) / len(pairs), 4), "bleu_all": round(b_all, 3), "bleu_covered": round(b_ok, 3),
-            "failures": dict(fails.most_common(12)), "outputs": outputs}
+            "failures": dict(fails.most_common(12)), "outputs": outputs, "refusals": refusals}
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--out", default="result.json"); a = ap.parse_args()

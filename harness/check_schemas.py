@@ -6,6 +6,7 @@
     harness/baseline.json    against schemas/baseline.schema.json; every cited sentence must be in the pinned corpus split
                             (the same filter the harness applies), each split cited completely, and the metrics must agree
                             with the outputs they summarise
+    harness/adjudications.json against schemas/adjudications.schema.json; every citation must be a pinned corpus line
 
 Exit 1 on any error; reference violations declared level "warn" are listed and do not fail.
     python harness/check_schemas.py [--root DIR] [--corpus DIR] [--quiet]
@@ -83,7 +84,7 @@ def check_baseline(root, corpus_dir):
     errors = validate(base, os.path.join(root, "schemas", "baseline.schema.json"), "harness/baseline.json")
     if errors: return errors
     for split in ("dev", "test"):
-        outs = base["outputs"][split]; det = base["detail"]["rules"][split]
+        outs = base["outputs"]["rules"][split]; det = base["detail"]["rules"][split]
         covered = sum(1 for v in outs.values() if v)
         if covered != det["covered"]: errors.append(f"baseline {split}: {covered} non-empty outputs but detail.covered = {det['covered']}")
         if len(outs) != det["n"]: errors.append(f"baseline {split}: {len(outs)} outputs but detail.n = {det['n']}")
@@ -95,10 +96,32 @@ def check_baseline(root, corpus_dir):
             if foreign: errors.append(f"baseline {split}: {len(foreign)} citation(s) do not match the pinned corpus line: " + "; ".join(repr(s) for s in foreign[:3]))
             uncited = cites - set(outs)
             if uncited: errors.append(f"baseline {split}: {len(uncited)} corpus line(s) have no output: " + "; ".join(repr(s) for s in sorted(uncited)[:3]))
+            for part in ("matrix", "refusals"):
+                bad = [s for s in base["outputs"][part].get(split, {}) if s not in cites]
+                if bad: errors.append(f"baseline {split}: {len(bad)} {part} citation(s) do not match the pinned corpus line")
+        refused = {k for k, v in outs.items() if not v}
+        if set(base["outputs"]["refusals"][split]) != refused: errors.append(f"baseline {split}: the refusal reasons do not cover exactly the refused sentences")
     m = base["detail"]["matrix"]
     if base["metrics"]["matrix.identical"] != m["identical"]: errors.append("baseline: metrics.matrix.identical != detail")
     if base["metrics"]["matrix.silent_misfires"] != m["wrong_frame"] + m["matrix_parses_refused"]: errors.append("baseline: matrix.silent_misfires != wrong_frame + matrix_parses_refused")
     if base["metrics"]["np.mismatches"] != base["detail"]["np"]["mismatches"]: errors.append("baseline: metrics.np.mismatches != detail")
+    return errors
+
+def check_adjudications(root, corpus_dir):
+    path = os.path.join(root, "harness", "adjudications.json")
+    if not os.path.exists(path): return []
+    doc = load(path)
+    errors = validate(doc, os.path.join(root, "schemas", "adjudications.schema.json"), "harness/adjudications.json")
+    if errors: return errors
+    cites = {}
+    for a in doc["sentences"]:
+        split, _, rest = a["citation"].partition(" ")
+        if corpus_dir and os.path.exists(os.path.join(corpus_dir, split + ".en")):
+            if split not in cites: cites[split] = corpus_citations(corpus_dir, split)
+            if rest not in cites[split]: errors.append(f"adjudication cites a line that is not in the pinned corpus: {a['citation']!r}")
+    seen = collections.Counter((a["citation"], a.get("output")) for a in doc["sentences"])
+    for k, n in seen.items():
+        if n > 1: errors.append(f"adjudication repeated: {k}")
     return errors
 
 def main():
@@ -116,6 +139,7 @@ def main():
     if os.path.exists(os.path.join(root, "harness", "negatives.json")):
         errs += validate(load(os.path.join(root, "harness", "negatives.json")), os.path.join(root, "schemas", "negatives.schema.json"), "harness/negatives.json")
     b_err = [] if a.skip_baseline else check_baseline(root, corpus)
+    b_err += check_adjudications(root, corpus)
     errors = list(dict.fromkeys(errs + t_err + b_err))
     for w in t_warn: print("warning:", w)
     for e in errors[:20]: print("error:", e)

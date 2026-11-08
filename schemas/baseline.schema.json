@@ -2,7 +2,7 @@
  "$schema": "https://json-schema.org/draft/2020-12/schema",
  "$id": "https://github.com/liuzix/RNNTranslator/schemas/baseline.schema.json",
  "title": "harness baseline",
- "description": "harness/baseline.json: the metrics the pre-commit hook guards, the detail they were taken from, and every rule-transducer output (sentence -> Japanese, empty = refused) at the last accepted commit. check_schemas also verifies that every cited sentence is in the pinned corpus split and that the metrics agree with the outputs.",
+ "description": "harness/baseline.json: the state of the project at the last accepted commit — every item of the lattice (harness/lattice.py), the aggregate metrics as views, and the detail they were taken from. check_schemas verifies that every cited sentence is in the pinned corpus split and that the metrics agree with the outputs.",
  "type": "object",
  "required": [
   "taken",
@@ -286,31 +286,121 @@
   "outputs": {
    "type": "object",
    "required": [
-    "dev",
-    "test"
+    "rules",
+    "matrix",
+    "negatives",
+    "refusals"
    ],
    "additionalProperties": false,
+   "description": "the items of the lattice: per split, '<line>: <sentence>' -> the rule transducer's Japanese ('' = refused) and the matrix parser's; the negatives rows; the refusal reason per refused sentence",
    "properties": {
-    "dev": {
+    "rules": {
      "type": "object",
-     "additionalProperties": {
-      "type": "string"
-     },
-     "propertyNames": {
-      "pattern": "^[1-9]\\d*: \\S(.*\\S)?$"
+     "required": [
+      "dev",
+      "test"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "dev": {
+       "type": "object",
+       "additionalProperties": {
+        "type": "string"
+       },
+       "propertyNames": {
+        "pattern": "^[1-9]\\d*: \\S(.*\\S)?$"
+       }
+      },
+      "test": {
+       "type": "object",
+       "additionalProperties": {
+        "type": "string"
+       },
+       "propertyNames": {
+        "pattern": "^[1-9]\\d*: \\S(.*\\S)?$"
+       }
+      }
      }
     },
-    "test": {
+    "matrix": {
      "type": "object",
-     "additionalProperties": {
-      "type": "string"
-     },
-     "propertyNames": {
-      "pattern": "^[1-9]\\d*: \\S(.*\\S)?$"
+     "required": [
+      "dev",
+      "test"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "dev": {
+       "type": "object",
+       "additionalProperties": {
+        "type": "string"
+       },
+       "propertyNames": {
+        "pattern": "^[1-9]\\d*: \\S(.*\\S)?$"
+       }
+      },
+      "test": {
+       "type": "object",
+       "additionalProperties": {
+        "type": "string"
+       },
+       "propertyNames": {
+        "pattern": "^[1-9]\\d*: \\S(.*\\S)?$"
+       }
+      }
+     }
+    },
+    "refusals": {
+     "type": "object",
+     "required": [
+      "dev",
+      "test"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "dev": {
+       "type": "object",
+       "additionalProperties": {
+        "type": "string"
+       },
+       "propertyNames": {
+        "pattern": "^[1-9]\\d*: \\S(.*\\S)?$"
+       }
+      },
+      "test": {
+       "type": "object",
+       "additionalProperties": {
+        "type": "string"
+       },
+       "propertyNames": {
+        "pattern": "^[1-9]\\d*: \\S(.*\\S)?$"
+       }
+      }
+     }
+    },
+    "negatives": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "required": [
+       "sentence",
+       "control",
+       "sentence.rules",
+       "sentence.matrix",
+       "control.rules",
+       "control.matrix"
+      ],
+      "properties": {
+       "sentence": {
+        "type": "string"
+       },
+       "control": {
+        "type": "string"
+       }
+      }
      }
     }
-   },
-   "description": "per split, '<line in the split's .en file>: <sentence>' -> the transducer's Japanese ('' = refused); check_schemas verifies each key against the pinned corpus"
+   }
   }
  }
 }

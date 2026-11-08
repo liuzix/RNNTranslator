@@ -1,0 +1,88 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://github.com/liuzix/RNNTranslator/schemas/adjudications.schema.json",
+ "title": "adjudications",
+ "description": "harness/adjudications.json: verdicts on specific outputs of specific corpus sentences, or on an input's grammaticality. The citation names the split and the line ('dev 17: the sentence .'), exactly as the baseline keys it; check_schemas verifies it against the pinned corpus.",
+ "type": "object",
+ "required": [
+  "sentences"
+ ],
+ "additionalProperties": false,
+ "properties": {
+  "$schema": {
+   "type": "string"
+  },
+  "description": {
+   "type": "string"
+  },
+  "sentences": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "citation",
+     "verdict",
+     "reason"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "citation": {
+      "type": "string",
+      "pattern": "^(dev|test) [1-9]\\d*: \\S(.*\\S)?$"
+     },
+     "verdict": {
+      "enum": [
+       "right",
+       "wrong",
+       "input_ungrammatical"
+      ]
+     },
+     "output": {
+      "type": "string",
+      "minLength": 1,
+      "description": "the exact output judged (required for right / wrong)"
+     },
+     "reason": {
+      "type": "string",
+      "minLength": 1
+     }
+    },
+    "allOf": [
+     {
+      "if": {
+       "properties": {
+        "verdict": {
+         "enum": [
+          "right",
+          "wrong"
+         ]
+        }
+       }
+      },
+      "then": {
+       "required": [
+        "output"
+       ]
+      }
+     },
+     {
+      "if": {
+       "properties": {
+        "verdict": {
+         "const": "input_ungrammatical"
+        }
+       }
+      },
+      "then": {
+       "not": {
+        "required": [
+         "output"
+        ]
+       }
+      }
+     }
+    ]
+   }
+  }
+ }
+}

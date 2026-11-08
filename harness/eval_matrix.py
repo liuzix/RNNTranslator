@@ -12,13 +12,16 @@ sys.path.insert(0, os.getcwd())
 import rules_ja as R, run_rules as H, parser as P
 from parser_rules import ParseFail
 
-def crosstab(mp, rp, sents, pairs):
-    cnt = collections.Counter(); hyp_r, hyp_m, ref = [], [], []; examples = collections.defaultdict(list)
-    for toks, (en, ja) in zip(sents, pairs):
+def crosstab(mp, rp, rows):
+    """rows: (line, en tokens, ja) from run_rules.load_indexed; returns the counts and the matrix output per citation"""
+    cnt = collections.Counter(); hyp_r, hyp_m, ref = [], [], []; examples = collections.defaultdict(list); outputs = {}
+    for line, en, ja in rows:
+        toks = R.merge_multiword(en)
         try: want = rp.translate(toks)
         except ParseFail: want = None
         try: got = mp.translate(toks)
         except Exception: got = None
+        outputs[f"{line}: {' '.join(en)}"] = got or ""
         if want is None: key = "both_refuse" if got is None else "matrix_parses_refused"
         else: key = "identical" if got == want else ("refused_parseable" if got is None else "wrong_frame")
         cnt[key] += 1
@@ -28,13 +31,13 @@ def crosstab(mp, rp, sents, pairs):
     out["shared"] = len(ref)
     out["bleu_rules_shared"] = round(H.char_bleu(hyp_r, ref)[0], 3) if ref else 0.0
     out["bleu_matrix_shared"] = round(H.char_bleu(hyp_m, ref)[0], 3) if ref else 0.0
-    out["examples"] = dict(examples)
+    out["examples"] = dict(examples); out["outputs"] = outputs
     return out
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--out", default="result.json"); a = ap.parse_args()
-    pairs = {s: H.load(s) for s in ("dev", "test")}
-    sents = {s: [R.merge_multiword(en) for en, ja in pairs[s]] for s in pairs}
+    rows = {s: H.load_indexed(s) for s in ("dev", "test")}
+    sents = {s: [R.merge_multiword(en) for _, en, ja in rows[s]] for s in rows}
     t0 = time.time(); mp = P.build_matrix_parser(sents["dev"] + sents["test"]); build_s = time.time() - t0
     rp = P.RuleParser()
     comp = mp.c
@@ -45,7 +48,8 @@ def main():
         elif out[0][0] == "NP0": kinds["entry"] += 1
         elif out[0] == ("FAIL",): kinds["fail"] += 1
         else: kinds["outer"] += 1
-    res = {"per_split": {s: crosstab(mp, rp, sents[s], pairs[s]) for s in ("dev", "test")}}
+    res = {"per_split": {s: crosstab(mp, rp, rows[s]) for s in ("dev", "test")}}
+    res["outputs"] = {s: res["per_split"][s].pop("outputs") for s in ("dev", "test")}
     tot = collections.Counter()
     for s in res["per_split"]:
         for k in ("identical", "wrong_frame", "matrix_parses_refused", "refused_parseable", "both_refuse"): tot[k] += res["per_split"][s][k]

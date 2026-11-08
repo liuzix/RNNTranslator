@@ -1,0 +1,17 @@
+{
+ "$schema": "../schemas/adjudications.schema.json",
+ "description": "Human verdicts on the rule transducer's outputs, the judge the lattice needs where the single reference cannot decide (harness/lattice.py). `right` / `wrong` judge one specific output of one corpus sentence; `input_ungrammatical` marks a corpus line whose English is not standard, so that refusing it is the top of its chain. The hook demands a verdict whenever an unjudged output changes or disappears; the verdict is about the old output, and it is permanent.",
+ "sentences": [
+  {
+   "citation": "test 160: no one is coming .",
+   "verdict": "wrong",
+   "output": "一つは来ている。",
+   "reason": "'no one' is the negative quantifier 誰も…ない; 一つ is 'one thing', and the negation is lost. The transducer refuses this sentence since 2026-11-08 ('no one' is a lexical gap)."
+  },
+  {
+   "citation": "test 457: it is probable that he forget about it .",
+   "verdict": "input_ungrammatical",
+   "reason": "'he forget' lacks third-person agreement; the standard sentence is 'he will forget' or 'he forgets'. A refusal is the right answer for this line."
+  }
+ ]
+}
