@@ -1,0 +1,50 @@
+# adjectives.tbl — adjective + preposition idioms (be fond of NP -> NPが好きだ)
+#   adjective preposition | japanese | class | particle on the NP
+#   class: a i-adjective (stem, without い)  na  na-adjective  fx fixed predicate  v verb (class guessed from the ending)
+
+bound up in | 夢中 | na | に
+fond of | 好き | na | が
+afraid of | 怖い | a | が
+interested in | 興味がある | fx | に
+good at | 得意 | na | が
+poor at | 苦手 | na | が
+late for | 遅れる | v | に
+proud of | 誇りに思っている | fx | を
+tired of | 飽きている | fx | に
+used to | 慣れている | fx | に
+absent from | 欠席する | v | を
+full of | いっぱいだ | fx | で
+famous for | 有名 | na | で
+different from | 違う | v | と
+busy with | 忙しい | a | で
+sure of | 確信している | fx | を
+satisfied with | 満足している | fx | に
+angry with | 怒っている | fx | に
+angry at | 怒っている | fx | に
+familiar with | 詳しい | a | に
+familiar to | 馴染みがある | fx | に
+independent of | 独立している | fx | から
+free from | ない | fx | が
+ready for | 用意ができている | fx | の
+worried about | 心配している | fx | を
+anxious about | 心配している | fx | を
+careful of | 気をつける | v | に
+aware of | 気づいている | fx | に
+capable of | できる | fx | が
+responsible for | 責任がある | fx | に
+similar to | 似ている | fx | に
+kind to | 親切 | na | に
+married to | 結婚している | fx | と
+pleased with | 喜んでいる | fx | を
+surprised at | 驚いている | fx | に
+sorry for | 気の毒に思う | v | を
+glad of | 嬉しい | a | が
+dependent on | 頼っている | fx | に
+ashamed of | 恥じている | fx | を
+fit for | 向いている | fx | に
+rich in | 豊か | na | が
+short of | 足りない | fx | が
+sick of | うんざりしている | fx | に
+done with | 済ませている | fx | を
+gone on | ほれこんでいる | fx | に
+bound for | 行き | fx | 

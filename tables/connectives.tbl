@@ -1,0 +1,47 @@
+# connectives.tbl — kind | English | Japanese connective
+#   subord: conjunction opening a subordinate clause; the Japanese goes after the clause (Japanese-first order)
+#           たら/なければ/後で change the clause's tense or polarity (see subord_form)
+#   coord:  clause coordination; empty = te-form chain
+#   hearsay: sentence-final ", i hear" tails
+
+subord  | whether | かどうかにかかわらず
+subord  | when | とき
+subord  | while | 間
+subord  | if | たら
+subord  | because | ので
+subord  | since | ので
+subord  | as | ので
+subord  | unless | なければ
+subord  | until | まで
+subord  | as soon as | とすぐに
+subord  | so that | ように
+subord  | though | が、
+subord  | although | が、
+subord  | even though | が、
+subord  | after | 後で
+subord  | before | 前に
+subord  | as if | かのように
+subord  | as though | かのように
+subord  | so long as | 限り
+subord  | as long as | 限り
+subord  | once | たら
+subord  | even if | としても
+subord  | in case | 場合に備えて
+subord  | whenever | ときはいつも
+subord  | every time | たびに
+subord  | now that | ので
+subord  | by the time | までに
+coord   | and | 
+coord   | but | が、
+coord   | so | ので
+coord   | or | か、
+coord   | and then | それから
+coord   | while | が、
+hearsay | think | と思う
+hearsay | feel | と感じる
+hearsay | hear | と聞いている
+hearsay | suppose | と思う
+hearsay | guess | と思う
+hearsay | believe | と信じている
+hearsay | hope | と願う
+hearsay | know | と知っている

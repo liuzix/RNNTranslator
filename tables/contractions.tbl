@@ -1,0 +1,20 @@
+# contractions.tbl — token before 't | the auxiliary it stands for   (won is handled by the lexical layer: won 't -> will 't)
+
+don | do
+doesn | does
+didn | did
+isn | is
+aren | are
+wasn | was
+weren | were
+haven | have
+hasn | has
+hadn | had
+wouldn | would
+couldn | could
+shouldn | should
+mustn | must
+oughtn | ought
+can | can
+needn | need
+cannot | can

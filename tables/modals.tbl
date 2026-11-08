@@ -1,0 +1,14 @@
+# modals.tbl — surface | modal class (can must should may will); past forms are recognized by the parser
+
+can | can
+could | can
+must | must
+should | should
+ought | should
+may | may
+might | may
+will | will
+'ll | will
+would | will
+'d | will
+shall | will

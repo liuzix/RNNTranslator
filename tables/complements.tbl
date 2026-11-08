@@ -1,0 +1,45 @@
+# complements.tbl — how a complement-taking verb wraps the verb it governs (want to go -> 行きたい is built in; these are the rest)
+#   english verb (or a parser-internal key) | japanese template | class of the result
+#   template slots are forms of the governed verb:  {dic} dictionary form   {stem} masu-stem   {te} te-form   {ta} ta-form
+#                                                   {vol} volitional   {inner} dictionary form, or the negative when the English had "not to V"
+#   class: v1 (template ends in る, conjugates as ichidan)  v5  na  fixed (already finite)
+
+like | {dic}のが好き | na
+love | {dic}のが好き | na
+enjoy | {dic}のが好き | na
+hate | {dic}のが嫌い | na
+start | {stem}始める | v1
+begin | {stem}始める | v1
+stop | {dic}のをやめる | v1
+finish | {dic}のをやめる | v1
+try | {te}みる | v1
+keep | {te}いる | v1
+forget | {dic}のを忘れる | v1
+remember | {dic}のを覚える | v1
+decide | {dic}ことにした | fixed
+hope | {dic}ことを望む | fixed
+need | {dic}必要がある | fixed
+plan | {dic}つもり | na
+intend | {dic}つもり | na
+promise | {dic}と約束する | fixed
+learn | {dic}ことを学ぶ | v5
+fail | {dic}のに失敗する | v1
+continue | {stem}続ける | v1
+help | {dic}のを手伝う | v5
+expect | {dic}と思う | fixed
+seem | {dic}ようだ | fixed
+refuse | {inner}ことを拒否する | fixed
+agree | {inner}ことに同意する | fixed
+manage | 何とか{dic} | fixed
+pretend | {inner}ふりをする | fixed
+mean | {inner}つもり | na
+choose | {inner}ことにする | fixed
+prefer | {inner}ほうが好き | na
+happen | 偶然{dic} | fixed
+tend | {stem}がち | na
+afford | {dic}余裕がある | fixed
+offer | {vol}と申し出る | fixed
+dare | あえて{dic} | fixed
+practice | {dic}練習をする | v1
+mind | {dic}のを気にする | fixed
+be_to | {dic}ことになっている | fixed

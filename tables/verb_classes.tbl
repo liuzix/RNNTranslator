@@ -1,0 +1,130 @@
+# verb_classes.tbl — verb | classes (comma-separated). A class is a column of the verb table the parser reads by name.
+#   to_comp      takes to-V (want to go)
+#   not_to       takes not to V (promised not to tell)
+#   ing_comp     takes V-ing (enjoy swimming)
+#   that_comp    takes a that-clause, with or without that (think S)
+#   that_only    the clause needs an explicit that (tell that S), a bare NP after it is an object
+#   wh_comp      takes an indirect question (know where S)
+#   if_comp      takes if/whether S
+#   control      V NP to V (told me to go)
+#   causative    V NP V-base (made me write -> 書かせた)
+#   perception   V NP V-ing (hear someone talking -> 話すのが聞こえる)
+#   copular      V + adjective (get angry)
+#   change       V + ADJ and ADJ (getting longer and longer -> ますます)
+#   dative       to-NP is the indirect object (give NP to NP)
+#   motion       purpose infinitive takes に, not ために (went to see)
+#   posture      V + V-ing is manner, ながら (stood looking)
+#   comitative   with-NP is と even for a thing (play with a ball)
+#   ni_location  location takes に (live in Tokyo); other verbs で
+#   ni_where     where -> どこに (where do you live)
+#   stative      plain form reads as ている (have -> 持っている)
+#   ga           the object takes が (like -> が好き)
+
+advise | control
+afford | to_comp
+agree | to_comp,comitative
+allow | control
+arrive | ni_location
+ask | not_to,wh_comp,if_comp,control
+be | comitative,ni_location,ni_where
+become | copular,change
+begin | to_comp,ing_comp
+believe | that_comp
+bring | dative
+care | wh_comp,if_comp
+choose | to_comp,not_to
+come | motion,posture,comitative,ni_location,ni_where
+continue | to_comp
+dare | to_comp
+dare say | that_comp
+decide | to_comp,not_to,wh_comp
+eat | comitative
+enjoy | to_comp,ing_comp
+expect | to_comp,that_comp,control
+explain | wh_comp,dative
+fail | to_comp
+feel | that_comp,that_only,perception,copular
+find | perception
+find out | wh_comp
+finish | to_comp,ing_comp
+force | control
+forget | to_comp,that_comp,that_only,wh_comp
+get | control,copular,change,ni_location
+give | dative
+go | motion,posture,comitative,ni_location,ni_where
+grow | copular,change
+guess | that_comp,wh_comp
+happen | to_comp
+hate | to_comp,ing_comp,ga
+have | causative,stative
+hear | that_comp,that_only,perception
+help | to_comp,control
+hold | stative
+hope | to_comp,not_to,that_comp
+hurry | motion
+imagine | wh_comp
+intend | to_comp
+keep | to_comp,ing_comp
+know | that_comp,that_only,wh_comp,if_comp,stative
+learn | to_comp,wh_comp
+leave | motion
+lend | dative
+let | causative
+lie | posture
+like | to_comp,ing_comp,control,ga
+live | comitative,ni_location,ni_where,stative
+look | copular
+love | to_comp,ing_comp,stative
+make | causative
+manage | to_comp,not_to
+mean | to_comp
+mind | ing_comp
+move | ni_location
+need | to_comp,ga
+notice | perception
+offer | to_comp
+order | control
+ought | to_comp
+pay | dative
+plan | to_comp
+play | comitative
+practice | ing_comp
+prefer | to_comp,not_to
+pretend | to_comp,not_to
+promise | to_comp,not_to
+put | ni_location
+refuse | to_comp
+remember | to_comp,that_comp,that_only,wh_comp
+return | motion,ni_location
+run | motion,posture
+say | that_comp,wh_comp,dative
+see | wh_comp,if_comp,perception
+seem | to_comp,copular
+send | dative
+show | wh_comp,dative
+sit | posture,ni_location
+smell | perception
+speak | comitative
+spend | posture
+stand | posture,ni_location
+start | to_comp,ing_comp
+stay | motion,comitative,ni_location,ni_where
+stop | to_comp,ing_comp,motion
+suppose | that_comp
+talk | comitative
+teach | control,dative
+tell | not_to,that_comp,that_only,wh_comp,control,dative
+tend | to_comp
+think | that_comp,wh_comp
+try | to_comp,not_to
+turn | copular
+understand | wh_comp,ga
+wait | posture
+walk | motion,posture
+want | not_to,control,ga
+watch | perception
+wear | stative
+wish | to_comp,that_comp
+wonder | wh_comp,if_comp
+work | comitative,stative
+write | dative

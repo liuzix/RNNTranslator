@@ -1,0 +1,49 @@
+# prepositions.tbl — preposition | particle under an action verb | particle under a state/motion verb
+#   a preposition with spaces is a multiword token (because of)
+
+because of | のせいで | のせいで
+in | で | に
+at | で | に
+on | で | に
+to | に | に
+into | に | に
+from | から | から
+with | と | と
+for | のために | のために
+by | で | のそばに
+about | について | について
+near | の近くで | の近くに
+under | の下で | の下に
+over | の上で | の上に
+after | の後で | の後に
+before | の前に | の前に
+without | なしで | なしで
+through | を通って | を通って
+across | を渡って | を渡って
+along | に沿って | に沿って
+behind | の後ろで | の後ろに
+between | の間で | の間に
+among | の間で | の間に
+around | ごろ | ごろ
+against | に反対して | に反対して
+during | の間 | の間
+until | まで | まで
+since | から | から
+of | の | の
+like | のように | のように
+as | として | として
+than | より | より
+above | の上で | の上に
+till | まで | まで
+outside | の外で | の外に
+inside | の中で | の中に
+beside | のそばで | のそばに
+beyond | の向こうに | の向こうに
+except | 以外 | 以外
+despite | にもかかわらず | にもかかわらず
+within | 以内に | 以内に
+upon | の上に | の上に
+onto | の上に | の上に
+towards | の方へ | の方へ
+toward | の方へ | の方へ
+considering | を考えると | を考えると

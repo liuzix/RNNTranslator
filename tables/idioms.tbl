@@ -1,0 +1,180 @@
+# idioms.tbl — verb idioms as surface patterns
+#   kind | pattern | japanese | class | particle
+#   pattern: English lemma + fixed words, with slots  NP (a noun phrase the parser builds)  SELF (a reflexive pronoun)
+#   kind:  phrasal     verb + particle, no object            get on       -> 乗る
+#          phrasal+np  verb + preposition, then the object   look for NP  -> 探す   (the preposition is part of the verb)
+#          after       the particle follows the object       put NP on    -> 着る
+#          idiom       fixed words, then the object          get in touch with NP -> 連絡を取る, particle と on the NP
+#          tail        the object, then fixed words          take NP into account -> 考慮に入れる
+#   class: g i s k (verb) · aru (noun + ある) · fixed (already finite)       particle: what the object takes (idiom, tail)
+
+phrasal    | turn to | 頼る | g
+phrasal    | put down | 置く | g
+phrasal    | give in | 降参する | s
+phrasal    | drop in | 立ち寄る | g
+phrasal    | fall behind | 遅れる | i
+phrasal    | ring true | 本当らしく聞こえる | fixed
+phrasal    | make out | 主張する | s
+phrasal    | boot out | 追い出す | g
+phrasal+np | get on | 乗る | g
+phrasal    | get off | 降りる | i
+phrasal    | get up | 起きる | i
+phrasal+np | get to | 着く | g
+phrasal    | get along | うまくやる | g
+phrasal    | get back | 戻る | g
+phrasal+np | look for | 探す | g
+phrasal+np | look at | 見る | i
+phrasal+np | look after | 世話をする | s
+phrasal    | put on | 着る | i
+phrasal    | take off | 脱ぐ | g
+phrasal    | pick up | 拾う | g
+phrasal    | give up | 諦める | i
+phrasal    | go on | 続ける | i
+phrasal    | come back | 戻る | g
+phrasal    | go back | 戻る | g
+phrasal+np | wait for | 待つ | g
+phrasal+np | listen to | 聞く | g
+phrasal    | find out | 見つけ出す | g
+phrasal    | turn on | つける | i
+phrasal    | turn off | 消す | g
+phrasal    | grow up | 育つ | g
+phrasal    | come in | 入る | g
+phrasal    | go out | 出かける | i
+phrasal    | sit down | 座る | g
+phrasal    | stand up | 立つ | g
+phrasal    | run away | 逃げる | i
+phrasal+np | call on | 訪ねる | i
+phrasal    | come home | 帰る | g
+phrasal    | go home | 帰る | g
+phrasal    | wake up | 起きる | i
+phrasal    | put off | 延期する | s
+phrasal    | set out | 出発する | s
+phrasal    | take care | 気をつける | i
+phrasal    | come across | 出くわす | g
+phrasal    | fall asleep | 寝入る | g
+phrasal+np | hear from | 便りがある | g
+phrasal+np | belong to | 属する | s
+phrasal+np | depend on | 頼る | g
+phrasal+np | agree with | 賛成する | s
+phrasal    | get married | 結婚する | s
+phrasal    | take place | 起こる | g
+phrasal    | break down | 故障する | s
+phrasal    | get well | 良くなる | g
+phrasal    | go fishing | 釣りに行く | g
+phrasal    | go shopping | 買い物に行く | g
+phrasal    | come true | 実現する | s
+phrasal    | keep on | 続ける | i
+phrasal    | go away | 立ち去る | g
+phrasal    | get lost | 道に迷う | g
+phrasal    | take part | 参加する | s
+after      | add NP in | 加える | i
+after      | make NP out | 理解する | s
+after      | boot NP out | 追い出す | g
+after      | let NP out | 出す | g
+after      | have NP on | 着ている | fixed
+after      | put NP on | 着る | i
+after      | take NP off | 脱ぐ | g
+after      | turn NP on | つける | i
+after      | turn NP off | 消す | g
+after      | pick NP up | 拾う | g
+after      | give NP up | 諦める | i
+after      | put NP off | 延期する | s
+after      | call NP up | 電話する | s
+after      | wake NP up | 起こす | g
+after      | bring NP up | 育てる | i
+after      | throw NP away | 捨てる | i
+after      | put NP away | 片付ける | i
+after      | look NP up | 調べる | i
+after      | try NP on | 試着する | s
+after      | write NP down | 書き留める | i
+after      | put NP down | 置く | g
+after      | let NP in | 入れる | i
+after      | count NP in | 数に入れる | i
+after      | fix NP up | 用意する | s
+after      | see NP off | 見送る | g
+after      | take NP back | 取り戻す | g
+after      | give NP back | 返す | g
+after      | send NP back | 送り返す | g
+after      | cut NP down | 切り倒す | g
+after      | carry NP out | 実行する | s
+after      | find NP out | 見つけ出す | g
+after      | make NP up | 作り上げる | i
+after      | turn NP down | 断る | g
+after      | hand NP in | 提出する | s
+after      | keep NP up | 続ける | i
+idiom      | have an affinity with NP | 似ている | fixed | と
+idiom      | boast of NP | 自慢する | s | を
+idiom      | account for NP | 説明する | s | を
+idiom      | reply to NP | 返事をする | s | に
+idiom      | make certain of NP | 確かめる | i | を
+idiom      | make sure of NP | 確かめる | i | を
+idiom      | get to know NP | 知り合う | g | と
+idiom      | turn to NP | 頼る | g | に
+idiom      | call out for NP | 大声で求める | i | を
+idiom      | acknowledge as NP | 認める | i | を
+idiom      | regard as NP | みなす | g | を
+idiom      | get in touch with NP | 連絡を取る | g | と
+idiom      | look forward to NP | 楽しみにする | s | を
+idiom      | take care of NP | 世話をする | s | の
+idiom      | get rid of NP | 取り除く | g | を
+idiom      | make fun of NP | からかう | g | を
+idiom      | keep up with NP | ついていく | g | に
+idiom      | put up with NP | 我慢する | s | を
+idiom      | run out of NP | 切らす | g | を
+idiom      | get along with NP | うまくやる | g | と
+idiom      | make use of NP | 利用する | s | を
+idiom      | pay attention to NP | 注意を払う | g | に
+idiom      | catch up with NP | 追いつく | g | に
+idiom      | take part in NP | 参加する | s | に
+idiom      | look after NP | 世話をする | s | の
+idiom      | get over NP | 乗り越える | i | を
+idiom      | come across NP | 出くわす | g | に
+idiom      | look into NP | 調べる | i | を
+idiom      | make up for NP | 埋め合わせる | i | を
+idiom      | think of NP | 思いつく | g | を
+idiom      | speak ill of NP | 悪く言う | g | を
+idiom      | get to NP | 着く | g | に
+idiom      | hear from NP | 便りがある | aru | から
+idiom      | laugh at NP | 笑う | g | を
+idiom      | wait for NP | 待つ | g | を
+idiom      | look for NP | 探す | g | を
+idiom      | look at NP | 見る | i | を
+idiom      | listen to NP | 聞く | g | を
+idiom      | ask for NP | 求める | i | を
+idiom      | care for NP | 好む | g | を
+idiom      | agree with NP | 賛成する | s | に
+idiom      | agree to NP | 同意する | s | に
+idiom      | belong to NP | 属する | s | に
+idiom      | depend on NP | 頼る | g | に
+idiom      | rely on NP | 頼る | g | に
+idiom      | insist on NP | 主張する | s | を
+idiom      | apologize for NP | 謝る | g | を
+idiom      | worry about NP | 心配する | s | を
+idiom      | think about NP | 考える | i | を
+idiom      | talk about NP | 話す | g | について
+idiom      | know about NP | 知っている | fixed | について
+idiom      | arrive at NP | 着く | g | に
+idiom      | arrive in NP | 着く | g | に
+idiom      | get married to NP | 結婚する | s | と
+idiom      | succeed in NP | 成功する | s | に
+idiom      | fail in NP | 失敗する | s | に
+idiom      | dispose of NP | 処分する | s | を
+idiom      | approve of NP | 賛成する | s | に
+idiom      | stick to NP | 固執する | s | に
+idiom      | deal with NP | 扱う | g | を
+idiom      | die of NP | 死ぬ | g | で
+idiom      | suffer from NP | 苦しむ | g | に
+idiom      | complain of NP | 不平を言う | g | について
+idiom      | search for NP | 探す | g | を
+tail       | take NP into account | 考慮に入れる | i | を
+tail       | take NP for granted | 当然だと思う | g | を
+tail       | bear NP in mind | 心に留める | i | を
+tail       | keep NP in mind | 心に留める | i | を
+tail       | take NP to heart | 真に受ける | i | を
+tail       | have NP to SELF | 一人占めする | s | を
+tail       | keep NP to SELF | 胸にしまっておく | g | を
+tail       | put NP in danger | 危険にさらす | g | を
+tail       | bring NP to an end | 終わらせる | i | を
+tail       | take NP by surprise | 驚かせる | i | を
+tail       | see NP off | 見送る | g | を
+tail       | make NP fun of | からかう | g | を
