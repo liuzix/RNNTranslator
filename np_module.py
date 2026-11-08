@@ -80,7 +80,7 @@ def rules_for(role):
               R("NP1", ["¬w0.class=num"], "NP2", 0)]
     # NP2 — adjectives: adverb before an adjective, adjective before a noun or an adjective
     adj_trigger = [["w0.class=adv", "w1.class=adj"], ["¬w0.class=adv", "w0.class=adj", "w1.class=noun"], ["¬w0.class=adv", "w0.class=adj", "¬w1.class=noun", "w1.class=adj"],
-                   ["w0.class=adv", "¬w1.class=adj", "w0.class=adj", "w1.class=noun"], ["w0.class=adv", "¬w1.class=adj", "w0.class=adj", "¬w1.class=noun", "w1.class=adj"]]
+                   ["w0.class=adv", "¬w1.class=adj", "w0.class=adj", "w1.class=noun"]]
     for trig in adj_trigger:
         src = ("copy", "adv") if trig[0] == "w0.class=adv" and trig[1] == "w1.class=adj" else ("copy", "adj")
         rules += [R("NP2", trig + ["¬slot." + s("adj1")], "NP2", 1, [(s("adj1"), None, src)]),
@@ -88,7 +88,7 @@ def rules_for(role):
                   R("NP2", trig + ["slot." + s("adj1"), "slot." + s("adj2")], "FAIL:three adjectives", 0)]
     rules += [R("NP2", ["¬w0.class=adv", "¬w0.class=adj"], "NP3", 0),
               R("NP2", ["w0.class=adv", "¬w1.class=adj", "¬w0.class=adj"], "NP3", 0),
-              R("NP2", ["w0.class=adv", "¬w1.class=adj", "w0.class=adj", "¬w1.class=noun", "¬w1.class=adj"], "NP3", 0),
+              R("NP2", ["w0.class=adv", "¬w1.class=adj", "w0.class=adj", "¬w1.class=noun"], "NP3", 0),
               R("NP2", ["¬w0.class=adv", "w0.class=adj", "¬w1.class=noun", "¬w1.class=adj"], "NP3", 0)]
     # NP3 — the head: a noun, or a bare number
     bare = ["¬w0.class=noun", "slot." + s("num"), "¬slot." + s("adj1"), "¬slot." + s("det"), "¬slot." + s("poss")]

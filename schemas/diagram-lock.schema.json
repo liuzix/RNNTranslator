@@ -1,0 +1,72 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://github.com/liuzix/RNNTranslator/schemas/diagram-lock.schema.json",
+ "title": "rendered diagram lock",
+ "description": "docs/architecture.lock.json: the PlantUML release the diagrams are rendered with (version, URL, sha256 of the jar) and, per diagram, the .puml source, the .svg output and the sha256 of each as rendered. harness/check_diagram.py compares them with the files in the tree; harness/render_diagram.py writes them.",
+ "type": "object",
+ "required": [
+  "plantuml",
+  "diagrams"
+ ],
+ "additionalProperties": false,
+ "properties": {
+  "$schema": {
+   "type": "string"
+  },
+  "plantuml": {
+   "type": "object",
+   "required": [
+    "version",
+    "url",
+    "sha256"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "version": {
+     "type": "string",
+     "pattern": "^\\d+\\.\\d{4}\\.\\d+$"
+    },
+    "url": {
+     "type": "string",
+     "pattern": "^https://github\\.com/plantuml/plantuml/releases/download/v[\\d.]+/plantuml-[\\d.]+\\.jar$"
+    },
+    "sha256": {
+     "type": "string",
+     "pattern": "^[0-9a-f]{64}$"
+    }
+   }
+  },
+  "diagrams": {
+   "type": "array",
+   "minItems": 1,
+   "items": {
+    "type": "object",
+    "required": [
+     "source",
+     "output",
+     "source_sha256",
+     "output_sha256"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "source": {
+      "type": "string",
+      "pattern": "^docs/[\\w-]+\\.puml$"
+     },
+     "output": {
+      "type": "string",
+      "pattern": "^docs/[\\w-]+\\.svg$"
+     },
+     "source_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+     },
+     "output_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+     }
+    }
+   }
+  }
+ }
+}

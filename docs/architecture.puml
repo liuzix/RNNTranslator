@@ -1,0 +1,54 @@
+@startuml architecture
+' The translator as a circuit: three layers, two feedback edges, and two implementations of the parser layer.
+' Rendered hermetically by `harness/render_diagram.py` with the PlantUML jar pinned in docs/architecture.lock.json.
+skinparam shadowing false
+skinparam defaultFontName sans-serif
+skinparam defaultFontSize 13
+skinparam ArrowColor #333333
+skinparam rectangle {
+  BorderColor #333333
+  BackgroundColor #FFFFFF
+  RoundCorner 8
+}
+skinparam database {
+  BorderColor #333333
+  BackgroundColor #F7F7F2
+}
+top to bottom direction
+
+rectangle "English tokens" as EN #EEEEEE
+
+rectangle "**lexical layer**  rules_ja.py" as LEX {
+  rectangle "merge multiword\ntokens" as MERGE
+  rectangle "readings per token" as READ
+  rectangle "4-token window" as WIN
+  MERGE -right-> READ
+  READ -right-> WIN
+}
+
+rectangle "**parser layer**  parser.py — one interface, two implementations" as PARSE {
+  rectangle "RuleParser  parser_rules.py\nbounded transducer: frame stack ≤ 2,\n2 live readings × 4 tokens, no rewinds" as RP
+  rectangle "MatrixParser  parser_matrix.py\nfive sparse ReLU layers per step:\nclause control extracted from traces,\nparse_np from np_module.py" as MP
+  RP -right[#999999,dashed]-> MP : must agree inside\nthe matrix's scope
+}
+
+rectangle "**semantic layer**  rules_ja.generate" as GEN {
+  rectangle "slot order per\nclause type" as SLOTS
+  rectangle "conjugation paradigms" as CONJ
+  rectangle "connectives" as CONN
+  SLOTS -right-> CONJ
+  CONJ -right-> CONN
+}
+
+rectangle "Japanese" as JA #EEEEEE
+
+database "tables/*.tbl\nlexicon · idioms · use-verbs\nverb classes · prepositions · …" as TBL
+
+EN -down-> LEX
+LEX -down-> PARSE : window of readings
+PARSE -down-> GEN : frame (Clause: subject, object,\nverb, tense, polarity, …)
+GEN -down-> JA
+TBL -right-> LEX : readings
+TBL -right-> PARSE : noun class, valency,\nuse-verbs (feedback)
+PARSE -up[dashed]-> LEX : phase gates\nthe readings (feedback)
+@enduml

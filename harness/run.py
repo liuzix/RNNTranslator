@@ -12,8 +12,10 @@ replays without running.  Nothing an action did not declare can reach it, so a h
                                                   index when --staged), compared with harness/baseline.json
     python harness/run.py baseline [--staged]     run the checks and write harness/baseline.json (commit it with the change)
     python harness/run.py install-hooks           point git at .githooks/ so pre-commit runs `check --staged`
+    python harness/run.py readme                  render README.md from docs/README.tmpl.md (numbers from harness/facts.py)
+    python harness/run.py render-diagram          render docs/*.puml with the pinned PlantUML jar and update its lock
 
-Static checks (fast, run every time, not cached): harness/check_schemas.py and harness/check_tree.py.
+Static checks (fast, run every time, not cached): the schema, file-tree, diagram, README and claim checks (STATIC below).
 Actions (inputs listed in ACTIONS below):
     rules    coverage and char-BLEU of the rule transducer on dev and test, and every output
     matrix   the hybrid matrix parser compiled on dev+test and cross-tabulated against the bounded rule parser
@@ -32,6 +34,7 @@ ACTIONS = {
     "matrix": {"version": 1, "script": "harness/eval_matrix.py", "inputs": SOURCES + ["parser_matrix.py", "np_module.py"], "corpus": True, "args": []},
     "np":     {"version": 1, "script": "harness/eval_np.py",     "inputs": SOURCES + ["parser_matrix.py", "np_module.py"], "corpus": False, "args": ["--max-len", "2"]},
 }
+FULL_NP_LEN = 3            # `check --full`: the np action over windows up to this length (~4 minutes)
 
 def sha256_file(path):
     h = hashlib.sha256()
@@ -141,11 +144,20 @@ def run_action(name, spec, src_root, exe, pyver, lock_hash, corpus, args, force=
     finally:
         shutil.rmtree(sandbox, ignore_errors=True)
 
+# the static checks, in order: (script, extra arguments given the context); every one runs on the tree under test
+STATIC = [
+    ("harness/check_schemas.py", lambda c: ["--corpus", c["corpus"], "--quiet"] + (["--skip-baseline"] if c["skip_baseline"] else [])),
+    ("harness/check_tree.py",    lambda c: ["--repo", ROOT] + (["--staged"] if c["staged"] else [])),
+    ("harness/check_diagram.py", lambda c: []),
+    ("harness/check_readme.py",  lambda c: []),
+    ("harness/test_claims.py",   lambda c: ["--corpus", c["corpus"]]),
+]
+
 def static_checks(exe, src_root, corpus, staged, skip_baseline=False):
-    """schemas and the README file tree, on the tree under test; exit 1 on an error"""
-    ok = True
-    for script, extra in (("harness/check_schemas.py", ["--corpus", corpus, "--quiet"] + (["--skip-baseline"] if skip_baseline else [])), ("harness/check_tree.py", ["--repo", ROOT] + (["--staged"] if staged else []))):
-        proc = subprocess.run([exe, os.path.join(src_root, script), "--root", src_root, *extra], cwd=ROOT, capture_output=True, text=True)
+    """the schema, tree, diagram, README and claim checks on the tree under test; exit 1 on an error"""
+    ok = True; ctx = {"corpus": corpus, "staged": staged, "skip_baseline": skip_baseline}
+    for script, extra in STATIC:
+        proc = subprocess.run([exe, os.path.join(src_root, script), "--root", src_root, *extra(ctx)], cwd=ROOT, capture_output=True, text=True)
         if proc.stdout.strip(): print(proc.stdout.rstrip())
         if proc.returncode != 0: ok = False; print(proc.stderr.rstrip()[-1500:])
     if not ok: sys.exit("static checks failed")
@@ -160,7 +172,7 @@ def run_all(staged, full, force=False, skip_baseline=False):
         results = {}
         for name, spec in ACTIONS.items():
             args = list(spec["args"])
-            if name == "np" and full: args = ["--max-len", "3"]
+            if name == "np" and full: args = ["--max-len", str(FULL_NP_LEN)]
             results[name] = run_action(name, spec, src_root, exe, pyver, lock_hash, corpus, args, force)
         return results
     finally:
@@ -237,9 +249,13 @@ def main():
         p = sub.add_parser(c); p.add_argument("--staged", action="store_true", help="test the index (what the commit will contain)")
         p.add_argument("--full", action="store_true", help="np: windows up to length 3 (~4 min)"); p.add_argument("--force", action="store_true", help="ignore the cache")
     sub.add_parser("install-hooks")
+    sub.add_parser("readme", help="render README.md from docs/README.tmpl.md with the current facts")
+    sub.add_parser("render-diagram", help="render docs/*.puml with the pinned PlantUML jar (needs Java)")
     a = ap.parse_args()
     if a.cmd == "fetch-corpus": fetch_corpus(a.src)
     elif a.cmd == "install-hooks": install_hooks()
+    elif a.cmd == "readme": subprocess.run([venv_python()[0], os.path.join(ROOT, "harness", "check_readme.py"), "--write"], check=True)
+    elif a.cmd == "render-diagram": subprocess.run([venv_python()[0], os.path.join(ROOT, "harness", "render_diagram.py")], check=True)
     else:
         results = run_all(a.staged, a.full, a.force, skip_baseline=(a.cmd == "baseline"))
         if a.cmd == "baseline": write_baseline(results, a.staged)

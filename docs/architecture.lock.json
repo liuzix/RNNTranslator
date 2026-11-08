@@ -1,0 +1,16 @@
+{
+ "$schema": "../schemas/diagram-lock.schema.json",
+ "plantuml": {
+  "version": "1.2025.10",
+  "url": "https://github.com/plantuml/plantuml/releases/download/v1.2025.10/plantuml-1.2025.10.jar",
+  "sha256": "4a01ea09b317180fb8e7eef712dfdca725409d2ee1919e4b5adfe9d8362b6fe5"
+ },
+ "diagrams": [
+  {
+   "source": "docs/architecture.puml",
+   "output": "docs/architecture.svg",
+   "source_sha256": "c5769dc0c2dc53ddb07ff707b783a98a056f7657ac356ba0121b5e941963b192",
+   "output_sha256": "a2a7340d406f029bb7dec3e5933ab0f37c6d79283856d2f77d69b4e10a408fd2"
+  }
+ ]
+}

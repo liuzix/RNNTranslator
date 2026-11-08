@@ -964,7 +964,7 @@ class MatrixParser:
                 if isinstance(ref, tuple): src, j = ref
                 else: src, j = "S", ref
                 rows_.append(u); cols_.append(self.offsets[src] + j); vals_.append(w)
-            M = sp.csr_matrix((vals_, (rows_, cols_)), shape=(len(L), width))
+            M = sp.csr_matrix((vals_, (rows_, cols_)), shape=(len(L), width)); M.sum_duplicates(); M.eliminate_zeros()
             bias = np.zeros(len(L))
             for u, v in b.items(): bias[u] = v
             self.mats.append((M, bias)); self.offsets["L" + str(len(self.mats))] = width; width += len(L)

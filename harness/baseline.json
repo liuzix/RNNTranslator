@@ -3,22 +3,22 @@
 "matrix": {
 "both_refuse": 268,
 "cell": {
-"build_seconds": 18,
+"build_seconds": 17,
 "input_units": 1547,
 "layers": [
 627,
 103,
-1602,
+1581,
 624,
 24437
 ],
-"nnz": 180046,
-"rules": 1458,
+"nnz": 171184,
+"rules": 1437,
 "rules_by_kind": {
 "entry": 100,
 "exit": 169,
 "fail": 76,
-"module": 780,
+"module": 759,
 "outer": 333
 },
 "scope": {
@@ -89,7 +89,7 @@
 }
 },
 "refused_parseable": 198,
-"summary": "identical 498, wrong frame 14, matrix parses refused 17, refused parseable 198, both refuse 268; nnz 180046, rules 1458",
+"summary": "identical 498, wrong frame 14, matrix parses refused 17, refused parseable 198, both refuse 268; nnz 171184, rules 1437",
 "wrong_frame": 14
 },
 "np": {
@@ -1155,5 +1155,5 @@
 "9: we have this game on ice .": "私たちは氷でこの試合を持っている。"
 }
 },
-"taken": "2026-11-08 at 81422aa"
+"taken": "2026-11-08 at b133a04"
 }
