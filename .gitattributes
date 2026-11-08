@@ -1,0 +1,2 @@
+archive/*.tar.* binary -diff
+*.tbl linguist-language=Text

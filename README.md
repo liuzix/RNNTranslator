@@ -21,18 +21,40 @@ Evaluated on the Tanaka-corpus dev (496) and test (499) splits of
 | `parser_matrix.py` | The compiler to matrices: traces the rule parser, induces the clause-level transition rules, adds the hand-translated modules, and emits a five-layer sparse ReLU cell (`MatrixParser`). |
 | `np_module.py` | The first hand-translated parser module: `parse_np` as derived predicates + 65 rules over 8 states, with complete guards and a FAIL exit for everything out of scope. |
 | `run_rules.py` | Evaluation harness: coverage and char-BLEU on dev/test, failures by cause. |
-| `checks/` | The verification scripts: regression against a checkpoint, table round-trip, phase enumeration, the exhaustive NP check, the hybrid cross-tab. |
-| `history/` | Earlier stages: the Dyck-2 RNN, the hand-written fragment RNN and its sparse compile, the noun-centric fragment, the data-only basis experiment, and the pre-hybrid compiler. |
+| `harness/` | The hermetic checks and their runner (`run.py`: content-addressed action cache, sandboxed runs, the committed baseline, the pinned corpus), plus `trace_rules.py`, the rule stepper for debugging a disagreement. |
+| `archive/` | Retired code as compressed blobs that no text search sees into, each with a manifest; `archive/README.md` says what is in them and why. |
 
 ## Setup
 
+Dependencies are resolved by [uv](https://docs.astral.sh/uv/) into `uv.lock` with a sha256 for every artifact;
+`uv sync --locked` refuses a stale lock. The corpus is pinned to a commit and to file hashes in `harness/corpus.lock`.
+
 ```
-pip install -r requirements.txt
-git clone https://github.com/odashi/small_parallel_enja data/small_parallel_enja
-python run_rules.py            # coverage + BLEU of the rule transducer on dev
-python checks/crosstab.py      # compile the matrix parser and cross-tabulate it against the rule parser
-python checks/np_exhaustive.py # the exhaustive check of np_module against parse_np (~4 min)
+uv sync --locked                                   # the environment, exactly as locked
+uv run python harness/run.py fetch-corpus          # the pinned corpus commit into .cache/corpus/, hashes verified
+uv run python harness/run.py install-hooks         # git runs the checks on every commit
+uv run python run_rules.py                         # coverage + BLEU of the rule transducer on dev, with samples
+uv run python harness/run.py check                 # the three checks, cached by content, compared with the baseline
 ```
+
+## The harness
+
+Three checks, each an *action* with declared inputs: `rules` (coverage and char-BLEU of the transducer on dev and
+test, every output recorded), `matrix` (the hybrid cell compiled on dev+test and cross-tabulated against the rule
+parser), `np` (`np_module` against `parse_np` over every window up to length 2; `--full` goes to length 3, ~4 min).
+An action's key is the hash of its inputs, the lock file and the interpreter; it runs in a sandbox holding only
+those inputs, with a fixed hash seed and a minimal environment, and its result is cached under `.cache/actions/`.
+Unchanged inputs cost nothing; nothing undeclared can leak in, so a cache hit is sound. This is a Bazel-style action
+cache in 200 lines, with no Bazel.
+
+`harness/baseline.json` holds the metrics and every rule output at the last accepted commit. The pre-commit hook
+(`.githooks/pre-commit`) runs `check --staged` on the index, not the working tree, and refuses the commit if
+coverage, BLEU-over-all, matrix agreement, silent misfires or NP mismatches regress against the baseline *as
+staged*. An intended change is accepted with `uv run python harness/run.py baseline --staged` and staging the new
+baseline with it; the hook also prints which sentences changed output.
+
+Retired files leave the repo (git keeps them recoverable); what is worth reading later goes into `archive/` as a
+compressed blob with a manifest, so searches of the live tree stay quiet.
 
 ## Where it stands (2026-11-08)
 
@@ -50,6 +72,9 @@ Matrix parser (dev+test, 995 sentences, reference = the bounded rule parser):
 | rules in the cell | 946 | 1,458 |
 | state / input units | 6,443 / 1,518 | 12,592 / 1,577 |
 | nonzeros | 52,069 | 180,065 |
+
+(The table is the hand-measured cross-tab of Nov 8; `harness/baseline.json` carries the harness's own numbers, which
+differ by a few sentences because the tree induction now breaks ties deterministically.)
 
 The cell: state = one-hot control states + one-hot slot blocks + the pending preposition + a `shift` unit
 (the parser tells the window when to advance); input = window predicates for 4 slots + copy sources for

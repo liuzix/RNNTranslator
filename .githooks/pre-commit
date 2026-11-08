@@ -1,0 +1,9 @@
+#!/bin/sh
+# Refuse a commit that regresses coverage or quality against harness/baseline.json.
+# The checks run hermetically on the staged tree (not the working tree) and are cached by content, so an
+# unchanged input costs nothing.  Bypass once with `git commit --no-verify`; accept an intended change with
+# `uv run python harness/run.py baseline --staged` and stage harness/baseline.json.
+set -e
+cd "$(git rev-parse --show-toplevel)"
+uv lock --check >/dev/null 2>&1 || { echo "pre-commit: uv.lock is out of date with pyproject.toml — run \`uv lock\` and stage it"; exit 1; }
+exec uv run --locked python harness/run.py check --staged

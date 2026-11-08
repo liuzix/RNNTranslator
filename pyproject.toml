@@ -1,0 +1,15 @@
+[project]
+name = "rnntranslator"
+version = "0.1.0"
+description = "An English-to-Japanese translator written as a rule circuit and compiled into sparse matrices"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = "==3.13.*"
+dependencies = [
+    "numpy>=2.2,<3",
+    "scipy>=1.15,<2",
+]
+
+[tool.uv]
+# Every dependency is resolved into uv.lock with its sha256; `uv sync --locked` refuses to run on a stale lock.
+required-version = ">=0.9"

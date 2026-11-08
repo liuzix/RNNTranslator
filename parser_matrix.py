@@ -1,17 +1,19 @@
 """The parser layer, compiled to sparse matrices.
 
-MatrixParser implements the same interface as the rule-based parser (parser.ParserInterface): a left-to-right
-machine that reads the lexical layer's output for a 4-token window and updates a one-hot state vector with
-three sparse ReLU layers per token; the frame is read out of the state at the end of the sentence.
+MatrixParser implements the parser interface (parser.ParserInterface): a left-to-right machine that reads the lexical
+layer's output for a 4-token window and updates a one-hot state vector with five sparse ReLU layers per step; a `shift`
+unit tells the window when to advance, and the frame is read out of the state at the end of the sentence.
 
-The compile is by extraction, not by hand: the rule parser is traced on the corpus, each token consumption
-becomes one row of a transition table keyed on (control point, window features, frame features), and the table
-is compiled into AND units.  Register writes are factored into three kinds the matrix can express:
-    copy   frame slot <- a reading of the window's current token (gated copy, one edge per vocabulary item)
-    const  frame slot <- a fixed value chosen by the transition
-    move   frame slot <- another frame slot (give him a book: obj -> iobj)
-Sentences whose parse needs anything else (an inner clause, a complex noun phrase, a second reading) are out of
-this implementation's scope and are reported as such; inside the scope it must agree with the rule parser exactly.
+Two kinds of rules make up the cell:
+  * clause-level transitions extracted from the rule parser: it is traced on the corpus, each token consumption becomes a
+    row (control point, predicates, outcome), and per control point a decision tree over the predicates it read is
+    induced and flattened into AND units.  Their guards are only as complete as the corpus.
+  * hand-translated modules with complete guards (np_module for parse_np), spliced in as sub-automata: a k=0 entry
+    transition writes the return site into `ret` and clears the role's slots; the module's RET state hands back through an
+    exit transition carrying the post-NP effects.
+Register writes are factored into copy (slot <- a reading of the current token), const, move / move_time (slot <- another
+slot) and clear.  Whatever the cell cannot represent (an inner clause, a register with no block) becomes a FAIL row, so
+the machine refuses there instead of guessing; inside its scope it must agree with the rule parser exactly.
 """
 import sys, collections, itertools
 import numpy as np
@@ -77,39 +79,6 @@ def table_hits(toks, i, verb):
     return tuple(sorted(set(hits)))
 
 # ----------------------------------------------------------------------------------------------- frame as slots
-def np_components(toks, i0, i1, ja_out):
-    """decompose the NP the rule parser built from toks[i0:i1] into sub-slot values, or raise OutOfScope"""
-    comps = {}; order = []
-    j = i0
-    while j < i1:
-        t = toks[j]; rs = dict(readings_of(t))
-        if "det" in rs and "det" not in comps and "noun" not in comps and not (j > i0 and "noun" in rs):
-            comps["det"] = rs["det"]; order.append(("det", j)); j += 1; continue
-        if "pron" in rs and "p" in rs["pron"][1] and "noun" not in comps and j + 1 < i1:
-            comps["poss"] = rs["pron"][0] if rs["pron"][1] == "p" else rs["pron"][0] + "の"; order.append(("poss", j)); j += 1; continue
-        if "pron" in rs and j == i1 - 1 and "noun" not in comps and not comps:
-            comps["noun"] = rs["pron"][0]; comps["cls"] = "h"; order.append(("noun", j)); j += 1; continue
-        if "num" in rs and "num" not in comps and "noun" not in comps and j + 1 < i1:
-            comps["num"] = rs["num"]; order.append(("num", j)); j += 1; continue
-        if "adj" in rs and j + 1 < i1 and "noun" not in comps:
-            ja, kind = rs["adj"]; v = ja + ("な" if kind == "na" and not ja.endswith("な") else "")
-            slot = "adj1" if "adj1" not in comps else ("adj2" if "adj2" not in comps else None)
-            if slot is None: raise OutOfScope("three adjectives")
-            comps[slot] = v; order.append((slot, j)); j += 1; continue
-        if "adv" in rs and j + 1 < i1 and "adj" in dict(readings_of(toks[j + 1])):
-            slot = "adj1" if "adj1" not in comps else "adj2"
-            comps[slot] = rs["adv"]; order.append((slot, j)); j += 1; continue
-        if "noun" in rs and "noun" not in comps and j == i1 - 1:
-            comps["noun"], comps["cls"] = rs["noun"]; order.append(("noun", j)); j += 1; continue
-        if "num" in rs and j == i1 - 1 and not comps:
-            comps["noun"] = rs["num"]; comps["cls"] = "t"; order.append(("noun", j)); j += 1; continue
-        raise OutOfScope(f"noun phrase shape at {t!r}")
-    s = "".join(comps.get(k, "") for k in ("det", "poss", "num", "adj1", "adj2", "noun"))
-    if s != ja_out and not (ja_out == comps.get("noun", "") + "時" and set(comps) <= {"noun", "cls"}):
-        raise OutOfScope(f"noun phrase composed as {ja_out!r}, slots give {s!r}")
-    if ja_out.endswith("時") and s != ja_out: comps["noun"] = ja_out       # bare number as a clock time
-    return comps, order
-
 def snapshot(c):
     """the frame's registers as a flat dict of slot -> value (strings/ids), raising OutOfScope for inner frames"""
     for r in UNSUPPORTED_REGS:
@@ -214,123 +183,6 @@ def trace(toks, choices=()):
     except OutOfScope as e: final = e                 # the finished frame holds a register the cell has no block for
     return events, final, np_spans, p
 
-def event_rows(toks, choices=()):
-    """turn a trace into transition rows: (cp, features) -> (next cp, k, actions)"""
-    events, final, np_spans, p = trace(toks, choices)
-    for e in events:
-        if isinstance(e["snap"], OutOfScope): raise e["snap"]
-        if e["snap"] is None: raise OutOfScope("inner clause")
-    snaps = [e["snap"] for e in events] + [final]
-    # NP sub-slot writes, assigned to the event that consumed each component token
-    np_writes = collections.defaultdict(list)     # event index -> [(slot, value, source)]
-    np_role_of_span = {}
-    for (i0, i1, ja, cls, main) in np_spans:
-        if not main: raise OutOfScope("inner clause NP")
-        comps, order = np_components(toks, i0, i1, ja)
-        # which role received it: the first register that changes to this string after the span
-        end_ev = max(ei for ei, e in enumerate(events) if e["i"] < i1)
-        role = None
-        for ei in range(end_ev, len(events)):
-            before, after = snaps[ei], snaps[ei + 1]
-            for r in ("subj", "obj", "iobj", "pp1", "pp2", "pp3", "cop"):
-                if after.get(r) == ja and before.get(r) != ja: role = (r, ei); break
-            if role: break
-        if role is None: raise OutOfScope(f"noun phrase {ja!r} not written to a slot")
-        r, ei = role
-        np_role_of_span[(i0, i1)] = r
-        for slot, j in order:
-            ev_idx = [k for k, e in enumerate(events) if e["i"] <= j < e["i"] + e["k"]][0]
-            src = ("copy", {"det": "det", "poss": "pron_poss", "num": "num", "adj1": "adj", "adj2": "adj", "noun": "noun"}[slot])
-            if slot == "noun" and dict(readings_of(toks[j])).get("pron") and comps["noun"] == dict(readings_of(toks[j]))["pron"][0]: src = ("copy", "pron")
-            if slot in ("adj1", "adj2") and "adv" in dict(readings_of(toks[j])) and "adj" not in dict(readings_of(toks[j])): src = ("copy", "adv")
-            if slot == "noun" and "num" in dict(readings_of(toks[j])) and "noun" not in dict(readings_of(toks[j])): src = ("copy", "num")
-            np_writes[ev_idx].append((f"{r}.{slot}", comps[slot], src))
-        noun_ev = [k for k, e in enumerate(events) if e["i"] <= order[-1][1] < e["i"] + e["k"]][0]
-        np_writes[noun_ev].append((f"{r}.cls", comps.get("cls", "t"), ("copy", "ncls") if comps.get("cls") != "h" or not dict(readings_of(toks[order[-1][1]])).get("pron") else ("const",)))
-        if comps.get("noun", "").endswith("時") and "num" in dict(readings_of(toks[order[-1][1]])):
-            np_writes[noun_ev] = [(s, v, ("copy", "num_time") if s == f"{r}.noun" else src) for s, v, src in np_writes[noun_ev]]
-    rows = []
-    for ei, e in enumerate(events):
-        before, after = snaps[ei], snaps[ei + 1]
-        actions = list(np_writes.get(ei, []))
-        tok = toks[e["i"]]; rs = dict(readings_of(tok))
-        for slot in before:
-            if slot in ("subj", "obj", "iobj", "pp1", "pp2", "pp3", "cop", "subj_cls"): continue        # NP strings handled as sub-slots
-            if before[slot] == after[slot]: continue
-            v = after[slot]
-            if v in (None, False, "", 0):
-                actions.append((slot, None, ("clear",))); continue
-            # source: a reading of the consumed token, a frame slot, or a constant
-            src = ("const",)
-            if slot == "verb" and "verb" in rs and v[0] == rs["verb"][0] and v[1] == rs["verb"][2] and v[2] == rs["verb"][3]: src = ("copy", "verb")
-            elif slot in ("adv1",) and "adv" in rs and v == rs["adv"] and before[slot] in (None, ""): src = ("copy", "adv")
-            elif slot == "time" and "time" in rs and v == rs["time"]: src = ("copy", "time")
-            elif slot == "wh" and "wh" in rs and v == rs["wh"]: src = ("copy", "wh")
-            elif slot == "cop_adj" and "adj" in rs and v == rs["adj"]: src = ("copy", "adj_pair")
-            elif slot == "cop_adv" and "adv" in rs and v == rs["adv"]: src = ("copy", "adv")
-            elif slot == "modal" and "modal" in rs and v == rs["modal"][0]: src = ("copy", "modal")
-            actions.append((slot, v, src))
-        # NP-string registers written without parse_np (go swimming -> obj 水泳; than today -> pp 今日): copy from the token's reading or a constant
-        spans_here = {np_role_of_span[k] for k in np_role_of_span if k[1] - 1 >= e["i"] and k[0] <= e["i"] + e["k"] - 1}
-        for r in ("subj", "obj", "iobj", "pp1", "pp2", "pp3", "cop"):
-            if after.get(r) and after.get(r) != before.get(r) and r not in spans_here and not any(a[0].startswith(r + ".") for a in actions):
-                v = after[r]
-                if "time" in rs and v == rs["time"]: src = ("copy", "time")
-                elif "noun" in rs and v == rs["noun"][0]: src = ("copy", "noun")
-                elif "pron" in rs and v == rs["pron"][0]: src = ("copy", "pron")
-                else: src = ("const",)
-                actions.append((f"{r}.noun", v, src)); actions.append((f"{r}.cls", "t" if r != "subj" else "h", ("const",)))
-        # moves between NP slots (give him a book: obj -> iobj) show up as a slot acquiring another slot's old string
-        for r in ("iobj", "obj"):
-            if after.get(r) and after[r] != before.get(r) and (r, ei) not in [(rr, e2) for (rr, e2) in [np_role_of_span.get(k, (None, None)) if isinstance(np_role_of_span.get(k), tuple) else (None, None) for k in np_role_of_span]]:
-                for r2 in ("obj", "iobj", "subj"):
-                    if before.get(r2) == after[r] and r2 != r:
-                        for sub in NP_SUB: actions.append((f"{r}.{sub}", None, ("move", f"{r2}.{sub}")))
-        nxt_e = events[ei + 1] if ei + 1 < len(events) else {"win_reads": set(), "reg_reads": set()}
-        win_idx = set(e["win_reads"]) | set(nxt_e["win_reads"])          # reads that led into this consumption and reads that followed it
-        reg_rd = set(e["reg_reads"]) | set(nxt_e["reg_reads"])
-        allw = window_features(toks, e["i"])
-        feats = tuple((j - e["i"], allw[j - e["i"]]) for j in sorted(win_idx) if 0 <= j - e["i"] < WINDOW)
-        hits = table_hits(toks, e["i"], before["verb"])
-        guard = []
-        for rname in sorted(reg_rd):
-            if rname in ("subj",): guard.append((rname, before.get("subj") is not None, before.get("subj") == "それ"))
-            elif rname in ("obj", "iobj", "pp", "time", "adv", "copula", "wh", "degree", "want", "modal", "purpose", "causative", "obj_particle"):
-                v = before.get({"pp": "pp1", "adv": "adv1", "copula": "cop_kind"}.get(rname, rname))
-                guard.append((rname, v if rname in ("want", "modal", "purpose", "causative", "obj_particle", "degree", "wh", "copula") else v is not None, len([k for k in ("pp1", "pp2", "pp3") if before.get(k)]) if rname == "pp" else None))
-            elif rname == "verb":
-                vb = before["verb"]; guard.append(("verb", vb is not None, tuple(sorted(cls for cls, s in R.VC.items() if vb and vb[0] in s)), vb[2] if vb else None, " " in vb[0] if vb else None, "+" in vb[0] if vb else None))
-            elif rname in FLAGS: guard.append((rname, bool(before.get(rname))))
-            elif rname in ("subj_cls",): guard.append((rname, before.get("subj_cls")))
-        key = (e["cp"], feats, hits, tuple(guard))
-        nxt = events[ei + 1]["cp"] if ei + 1 < len(events) else ("DONE",)
-        norm = tuple(sorted(((slot, None if src[0] in ("copy", "move") else v, src) for slot, v, src in actions), key=str))
-        rows.append((key, (nxt, e["k"], norm)))
-    return rows, final
-
-if __name__ == "__main__":
-    import run_rules as H
-    pairs = H.load("test") + H.load("dev")
-    table = {}; conflicts = collections.Counter(); scope = collections.Counter(); n_rows = 0
-    per_sentence = []
-    for en, ja in pairs:
-        toks = R.merge_multiword(en if isinstance(en, list) else en.split())
-        try:
-            # the bounded driver's winning choices
-            p0 = Parser(list(toks), []); p0.parse()
-            rows, final = event_rows(toks, [])
-        except ParseFail: scope["rule parser fails"] += 1; continue
-        except OutOfScope as e: scope["out of scope: " + str(e).split(" at ")[0][:28]] += 1; continue
-        except Exception as e: scope["extraction error " + type(e).__name__ + ": " + str(e)[:40]] += 1; continue
-        scope["in scope"] += 1; per_sentence.append((toks, rows))
-        for key, val in rows:
-            n_rows += 1
-            if key in table and table[key] != val: conflicts[key[0]] += 1
-            table.setdefault(key, val)
-    print("scope:", dict(scope.most_common()))
-    print(f"{n_rows} consumption events -> {len(table)} distinct transition rows; conflicting keys: {sum(conflicts.values())}")
-    for cp, n in conflicts.most_common(5): print("   conflict at", ">".join(cp[0][1:]), "L", cp[1], n)
-
 # ----------------------------------------------------------------------------------------------- predicates and induction
 ENUM_REGS = ("modal", "want", "cop_kind", "degree", "obj_particle", "wh", "purpose", "causative", "subj_cls", "time", "adv1", "ret")
 NOUN_EN = collections.defaultdict(set)         # Japanese noun -> the English tokens that read as it (for the USE feedback predicate)
@@ -387,66 +239,8 @@ def predicates(toks, i, before, win_idx, reg_rd, pend_prep, heads=None):
     if pend_prep: P.add(f"pend_prep={pend_prep}")
     return P
 
-ALL_REGS = {"subj", "obj", "iobj", "cop", "pp", "copula", "verb", "adv", "time"} | set(FLAGS) | set(ENUM_REGS)
-def event_rows_pred(toks, choices=()):
-    """rows as (prev_cp, all predicates true here, predicates the parser actually read, outcome); outcome = (cp, k, actions)"""
-    rows, final = event_rows(toks, choices)      # reuse the diffing; re-derive predicate sets from the trace
-    events, _final, _spans, _p = trace(toks, choices)
-    out = []; prev = ("START",); pend = None
-    for ei, (e, (key, val)) in enumerate(zip(events, rows)):
-        nxt_e = events[ei + 1] if ei + 1 < len(events) else {"win_reads": set(), "reg_reads": set()}
-        win_idx = set(e["win_reads"]) | set(nxt_e["win_reads"]); reg_rd = set(e["reg_reads"]) | set(nxt_e["reg_reads"])
-        P_read = predicates(toks, e["i"], e["snap"], win_idx, reg_rd, pend)
-        P_all = predicates(toks, e["i"], e["snap"], set(range(e["i"], e["i"] + WINDOW)), ALL_REGS, pend)
-        cp, k, actions = e["cp"], val[1], val[2]
-        out.append((prev, frozenset(P_all), frozenset(P_read), (cp, k, actions)))
-        prev = cp
-        for j in range(e["i"], e["i"] + k):
-            if "prep" in dict(readings_of(toks[j])): pend = toks[j]
-    P_end = predicates(toks, len(toks), final, set(range(len(toks), len(toks) + WINDOW)), ALL_REGS, pend)
-    out.append((prev, frozenset(P_end), frozenset(), (("DONE",), 0, ())))          # after the end token: the readout state
-    return out, final
-
 FAIL = ("FAIL",)
-def fail_rows(toks):
-    """for a sentence the rule parser refuses, or parses outside this implementation's scope: one FAIL row at the point
-    where it stops being representable, so the compiled machine refuses there instead of guessing"""
-    try:
-        events, final, spans, p = trace(toks)
-    except ParseFail as e:
-        # the rule parser refused: the row is the transition that would have followed the last consumption
-        p = _last_parser[0]
-        err, fs, win_rd, reg_rd, i = p.fail_info
-        if isinstance(fs, OutOfScope) or not p.events_ok: return []
-        prev = p.last_cp
-        P_all = predicates(toks, i, fs, set(range(i, i + WINDOW)), ALL_REGS, p.pend_at_end)
-        P_read = predicates(toks, i, fs, win_rd, reg_rd, p.pend_at_end)
-        return [(prev, frozenset(P_all), frozenset(P_read), (FAIL, 0, ()))]
-    # parsed, but out of scope: cut at the first event whose snapshot or NP is not representable
-    cut = None
-    for ei, e in enumerate(events):
-        if isinstance(e["snap"], OutOfScope) or e["snap"] is None: cut = ei - 1; break
-    if cut is None:
-        try: snapshot(final)
-        except OutOfScope: cut = len(events) - 1
-    for (i0, i1, ja, cls, main) in spans:
-        try:
-            if not main: raise OutOfScope("inner")
-            np_components(toks, i0, i1, ja)
-        except OutOfScope:
-            ev = [k for k, e in enumerate(events) if e["i"] <= i0 < e["i"] + e["k"]]
-            if ev and (cut is None or ev[0] < cut): cut = ev[0]
-    if cut is None or cut < 0: return []
-    e = events[cut]; prev = events[cut - 1]["cp"] if cut > 0 else ("START",)
-    if isinstance(e["snap"], OutOfScope) or e["snap"] is None: return []
-    pend = None
-    for j in range(e["i"]):
-        if "prep" in dict(readings_of(toks[j])): pend = toks[j]
-    nxt_e = events[cut + 1] if cut + 1 < len(events) else {"win_reads": set(), "reg_reads": set()}
-    P_all = predicates(toks, e["i"], e["snap"], set(range(e["i"], e["i"] + WINDOW)), ALL_REGS, pend)
-    P_read = predicates(toks, e["i"], e["snap"], set(e["win_reads"]) | set(nxt_e["win_reads"]), set(e["reg_reads"]) | set(nxt_e["reg_reads"]), pend)
-    return [(prev, frozenset(P_all), frozenset(P_read), (FAIL, 0, ()))]
-
+ALL_REGS = {"subj", "obj", "iobj", "cop", "pp", "copula", "verb", "adv", "time"} | set(FLAGS) | set(ENUM_REGS)
 _last_parser = [None]
 
 # ----------------------------------------------------------------------------------------------- the hybrid: parse_np as a hand-translated module
@@ -540,7 +334,7 @@ def hybrid_rows(toks):
     """transition rows for the hybrid machine.  Outer transitions are extracted from the trace as before; each main-frame
     noun phrase becomes a hand-over to np_module: an entry row (k=0 into ("NP0", role), the return site written to `ret`,
     the role's slots cleared or moved) and an exit row (from ("RET", role): the post-NP effects, into the caller's continuation).
-    Returns (rows, roles used); raises ParseFail / OutOfScope like event_rows."""
+    Returns (rows, roles used); raises ParseFail / OutOfScope when the sentence is outside the cell's scope."""
     import np_module as NPM
     events, final, np_spans, p = trace(toks)
     if isinstance(final, OutOfScope): raise final
@@ -754,7 +548,7 @@ def induce(rows):
     def build(items, used, cands_all):
         outcomes = set(o for _, o in items)
         if len(outcomes) == 1: return ("leaf", next(iter(outcomes)))
-        cands = cands_all - used
+        cands = sorted(cands_all - used)
         best = None
         for q in cands:
             yes = [(P, o) for P, o in items if q in P]; no = [(P, o) for P, o in items if q not in P]
@@ -783,25 +577,6 @@ def tree_rules(tree, path=()):
     if tree[0] == "conflict": return [(path, ("CONFLICT", tree[1], tree[2]))]
     _, q, yes, no = tree
     return tree_rules(yes, path + ((q, True),)) + tree_rules(no, path + ((q, False),))
-
-def run_table(trees, toks):
-    """interpret the induced machine on a sentence (a check of the extraction before the matrix exists)"""
-    state = ("START",); i = 0; frame = {}; pend = None
-    while True:
-        if state == ("DONE",): return frame
-        if state not in trees: raise ParseFail(f"TABLE: no rules at {'>'.join(state[0][1:]) if state[0] != 'START' else 'START'}", i)
-        before = frame_to_snapshot(frame)
-        P = predicates(toks, i, before, set(range(i, i + WINDOW)), ALL_REGS, pend)
-        t = trees[state]
-        while t[0] == "split":
-            t = t[2] if t[1] in P else t[3]
-        if t[0] == "conflict": raise ParseFail("TABLE: conflict", i)
-        cp, k, actions = t[1]
-        apply_actions(frame, actions, toks, i)
-        for j in range(i, i + k):
-            if j < len(toks) and "prep" in dict(readings_of(toks[j])): pend = toks[j]
-        i += k; state = cp
-        if i > len(toks): raise ParseFail("TABLE: ran past the end", i)
 
 def frame_to_snapshot(frame):
     """the slot dict as the snapshot() view (so predicates read it the same way)"""
