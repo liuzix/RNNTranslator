@@ -53,6 +53,7 @@ The lexical layer merges multiword tokens and gives each token its readings from
 ├── .gitignore
 ├── .ignore                           keeps search tools out of archive/
 ├── .python-version
+├── CLAUDE.md                         the rules for working here: read first, pin every claim, keep everything reproducible
 ├── LICENSE
 ├── README.md                         rendered from docs/README.tmpl.md — do not edit by hand
 ├── np_module.py                      parse_np translated by hand: derived predicates + rules, complete guards
@@ -80,7 +81,7 @@ uv run python harness/run.py readme                # re-render README.md after e
 
 ## Harness
 
-Every commit runs the harness on the staged tree through the pre-commit hook, and a regression against the committed baseline refuses the commit. Each action declares its inputs and runs in a sandbox that holds only those inputs, cached under `.cache/actions/` by the hash of the inputs, `uv.lock` and the interpreter. Every dependency is pinned with its sha256 in `uv.lock` (7 packages). The corpus is pinned to commit 312408a11c5f with a sha256 and line count per file, and is not vendored. Every table row, the corpus lock and the baseline are validated against JSON Schemas (draft 2020-12), with uniqueness and cross-table references declared in `schemas/tables/integrity.json`, and every sentence the baseline cites is verified against the pinned corpus line. The file tree above is compared with the tracked files. The architecture diagram is rendered from `docs/architecture.puml` by PlantUML 1.2025.10, pinned by the jar's sha256, and the committed SVG must match the hash recorded at render time. Every number in this README is rendered from a named fact, and every sentence is either pinned to a test or declared a hypothesis in the appendix below. Retired files leave the tree, and what is worth reading later goes into `archive/` as a compressed blob that no text search sees into.
+Every commit runs the harness on the staged tree through the pre-commit hook, and a regression against the committed baseline refuses the commit. Each action declares its inputs and runs in a sandbox that holds only those inputs, cached under `.cache/actions/` by the hash of the inputs, `uv.lock` and the interpreter. Every dependency is pinned with its sha256 in `uv.lock` (7 packages). The corpus is pinned to commit 312408a11c5f with a sha256 and line count per file, and is not vendored. Every table row, the corpus lock and the baseline are validated against JSON Schemas (draft 2020-12), with uniqueness and cross-table references declared in `schemas/tables/integrity.json`, and every sentence the baseline cites is verified against the pinned corpus line. The file tree above is compared with the tracked files. The architecture diagram is rendered from `docs/architecture.puml` by PlantUML 1.2025.10, pinned by the jar's sha256, and the committed SVG must match the hash recorded at render time. Every number in this README is rendered from a named fact, and every sentence is either pinned to a test or declared a hypothesis in the appendix below. Retired files leave the tree, and what is worth reading later goes into `archive/` as a compressed blob that no text search sees into. `CLAUDE.md` states the rules every agent and human follows here, and every file and check it names exists.
 
 The `rules` action measures coverage and char-BLEU of the transducer on dev and test and records every output. The `matrix` action compiles the hybrid cell on dev and test and cross-tabulates it against the rule parser. The `np` action checks `np_module` against `parse_np` over every window of at most 2 tokens, or 3 with `--full`.
 
@@ -113,6 +114,7 @@ Every sentence above is quoted here with what pins it: a test in `harness/test_c
 - "The architecture diagram is rendered from `docs/architecture.puml` by PlantUML 1.2025.10, pinned by the jar's sha256, and the committed SVG must match the hash recorded at render time.": Pinned by `check_diagram`
 - "Every number in this README is rendered from a named fact, and every sentence is either pinned to a test or declared a hypothesis in the appendix below.": Pinned by `check_readme`
 - "Retired files leave the tree, and what is worth reading later goes into `archive/` as a compressed blob that no text search sees into.": Pinned by `test_archive_is_opaque`
+- "`CLAUDE.md` states the rules every agent and human follows here, and every file and check it names exists.": Pinned by `test_claude_md_references_exist`
 - "The `rules` action measures coverage and char-BLEU of the transducer on dev and test and records every output.": Pinned by `rules`
 - "The `matrix` action compiles the hybrid cell on dev and test and cross-tabulates it against the rule parser.": Pinned by `matrix`
 - "The `np` action checks `np_module` against `parse_np` over every window of at most 2 tokens, or 3 with `--full`.": Pinned by `np`

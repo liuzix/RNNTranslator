@@ -153,6 +153,24 @@ def test_archive_is_opaque(root):
             base = os.path.basename(n).encode()
             if len(base) > 6: assert base not in raw, f"{base} readable in the blob"
 
+def test_claude_md_references_exist(root):
+    """every path CLAUDE.md names in backticks exists in the tree, and every check it names is one the hook runs"""
+    text = open(os.path.join(root, "CLAUDE.md"), encoding="utf-8").read()
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("runner", os.path.join(root, "harness", "run.py")); runner = importlib.util.module_from_spec(spec); spec.loader.exec_module(runner)
+    checks = {os.path.basename(s)[:-3] for s, _ in runner.STATIC} | set(runner.ACTIONS)
+    missing = []
+    for ref in re.findall(r"`([^`\n]+)`", text):
+        if ref.startswith(("uv ", "git ", "{{", "# ", "hypothesis", "Pinned", "Hypothesis", "STATIC", "ACTIONS", "check_", "matrix", "rules", "np")):
+            name = ref.split()[0]
+            if name.startswith("check_") and name not in checks: missing.append(ref)
+            continue
+        if "/" in ref or "." in ref:
+            if not os.path.exists(os.path.join(root, ref)): missing.append(ref)
+    assert not missing, f"CLAUDE.md names things that do not exist: {missing}"
+    for section in ("Read before you write", "Every claim is pinned", "reproducible and hermetic", "The hook is the gate", "Retirement and scope"):
+        assert section in text
+
 def test_license_is_mit(root):
     assert open(os.path.join(root, "LICENSE"), encoding="utf-8").read().startswith("MIT License")
 
