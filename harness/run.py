@@ -255,8 +255,9 @@ def compare(results, baseline_path, corpus, src_root=ROOT):
     show("up  ", d["up"]); show("DOWN", d["down"]); show("VERDICT", d["incomparable"]); show("REMOVED", d["removed"])
     if d["down"] or d["incomparable"] or d["removed"]:
         if d["incomparable"]:
-            print("an output nobody has judged changed or disappeared: record a verdict on the OLD output in harness/adjudications.json")
-            print("  (right / wrong / input_ungrammatical, with the reason), stage it, and run the check again")
+            print("an output nobody has judged changed, appeared or disappeared: record a verdict on each unjudged output shown")
+            print("  (the old one, the new one, or both) in harness/adjudications.json — right / wrong / input_ungrammatical, with")
+            print("  the reason — stage it, and run the check again")
         if d["down"] or d["removed"]: print("an item moved down: fix the cause; a baseline is never lowered to pass (CLAUDE.md §4)")
         return False
     if d["up"]: print("improvements: raise the baseline with `python harness/run.py baseline --staged` and stage it with the change")

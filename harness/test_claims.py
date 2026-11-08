@@ -164,6 +164,10 @@ def test_precommit_hook_runs_check(root):
         assert not gate({k1: "私は猫が好きだ。", k2: ""}, {k1: "私は猫が好きだ。", k2: ""})                          # UNKNOWN -> REFUSED needs a verdict
         assert gate({k1: "私は猫が好きだ。", k2: ""}, {k1: "私は猫が好きだ。", k2: ""}, adj=[{"citation": "dev 2: he came .", "verdict": "wrong", "output": "彼が来た。", "reason": "wrong particle"}])   # judged wrong: refusing it is up
         assert not gate({k1: "", k2: "彼が来た。"}, {k1: "", k2: ""})                                               # RIGHT -> REFUSED is down
+        assert not gate({k1: "私は猫が好きだ。", k2: "彼も来た。"}, {k1: "私は猫が好きだ。", k2: ""})                   # UNKNOWN -> another unjudged output needs verdicts
+        assert not gate({k1: "私は猫が好きだ。", k2: "彼も来た。"}, {k1: "私は猫が好きだ。", k2: ""}, adj=[{"citation": "dev 2: he came .", "verdict": "wrong", "output": "彼が来た。", "reason": "wrong particle"}])   # the old one judged, the new one still unjudged
+        assert gate({k1: "私は猫が好きだ。", k2: "彼も来た。"}, {k1: "私は猫が好きだ。", k2: ""}, adj=[{"citation": "dev 2: he came .", "verdict": "wrong", "output": "彼が来た。", "reason": "wrong particle"},
+                                                                                              {"citation": "dev 2: he came .", "verdict": "right", "output": "彼も来た。", "reason": "も for the context"}])   # both judged: WRONG -> RIGHT is up
         assert not gate({k1: "私は猫が好きだ。", k2: "彼が来た。"}, {k1: "私は猫が好きだ。", k2: ""}, negatives=[dict(neg[0], **{"sentence.rules": "私は行く。"})])   # a negative accepted is down
     finally: shutil.rmtree(tmp)
 

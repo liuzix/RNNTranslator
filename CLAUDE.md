@@ -58,12 +58,15 @@ measurement, a reason. A claim is either **pinned** (a test or check that would 
   aggregate: a corpus sentence is WRONG < REFUSED < RIGHT with UNKNOWN (an unjudged output) below RIGHT and
   incomparable with the rest; the matrix on a sentence is MISFIRE < GAP < AGREE; a negative ACCEPTED < REFUSED; a
   control REFUSED < ACCEPTED. The commit is refused if any item moves down, is removed, or moves to or from
-  UNKNOWN without a verdict. Install the hook with `uv run python harness/run.py install-hooks`.
+  UNKNOWN — including from one unjudged output to another — without a verdict. Install the hook with
+  `uv run python harness/run.py install-hooks`.
 - Coverage, BLEU and the other aggregates are views, never gates: refusing a wrong output is an improvement even
   though "coverage" falls.
-- When the hook asks for a verdict, judge the OLD output and record it in `harness/adjudications.json` (`right`,
-  `wrong`, or `input_ungrammatical` for a corpus line whose English is not standard), with the reason. A verdict is
-  about one output of one sentence and is permanent; never adjudicate to make a change pass.
+- When the hook asks for a verdict, judge each unjudged output it shows — the old one, the new one, or both — and
+  record it in `harness/adjudications.json` (`right`, `wrong`, or `input_ungrammatical` for a corpus line whose
+  English is not standard), with the reason. A verdict is about one output of one sentence and is permanent; judge
+  what the output says, never what the gate needs: a new output judged wrong is a down move, and the fix is in the
+  code.
 - A change that moves items is committed together with its new baseline
   (`uv run python harness/run.py baseline --staged`), and the commit message names what moved and which way.
   `uv run python harness/run.py frontier` shows what remains, grouped by blocker.

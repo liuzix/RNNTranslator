@@ -7,7 +7,8 @@ Items and their chains (levels rise left to right; a lower index is worse):
         RIGHT    = the reference, or an output adjudicated right; for an input adjudicated ungrammatical, a refusal
         WRONG    = an output adjudicated wrong; any output for an ungrammatical input
         REFUSED  = no output (and the input is not adjudicated ungrammatical)
-        UNKNOWN  = an output nobody has judged — a change away from it needs a verdict (harness/adjudications.json)
+        UNKNOWN  = an output nobody has judged — a change away from it, to a refusal or to another unjudged output,
+                   needs a verdict on the unjudged output(s) (harness/adjudications.json)
   matrix <split> <citation>     the matrix parser against the rule parser on the same sentence
         MISFIRE (parses where the rules refuse, or a different frame) < GAP (refuses where the rules parse) < AGREE
   negative <sentence>           ACCEPTED < REFUSED            (the rule parser on an ungrammatical sentence)
@@ -84,12 +85,14 @@ def levels(rules_outputs, matrix_outputs, negatives_rows, np_mismatches, referen
     return L
 
 def compare_levels(old, new):
-    """-> dict with lists of (item, old level, new level, detail) under 'up', 'down', 'incomparable', 'removed', 'added'"""
+    """-> dict with lists of (item, old level, new level, detail) under 'up', 'down', 'incomparable', 'removed', 'added';
+    an unjudged output replaced by a different unjudged output is 'incomparable' too (UNKNOWN -> UNKNOWN with another string)"""
     out = {"up": [], "down": [], "incomparable": [], "removed": [], "added": []}
     for item, (kind, lv, det) in new.items():
         if item not in old: out["added"].append((item, None, lv, det)); continue
         okind, olv, odet = old[item]
         c = cmp(kind, olv, lv)
+        if c == "same" and lv == "UNKNOWN" and odet != det: c = "incomparable"
         if c in ("up", "down", "incomparable"): out[c].append((item, olv, lv, (odet, det)))
     for item, (kind, lv, det) in old.items():
         if item not in new: out["removed"].append((item, lv, None, det))
