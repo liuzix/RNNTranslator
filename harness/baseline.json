@@ -1,35 +1,35 @@
 {
 "detail": {
 "matrix": {
-"both_refuse": 277,
+"both_refuse": 276,
 "cell": {
 "build_seconds": 22,
-"input_units": 1689,
+"input_units": 1688,
 "layers": [
-963,
+964,
 119,
-2091,
-754,
-28303
+2096,
+755,
+28305
 ],
-"nnz": 207436,
-"rules": 1911,
+"nnz": 207563,
+"rules": 1915,
 "rules_by_kind": {
 "entry": 132,
 "exit": 177,
-"fail": 223,
+"fail": 225,
 "module": 957,
-"outer": 422
+"outer": 424
 },
 "scope": {
-"in scope": 550,
+"in scope": 551,
 "out of scope": 158,
-"refused": 287
+"refused": 286
 },
-"state_units": 14505,
+"state_units": 14507,
 "unresolved": {}
 },
-"identical": 516,
+"identical": 517,
 "matrix_parses_refused": 0,
 "per_split": {
 "dev": {
@@ -48,23 +48,23 @@
 "wrong_frame": 1
 },
 "test": {
-"bleu_matrix_shared": 36.562,
-"bleu_rules_shared": 36.615,
-"both_refuse": 94,
+"bleu_matrix_shared": 36.533,
+"bleu_rules_shared": 36.585,
+"both_refuse": 93,
 "examples": {
 "wrong_frame": [
 "how many schools are there in your city ? | あなたの都市に学校はいくつありますか。 | あなたの都市に学校はいくついますか。"
 ]
 },
-"identical": 276,
+"identical": 277,
 "matrix_parses_refused": 0,
 "refused_parseable": 128,
-"shared": 277,
+"shared": 278,
 "wrong_frame": 1
 }
 },
 "refused_parseable": 200,
-"summary": "identical 516, wrong frame 2, matrix parses refused 0, refused parseable 200, both refuse 277; nnz 207436, rules 1911",
+"summary": "identical 517, wrong frame 2, matrix parses refused 0, refused parseable 200, both refuse 276; nnz 207563, rules 1915",
 "wrong_frame": 2
 },
 "negatives": {
@@ -84,7 +84,7 @@
 "max_len": 2,
 "mismatch_kinds": 0,
 "mismatches": 0,
-"seconds": 4,
+"seconds": 5,
 "summary": "np_module vs parse_np: 32040 cases (len<=2, 89 tokens), 0 mismatches"
 },
 "rules": {
@@ -110,22 +110,22 @@
 "n": 496
 },
 "test": {
-"bleu_all": 29.477,
-"bleu_covered": 36.122,
-"coverage": 0.8116,
-"covered": 405,
+"bleu_all": 29.579,
+"bleu_covered": 36.105,
+"coverage": 0.8136,
+"covered": 406,
 "failures": {
-"PRE: noun phrase": 29,
+"PRE: imperative adjective": 1,
+"PRE: noun phrase": 28,
 "PRE: subject case": 1,
 "PRE: tail": 7,
 "PRE: verb": 1,
 "PRE: wh question": 3,
-"VP0: agreement": 1,
 "VP0: copula predicate": 4,
 "VP0: noun phrase": 22,
 "VP0: possessive pronoun without noun": 1,
 "VP0: predicate": 3,
-"VP0: tail": 21,
+"VP0: tail": 20,
 "VP0: verb": 1
 },
 "n": 499
@@ -153,8 +153,8 @@
 "D": {
 "cases": 3,
 "closed": false,
-"refused": 3,
-"right": 0,
+"refused": 2,
+"right": 1,
 "title": "Gerunds",
 "wrong": 0
 },
@@ -225,12 +225,12 @@
 },
 "closed": 2,
 "open": 9,
-"right": 6,
-"summary": "suites: 6/33 cases right, 2 of 11 classes closed (open: D, E, F, G, H, I, K, L, M)"
+"right": 7,
+"summary": "suites: 7/33 cases right, 2 of 11 classes closed (open: D, E, F, G, H, I, K, L, M)"
 }
 },
 "metrics": {
-"matrix.identical": 516,
+"matrix.identical": 517,
 "matrix.silent_misfires": 2,
 "negatives.accepted": 0,
 "negatives.controls_refused": 0,
@@ -238,11 +238,11 @@
 "np.mismatches": 0,
 "rules.dev.bleu_all": 19.311,
 "rules.dev.covered": 313,
-"rules.test.bleu_all": 29.477,
-"rules.test.covered": 405,
+"rules.test.bleu_all": 29.579,
+"rules.test.covered": 406,
 "suites.cases": 33,
 "suites.closed": 2,
-"suites.right": 6
+"suites.right": 7
 },
 "outputs": {
 "matrix": {
@@ -857,7 +857,7 @@
 "19: i must put my watch forward two minutes .": "私は腕時計を前へ２分置かなければならない。",
 "1: they finally acknowledged it as true .": "彼らはそれをついに本当だと認めた。",
 "200: i ran out of breath .": "私は息を切らした。",
-"201: i don 't care too much for hot food .": "私は暑い食べ物のためにもたくさん気にしない。",
+"201: i don 't care too much for hot food .": "私は暑い食べ物のためにあまりにたくさん気にしない。",
 "202: we have to start at once .": "私たちはすぐに始めなければならない。",
 "203: i am just a nobody .": "私はちょうどつまらない人だ。",
 "204: this question isn 't easy .": "この質問は易しくない。",
@@ -940,7 +940,7 @@
 "274: they jumped into the water one after another .": "彼らは水に次々に飛んだ。",
 "275: i was used to the heat .": "",
 "276: please drop in on your way home .": "あなたの道で家に立ち寄ってください。",
-"277: he gave up going abroad .": "",
+"277: he gave up going abroad .": "彼は海外に行くことを諦めた。",
 "278: don 't put the company in danger .": "会社を危険にさらさないでください。",
 "279: someone is at the door .": "誰かはドアにいる。",
 "27: we read the letter again and again .": "私たちは手紙を何度も読む。",
@@ -1111,7 +1111,7 @@
 "429: i meet him from time to time .": "私は時間から時間まで彼を会う。",
 "42: check , please .": "",
 "430: i asked her if she could go to the party .": "",
-"431: don 't eat too much .": "もたくさん食べないでください。",
+"431: don 't eat too much .": "あまりにたくさん食べないでください。",
 "432: i feel very cold .": "私はとても寒い。",
 "433: i made an effort to finish my work .": "",
 "434: i want a book .": "私は本が欲しい。",
@@ -1637,7 +1637,6 @@
 "248: it all turned out for the best in the end .": "VP0: predicate",
 "265: take as many as you want .": "PRE: noun phrase",
 "271: he is the last person to betray his friends .": "VP0: noun phrase",
-"277: he gave up going abroad .": "VP0: tail",
 "285: sad to say , her son died young .": "PRE: noun phrase",
 "289: if something happens , feel free to call me .": "PRE: tail",
 "291: in any case , it 's none of your business .": "PRE: noun phrase",
@@ -1657,7 +1656,7 @@
 "341: early rising is good for the health .": "PRE: noun phrase",
 "348: it never occurred to me that she loved me .": "VP0: tail",
 "34: please pass it to the other boys .": "PRE: noun phrase",
-"350: don 't be afraid of making mistakes .": "PRE: noun phrase",
+"350: don 't be afraid of making mistakes .": "PRE: imperative adjective",
 "354: riding a horse is great fun .": "PRE: noun phrase",
 "369: this is the worst of all .": "VP0: noun phrase",
 "374: she closed all the windows in the room .": "VP0: noun phrase",
@@ -2305,7 +2304,7 @@
 "19: i must put my watch forward two minutes .": "私は腕時計を前へ２分置かなければならない。",
 "1: they finally acknowledged it as true .": "彼らはそれをついに本当だと認めた。",
 "200: i ran out of breath .": "私は息を切らした。",
-"201: i don 't care too much for hot food .": "私は暑い食べ物のためにもたくさん気にしない。",
+"201: i don 't care too much for hot food .": "私は暑い食べ物のためにあまりにたくさん気にしない。",
 "202: we have to start at once .": "私たちはすぐに始めなければならない。",
 "203: i am just a nobody .": "私はちょうどつまらない人だ。",
 "204: this question isn 't easy .": "この質問は易しくない。",
@@ -2388,7 +2387,7 @@
 "274: they jumped into the water one after another .": "彼らは水に次々に飛んだ。",
 "275: i was used to the heat .": "私は暑さに慣れていた。",
 "276: please drop in on your way home .": "あなたの道で家に立ち寄ってください。",
-"277: he gave up going abroad .": "",
+"277: he gave up going abroad .": "彼は海外に行くことを諦めた。",
 "278: don 't put the company in danger .": "会社を危険にさらさないでください。",
 "279: someone is at the door .": "誰かはドアにいる。",
 "27: we read the letter again and again .": "私たちは手紙を何度も読む。",
@@ -2559,7 +2558,7 @@
 "429: i meet him from time to time .": "私は時間から時間まで彼を会う。",
 "42: check , please .": "",
 "430: i asked her if she could go to the party .": "私は彼女に彼女がパーティーに行けたかどうか尋ねた。",
-"431: don 't eat too much .": "もたくさん食べないでください。",
+"431: don 't eat too much .": "あまりにたくさん食べないでください。",
 "432: i feel very cold .": "私はとても寒い。",
 "433: i made an effort to finish my work .": "私は私の仕事を終えるために努力をした。",
 "434: i want a book .": "私は本が欲しい。",
@@ -2762,9 +2761,9 @@
 "citation": "test 277",
 "class": "D",
 "expect": "彼は海外に行くことを諦めた。",
-"level": "REFUSED",
-"output": "",
-"reason": "VP0: tail",
+"level": "RIGHT",
+"output": "彼は海外に行くことを諦めた。",
+"reason": null,
 "sentence": "he gave up going abroad ."
 },
 {
@@ -2773,7 +2772,7 @@
 "expect": "間違いをすることを恐れないでください。",
 "level": "REFUSED",
 "output": "",
-"reason": "PRE: noun phrase",
+"reason": "PRE: imperative adjective",
 "sentence": "don 't be afraid of making mistakes ."
 },
 {
@@ -2994,5 +2993,5 @@
 }
 ]
 },
-"taken": "2026-11-08 at f3ae90b (staged)"
+"taken": "2026-11-08 at c9df8a9 (staged)"
 }

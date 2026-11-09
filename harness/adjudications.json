@@ -276,6 +276,30 @@
    "verdict": "right",
    "output": "もちろん、私はそこにあなたと行く。",
    "reason": "もちろん、 for 'of course ,', そこに行く, あなたと: correct (the reference adds つもりです)."
+  },
+  {
+   "citation": "test 201: i don 't care too much for hot food .",
+   "verdict": "wrong",
+   "output": "私は暑い食べ物のためにもたくさん気にしない。",
+   "reason": "'care for' is 'like' (好む), 'hot food' here is 辛い食べ物, 'too much' is not もたくさん, and のために misreads 'for'."
+  },
+  {
+   "citation": "test 201: i don 't care too much for hot food .",
+   "verdict": "wrong",
+   "output": "私は暑い食べ物のためにあまりにたくさん気にしない。",
+   "reason": "Same misreadings ('care for', 'hot', 'for'); あまりにたくさん for 'too much' does not rescue it."
+  },
+  {
+   "citation": "test 431: don 't eat too much .",
+   "verdict": "wrong",
+   "output": "もたくさん食べないでください。",
+   "reason": "'eat too much' is 食べすぎる (食べすぎないでください); もたくさん reads 'too' as 'also'."
+  },
+  {
+   "citation": "test 431: don 't eat too much .",
+   "verdict": "wrong",
+   "output": "あまりにたくさん食べないでください。",
+   "reason": "'eat too much' is 食べすぎる; あまりにたくさん食べない is understood but not how the excess is said."
   }
  ]
 }

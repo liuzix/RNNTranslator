@@ -480,6 +480,8 @@ class Parser:
 
     def copula_predicate(self, allow_empty=False):
         c = self.c; tok = self.peek(); r = dict(self.readings(tok))
+        if c.imp and ("adj" in r or (tok, self.peek(1)) in ADJ_PREP) and not self.starts_np(tok):       # be quiet / don't be afraid: the imperative of an adjective (〜にして / 〜がらないで) is not rendered
+            self.fail("imperative adjective")
         while "time" in r and "adv" not in r: c.time += r["time"]; self.i += 1; tok = self.peek(); r = dict(self.readings(tok))
         while "adv" in r and (r["adv"] in ("とても", "本当に", "かなり", "も", "まだ", "もう", "いつも") or self.peek(1) and (self.has(self.peek(1), "adj") or self.starts_np(self.peek(1)) and "adj" not in r) and not self.has(self.peek(1), "noun")):
             c.degree = "すぎ" if tok == "too" else c.degree + r["adv"]; self.i += 1; tok = self.peek(); r = dict(self.readings(tok))
@@ -501,8 +503,13 @@ class Parser:
             return self.verb_phrase(expect_ing=True, from_copula=True)
         if (tok, self.peek(1)) in ADJ_PREP and self.peek(2) and (self.starts_np(self.peek(2)) or self.verb_form(self.peek(2)) == "ing"):
             ja, kind, part = ADJ_PREP[(tok, self.peek(1))]; self.i += 2
-            ja2, cls2 = self.parse_np(); c.obj = ja2; c.obj_particle = part
-            c.copula = ("idiom", ja, kind); self.tail_pp_adv(); return
+            if self.verb_form(self.peek()) == "ing" and not self.starts_np(self.peek()):    # afraid of making mistakes -> 間違いをすることを (suite D)
+                inner = Clause(); saved = self.c; self.c = inner
+                self.verb_phrase(expect_ing=True, from_copula=True); self.c = saved
+                c.obj = generate(inner, polite=False, embedded=True)[:-1] + "こと"
+            else:
+                ja2, cls2 = self.parse_np(); c.obj = ja2
+            c.obj_particle = part; c.copula = ("idiom", ja, kind); self.tail_pp_adv(); return
         if "verb" in r and self.verb_form(tok) == "pp" and not self.starts_np(tok):   # passive
             self.fail("passive")
         if (tok, self.peek(1)) in ADJ_PREP and self.peek(2) and (self.starts_np(self.peek(2)) or self.verb_form(self.peek(2)) == "ing"):
@@ -667,6 +674,9 @@ class Parser:
             return self.verb_phrase(expect_base=True)
         if lemma in VC["ing_comp"] and self.peek() and self.verb_form(self.peek()) == "ing":
             c.want = lemma
+            return self.verb_phrase(expect_ing=True)
+        if c.verb[0] in VC["ing_comp"] and self.peek() and self.verb_form(self.peek()) == "ing" and not self.starts_np(self.peek()):   # give up going abroad -> 行くことを諦めた (suite D); give up smoking keeps the noun 喫煙
+            c.want = c.verb[0]
             return self.verb_phrase(expect_ing=True)
         if lemma in VC["that_comp"] and (self.peek() == "that" or (self.peek() and self.starts_np(self.peek()) and lemma not in VC["that_only"] and self.peek(1) and (self.has(self.peek(1), "verb") or self.has(self.peek(1), "aux_be") or self.has(self.peek(1), "aux_do") or self.has(self.peek(1), "modal") or self.has(self.peek(1), "aux_have")))):
             if self.peek() == "that": self.i += 1
@@ -971,6 +981,8 @@ class Parser:
             if "adj" in r and self.peek(1) == "and" and self.peek(2) == tok and c.verb and c.verb[0] in VC["change"]:   # longer and longer
                 ja, k = r["adj"]; c.adv += "ますます"; c.copula = ("adj", (ja[2:] if ja.startswith("より") else ja, k)); self.i += 3; continue
             if "loc" in r: c.pp.append((PREPS["at"], r["loc"])); self.i += 1; continue      # wait there -> そこで, go there -> そこに: as a PP at that place
+            if tok == "too" and self.peek(1) and self.has(self.peek(1), "adv") and not self.has(self.peek(1), "verb"):   # too fast -> あまりに速く (the excess, not も)
+                c.adv += "あまりに" + dict(self.readings(self.peek(1)))["adv"]; self.i += 2; continue
             if "adv" in r: c.adv += r["adv"]; self.i += 1; continue
             if "adj" in r and c.verb and c.verb[0] in VC["copular"]:
                 c.copula = ("adj", r["adj"]); self.i += 1; continue

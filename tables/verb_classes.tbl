@@ -53,6 +53,7 @@ force | control
 forget | to_comp,that_comp,that_only,wh_comp
 get | control,copular,change,ni_location
 give | dative,ditrans
+give up | ing_comp
 go | motion,posture,comitative,ni_location,ni_where
 grow | copular,change
 guess | that_comp,wh_comp
