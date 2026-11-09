@@ -403,6 +403,9 @@ class Parser:
             if tok == "would" and self.peek() == "mind" and self.peek(1) and self.verb_form(self.peek(1)) == "ing":   # would you mind V-ing ?
                 self.i += 1; c.want = "mind_request"; c.modal = None
                 return self.verb_phrase(expect_ing=True)
+            if tok in ("would", "will", "could", "can") and ja == "あなた" and self.peek() == "please" and self.peek(1) and self.verb_form(self.peek(1)) == "base":   # would you please open the door ? -> 開けてくださいませんか (suite H)
+                self.i += 1; c.want = "request"; c.modal = None
+                return self.verb_phrase(expect_base=True)
             return self.verb_phrase(expect_base=True)
         if "aux_have" in r:
             c.past = r["aux_have"] == "past"; c.perf = True; self.i += 1

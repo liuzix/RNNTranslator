@@ -209,7 +209,7 @@ ADJ_PREP = tables.build_adjectives()        # tables/adjectives.tbl
 WH = tables.build_pairs("wh", 3)                # tables/wh.tbl
 MODALS = tables.build_pairs("modals")          # tables/modals.tbl
 NUMBERS = tables.build_pairs("numbers")        # tables/numbers.tbl
-MULTIWORD = sorted([w for w in list(LEX) + list(PREPS) + list(DETS) if " " in w], key=len, reverse=True)
+MULTIWORD = sorted([w for w in list(LEX) + list(PREPS) + list(DETS) + list(WH) if " " in w], key=len, reverse=True)
 
 SUBORD, COORD, HEARSAY, SOFTENER = tables.build_connectives()   # tables/connectives.tbl
 
@@ -361,6 +361,7 @@ def predicate_form(c, polite):
     elif c.want == "better":     p = Pred("ia", (p.nai_stem() + "ない" if c.neg else p.ta()) + "ほうがい"); c.neg = False
     elif c.want == "neednot":    return p.dic + "必要はない" if not polite else p.dic + "必要はありません"
     elif c.want == "mind_request": return p.te() + "もらえません"
+    elif c.want == "request":      return p.te() + "くださいません"                          # would you please V ? -> Vてくださいませんか
     elif c.want == "be_to":      p = Pred("fixed", p.dic + "ことになっている")
     elif c.want == "canthave":   return p.ta() + "はずがない"
     if "+" in lemma:
@@ -478,7 +479,7 @@ def generate(c, polite=None, embedded=False):
         wh_cop = c.wh and c.copula is not None and c.copula[0] == "wh"
         if c.subj and c.subj.endswith(("誰も", "何も")): c.neg = True
         weather = c.subj == "それ" and (c.verb and c.verb[0] in ("rain", "snow") or c.infinitive and c.infinitive[0] == "extraposed")
-        if (c.subj is not None or c.wh and c.wh[1] == "s") and not c.imp and not c.lets and not (wh_cop and c.wh[0] == "何時" and c.subj == "それ") and c.want != "mind_request" and not weather:
+        if (c.subj is not None or c.wh and c.wh[1] == "s") and not c.imp and not c.lets and not (wh_cop and c.wh[0] == "何時" and c.subj == "それ") and c.want not in ("mind_request", "request") and not weather:
             if c.wh and c.wh[1] == "s" and not wh_cop: out.append(c.wh[0] + "が")
             elif c.subj.endswith(("誰も", "何も")): out.append(c.subj)
             else: out.append(c.subj + ("は" if wh_cop and not embedded else subj_particle))

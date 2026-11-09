@@ -1,70 +1,70 @@
 {
 "detail": {
 "matrix": {
-"both_refuse": 266,
+"both_refuse": 263,
 "cell": {
-"build_seconds": 25,
-"input_units": 2041,
+"build_seconds": 26,
+"input_units": 2043,
 "layers": [
-985,
+989,
 135,
-2159,
-786,
-31247
+2171,
+790,
+31257
 ],
-"nnz": 222137,
-"rules": 1968,
+"nnz": 222305,
+"rules": 1980,
 "rules_by_kind": {
-"entry": 131,
-"exit": 179,
-"fail": 231,
-"module": 1000,
-"outer": 427
+"entry": 132,
+"exit": 180,
+"fail": 234,
+"module": 1003,
+"outer": 431
 },
 "scope": {
-"in scope": 561,
+"in scope": 564,
 "out of scope": 158,
-"refused": 276
+"refused": 273
 },
-"state_units": 15994,
+"state_units": 16003,
 "unresolved": {}
 },
-"identical": 527,
+"identical": 530,
 "matrix_parses_refused": 0,
 "per_split": {
 "dev": {
-"bleu_matrix_shared": 34.392,
-"bleu_rules_shared": 34.416,
-"both_refuse": 181,
+"bleu_matrix_shared": 34.316,
+"bleu_rules_shared": 34.34,
+"both_refuse": 180,
 "examples": {
 "wrong_frame": [
 "what food don 't you like ? | あなたはどんな食べ物を好きではありませんか。 | あなたは何時に好きではありませんか。"
 ]
 },
-"identical": 242,
+"identical": 243,
 "matrix_parses_refused": 0,
 "refused_parseable": 72,
-"shared": 243,
+"shared": 244,
 "wrong_frame": 1
 },
 "test": {
-"bleu_matrix_shared": 36.605,
-"bleu_rules_shared": 36.655,
-"both_refuse": 85,
+"bleu_matrix_shared": 36.624,
+"bleu_rules_shared": 36.674,
+"both_refuse": 83,
 "examples": {
 "wrong_frame": [
 "how many schools are there in your city ? | あなたの都市に学校はいくつありますか。 | あなたの都市に学校はいくついますか。"
 ]
 },
-"identical": 285,
+"identical": 287,
 "matrix_parses_refused": 0,
 "refused_parseable": 128,
-"shared": 286,
+"shared": 288,
 "wrong_frame": 1
 }
 },
 "refused_parseable": 200,
-"summary": "identical 527, wrong frame 2, matrix parses refused 0, refused parseable 200, both refuse 266; nnz 222137, rules 1968",
+"summary": "identical 530, wrong frame 2, matrix parses refused 0, refused parseable 200, both refuse 263; nnz 222305, rules 1980",
 "wrong_frame": 2
 },
 "negatives": {
@@ -74,7 +74,7 @@
 "count": 18,
 "matrix_accepted": 0,
 "problems": [],
-"seconds": 27,
+"seconds": 25,
 "summary": "negatives: rules refuse 18/18 and accept 18/18 controls; matrix refuses 18/18 and accepts 14/18 controls"
 },
 "np": {
@@ -89,10 +89,10 @@
 },
 "rules": {
 "dev": {
-"bleu_all": 19.632,
-"bleu_covered": 34.692,
-"coverage": 0.6351,
-"covered": 315,
+"bleu_all": 19.666,
+"bleu_covered": 34.635,
+"coverage": 0.6371,
+"covered": 316,
 "failures": {
 "PRE: noun phrase": 23,
 "PRE: possessive pronoun without noun": 3,
@@ -110,16 +110,16 @@
 "n": 496
 },
 "test": {
-"bleu_all": 30.442,
-"bleu_covered": 36.107,
-"coverage": 0.8297,
-"covered": 414,
+"bleu_all": 30.595,
+"bleu_covered": 36.12,
+"coverage": 0.8337,
+"covered": 416,
 "failures": {
+"PRE: imperative adjective": 1,
 "PRE: noun phrase": 28,
 "PRE: subject case": 1,
 "PRE: tail": 7,
-"PRE: verb": 1,
-"PRE: wh question": 3,
+"PRE: wh question": 2,
 "VP0: copula predicate": 4,
 "VP0: have been to": 2,
 "VP0: noun phrase": 13,
@@ -185,8 +185,8 @@
 "H": {
 "cases": 3,
 "closed": false,
-"refused": 3,
-"right": 0,
+"refused": 1,
+"right": 2,
 "title": "Discourse, ellipsis, coordination",
 "wrong": 0
 },
@@ -225,24 +225,24 @@
 },
 "closed": 3,
 "open": 8,
-"right": 14,
-"summary": "suites: 14/33 cases right, 3 of 11 classes closed (open: D, E, G, H, I, K, L, M)"
+"right": 16,
+"summary": "suites: 16/33 cases right, 3 of 11 classes closed (open: D, E, G, H, I, K, L, M)"
 }
 },
 "metrics": {
-"matrix.identical": 527,
+"matrix.identical": 530,
 "matrix.silent_misfires": 2,
 "negatives.accepted": 0,
 "negatives.controls_refused": 0,
 "negatives.matrix_accepted": 0,
 "np.mismatches": 0,
-"rules.dev.bleu_all": 19.632,
-"rules.dev.covered": 315,
-"rules.test.bleu_all": 30.442,
-"rules.test.covered": 414,
+"rules.dev.bleu_all": 19.666,
+"rules.dev.covered": 316,
+"rules.test.bleu_all": 30.595,
+"rules.test.covered": 416,
 "suites.cases": 33,
 "suites.closed": 3,
-"suites.right": 14
+"suites.right": 16
 },
 "outputs": {
 "matrix": {
@@ -541,7 +541,7 @@
 "365: they are too close .": "",
 "366: here we go .": "",
 "367: he is a clever boy .": "彼は賢い少年だ。",
-"368: what on earth is the matter ?": "",
+"368: what on earth is the matter ?": "一体何が問題ですか。",
 "369: i was deeply moved by that .": "",
 "36: he promised that he would write to me once in a while .": "",
 "370: i 'm feeling sort of tired .": "",
@@ -781,7 +781,7 @@
 "130: i 'm not tired at all .": "私は全く疲れていない。",
 "131: it makes no difference who i meet .": "",
 "132: jane is no less beautiful than her mother .": "ジェーンは彼女の母に劣らず美しい。",
-"133: what on earth is the matter ?": "",
+"133: what on earth is the matter ?": "一体何が問題ですか。",
 "134: i 'd like to go skiing with her .": "私は彼女とスキーに行きたかった。",
 "135: the mystery story is so hard that i don 't like it .": "",
 "136: her teacher praised her .": "彼女の先生は彼女を褒めた。",
@@ -828,7 +828,7 @@
 "173: father took his place at the head of the table .": "",
 "174: he is still alive .": "彼はまだ生きている。",
 "175: my father put a ladder against the tree .": "私の父は木に反対してはしごを置く。",
-"176: would you please open the door ?": "",
+"176: would you please open the door ?": "ドアを開けてくださいませんか。",
 "177: i am to have lunch with him .": "私は彼と昼食を持つことになっている。",
 "178: we need some money .": "私たちはお金が必要だ。",
 "179: i walk to the park .": "私は公園に歩く。",
@@ -1522,7 +1522,6 @@
 "364: we were going along in the rain .": "VP0: tail",
 "365: they are too close .": "VP0: copula predicate",
 "366: here we go .": "PRE: noun phrase",
-"368: what on earth is the matter ?": "PRE: wh question",
 "369: i was deeply moved by that .": "VP0: tail",
 "36: he promised that he would write to me once in a while .": "VP0: tail",
 "370: i 'm feeling sort of tired .": "VP0: noun phrase",
@@ -1603,7 +1602,6 @@
 "10: will you give me your reasons for doing this ?": "PRE: tail",
 "124: i was astonished to hear what had happened .": "VP0: tail",
 "131: it makes no difference who i meet .": "VP0: tail",
-"133: what on earth is the matter ?": "PRE: wh question",
 "137: here is a letter for you .": "PRE: noun phrase",
 "138: the meaning of the words is intelligible .": "PRE: noun phrase",
 "139: speaking of sports , can you play tennis ?": "PRE: noun phrase",
@@ -1618,7 +1616,6 @@
 "160: no one is coming .": "PRE: subject case",
 "164: i had a lot of difficulty getting in touch with her .": "VP0: tail",
 "16: at the end of a working day everybody is in a hurry to get home .": "PRE: noun phrase",
-"176: would you please open the door ?": "PRE: verb",
 "183: i wonder if someone could help me do this .": "VP0: tail",
 "188: i 've never been to such a nice party .": "VP0: have been to",
 "189: they booted him out of school for not studying .": "VP0: tail",
@@ -1978,7 +1975,7 @@
 "365: they are too close .": "",
 "366: here we go .": "",
 "367: he is a clever boy .": "彼は賢い少年だ。",
-"368: what on earth is the matter ?": "",
+"368: what on earth is the matter ?": "一体何が問題ですか。",
 "369: i was deeply moved by that .": "",
 "36: he promised that he would write to me once in a while .": "",
 "370: i 'm feeling sort of tired .": "",
@@ -2218,7 +2215,7 @@
 "130: i 'm not tired at all .": "私は全く疲れていない。",
 "131: it makes no difference who i meet .": "",
 "132: jane is no less beautiful than her mother .": "ジェーンは彼女の母に劣らず美しい。",
-"133: what on earth is the matter ?": "",
+"133: what on earth is the matter ?": "一体何が問題ですか。",
 "134: i 'd like to go skiing with her .": "私は彼女とスキーに行きたかった。",
 "135: the mystery story is so hard that i don 't like it .": "推理小説はとても難しいので私はそれが好きではない。",
 "136: her teacher praised her .": "彼女の先生は彼女を褒めた。",
@@ -2265,7 +2262,7 @@
 "173: father took his place at the head of the table .": "父はテーブルの頭で彼の場所を取った。",
 "174: he is still alive .": "彼はまだ生きている。",
 "175: my father put a ladder against the tree .": "私の父は木に反対してはしごを置く。",
-"176: would you please open the door ?": "",
+"176: would you please open the door ?": "ドアを開けてくださいませんか。",
 "177: i am to have lunch with him .": "私は彼と昼食を持つことになっている。",
 "178: we need some money .": "私たちはお金が必要だ。",
 "179: i walk to the park .": "私は公園に歩く。",
@@ -2850,9 +2847,9 @@
 "citation": "test 133",
 "class": "H",
 "expect": "一体何が問題ですか。",
-"level": "REFUSED",
-"output": "",
-"reason": "PRE: wh question",
+"level": "RIGHT",
+"output": "一体何が問題ですか。",
+"reason": null,
 "sentence": "what on earth is the matter ?"
 },
 {
@@ -2868,9 +2865,9 @@
 "citation": "test 176",
 "class": "H",
 "expect": "ドアを開けてくださいませんか。",
-"level": "REFUSED",
-"output": "",
-"reason": "PRE: verb",
+"level": "RIGHT",
+"output": "ドアを開けてくださいませんか。",
+"reason": null,
 "sentence": "would you please open the door ?"
 },
 {
@@ -2983,5 +2980,5 @@
 }
 ]
 },
-"taken": "2026-11-08 at f92dee7 (staged)"
+"taken": "2026-11-08 at 2f26700 (staged)"
 }

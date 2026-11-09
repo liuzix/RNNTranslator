@@ -1,6 +1,7 @@
 # wh.tbl — question word | japanese | role   role: o object, s subject, loc place, t time/reason, adv manner
 
 what | 何 | o
+what on earth | 一体何 | o
 who | 誰 | s
 where | どこ | loc
 when | いつ | t
