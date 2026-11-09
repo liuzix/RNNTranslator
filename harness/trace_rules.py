@@ -23,7 +23,7 @@ def trace(comp, toks, quiet_lits=False):
         if state == ("DONE",): print("DONE", R.generate(PM.frame_to_clause(frame))); return
         if state == PM.FAIL: print("FAIL"); return
         P_ = PM.predicates(toks, i, PM.frame_to_snapshot(frame), set(range(i, i + PM.WINDOW)), PM.ALL_REGS | {"ret"}, pend, PM.heads_of(frame)) | PM.slot_predicates(frame)
-        hits = [(lits, out) for lits, out in by_prev.get(state, []) if all(PM.eval_rule_lit(q, t, P_, derived) for q, t in lits)]
+        hits = [(lits, out) for lits, out in by_prev.get(state, []) if all(PM.eval_rule_lit(q, t, P_, derived, frame) for q, t in lits)]
         print(f"i={i} {toks[i] if i < len(toks) else 'END'!r:12} {show_state(state):50} pend={pend} hits={len(hits)}")
         if len(hits) != 1:
             print("   predicates true here (registers and slots):", sorted(q for q in P_ if not q.startswith("w"))); return

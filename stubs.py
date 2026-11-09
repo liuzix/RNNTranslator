@@ -32,13 +32,6 @@ class Stub:
     item = None                    # the TODO.yaml item this stub belongs to
     def _hit(self, name): CALLS[f"{type(self).__name__}.{name}"] += 1; return TODO
 
-class HandModules(Stub):
-    """the PP machine, predicate and copula_predicate translated by hand with complete guards (item hand-modules)"""
-    item = "hand-modules"
-    def pp_rules(self): return self._hit("pp_rules")
-    def predicate_rules(self): return self._hit("predicate_rules")
-    def copula_rules(self): return self._hit("copula_rules")
-
 class ClauseFlush(Stub):
     """inner clauses in one frame: printing at clause end, clearing, the outer predicate in tag slots (item inner-clauses)"""
     item = "inner-clauses"

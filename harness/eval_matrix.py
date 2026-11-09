@@ -44,6 +44,7 @@ def main():
     kinds = collections.Counter()
     for prev, lits, out in comp["rules"]:
         if prev[0] == "P" or prev == ("DONE",): kinds["print"] += 1                 # the decoder: the printing positions, entered from DONE
+        elif prev[0] in ("M", "RETM") or (prev[0] == "RET" and out[0][0] == "M"): kinds["clause"] += 1   # the hand-translated clause modules and their hand-overs
         elif isinstance(prev[0], str) and prev[0].startswith("NP"): kinds["module"] += 1
         elif prev[0] == "RET": kinds["exit"] += 1
         elif out[0][0] == "NP0": kinds["entry"] += 1

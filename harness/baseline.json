@@ -3,72 +3,73 @@
 "matrix": {
 "both_refuse": 263,
 "cell": {
-"build_seconds": 28,
-"input_units": 2030,
+"build_seconds": 37,
+"input_units": 2808,
 "layers": [
-1053,
-278,
-4231,
-1965,
-94486
+2678,
+419,
+4925,
+1990,
+111672
 ],
-"nnz": 676059,
-"rules": 3928,
+"nnz": 812387,
+"rules": 4648,
 "rules_by_kind": {
-"entry": 132,
-"exit": 188,
-"fail": 235,
-"module": 1676,
-"outer": 431,
-"print": 1266
+"clause": 1275,
+"entry": 111,
+"exit": 63,
+"fail": 131,
+"module": 1478,
+"outer": 320,
+"print": 1270
 },
 "scope": {
-"in scope": 564,
-"out of scope": 158,
+"in scope": 566,
+"out of scope": 156,
 "refused": 273
 },
-"state_units": 65690,
+"state_units": 69782,
 "unresolved": {}
 },
-"identical": 554,
+"identical": 559,
 "matrix_parses_refused": 0,
 "per_split": {
 "dev": {
-"bleu_matrix_shared": 34.339,
-"bleu_rules_shared": 34.339,
+"bleu_matrix_shared": 34.311,
+"bleu_rules_shared": 34.311,
 "both_refuse": 180,
 "examples": {},
-"identical": 250,
+"identical": 252,
 "matrix_parses_refused": 0,
-"refused_parseable": 66,
-"shared": 250,
+"refused_parseable": 64,
+"shared": 252,
 "wrong_frame": 0
 },
 "test": {
-"bleu_matrix_shared": 36.993,
-"bleu_rules_shared": 36.993,
+"bleu_matrix_shared": 36.847,
+"bleu_rules_shared": 36.847,
 "both_refuse": 83,
 "examples": {},
-"identical": 304,
+"identical": 307,
 "matrix_parses_refused": 0,
-"refused_parseable": 112,
-"shared": 304,
+"refused_parseable": 109,
+"shared": 307,
 "wrong_frame": 0
 }
 },
-"refused_parseable": 178,
-"summary": "identical 554, wrong frame 0, matrix parses refused 0, refused parseable 178, both refuse 263; nnz 676059, rules 3928",
+"refused_parseable": 173,
+"summary": "identical 559, wrong frame 0, matrix parses refused 0, refused parseable 173, both refuse 263; nnz 812387, rules 4648",
 "wrong_frame": 0
 },
 "negatives": {
 "accepted": 0,
-"controls_refused_by_matrix": 5,
+"controls_refused_by_matrix": 3,
 "controls_refused_by_rules": 0,
 "count": 18,
 "matrix_accepted": 0,
 "problems": [],
-"seconds": 29,
-"summary": "negatives: rules refuse 18/18 and accept 18/18 controls; matrix refuses 18/18 and accepts 13/18 controls"
+"seconds": 42,
+"summary": "negatives: rules refuse 18/18 and accept 18/18 controls; matrix refuses 18/18 and accepts 15/18 controls"
 },
 "np": {
 "alphabet": 89,
@@ -77,12 +78,12 @@
 "max_len": 2,
 "mismatch_kinds": 0,
 "mismatches": 0,
-"seconds": 5,
+"seconds": 6,
 "summary": "np_module vs parse_np: 32040 cases (len<=2, 89 tokens), 0 mismatches"
 },
 "printer": {
 "agree": 610,
-"derived": 15,
+"derived": 14,
 "gap": 122,
 "misfire": 0,
 "per_split": {
@@ -123,9 +124,9 @@
 }
 }
 },
-"positions": 628,
-"rules": 1265,
-"summary": "printer vs generate: agree 610, gap 122, misfire 0 on the corpus; sweep 146856 frames, 135836 match, 0 mismatches, 80 refused, 10940 generate() cannot print; 1265 rules at 628 positions",
+"positions": 630,
+"rules": 1269,
+"summary": "printer vs generate: agree 610, gap 122, misfire 0 on the corpus; sweep 146856 frames, 135836 match, 0 mismatches, 80 refused, 10940 generate() cannot print; 1269 rules at 630 positions",
 "sweep": {
 "frames": 146856,
 "generate_crash": 10940,
@@ -166,7 +167,7 @@
 "imperative": "('verb', \"('eat', '食べる', 'i')\", ['neg', 'imp'], None, 'better')"
 },
 "refused": 80,
-"seconds": 30.1
+"seconds": 34.3
 }
 },
 "rules": {
@@ -313,15 +314,15 @@
 "torch": {
 "diverging": 0,
 "dtype": "float32",
-"seconds": 180.4,
+"seconds": 248.6,
 "sentences": 995,
-"steps": 43795,
-"summary": "torch 2.15.0+cpu: 995 sentences, 43795 steps compared, 0 diverging",
+"steps": 54070,
+"summary": "torch 2.15.0+cpu: 995 sentences, 54070 steps compared, 0 diverging",
 "torch": "2.15.0+cpu"
 }
 },
 "metrics": {
-"matrix.identical": 554,
+"matrix.identical": 559,
 "matrix.silent_misfires": 0,
 "negatives.accepted": 0,
 "negatives.controls_refused": 0,
@@ -361,7 +362,7 @@
 "116: i don 't smoke .": "私は吸わない。",
 "117: it was many hours before he came to .": "",
 "118: do any of the members agree with you ?": "",
-"119: he rescued the little girl at the cost of his life .": "",
+"119: he rescued the little girl at the cost of his life .": "彼は彼の人生の費用で小さい少女を救った。",
 "11: he loves no one but her .": "",
 "120: he went home without so much as saying good-bye .": "",
 "121: my father has been dead for ten years .": "私の父は１０年のために死んでいた。",
@@ -681,7 +682,7 @@
 "407: we sold the store for want of customers .": "",
 "408: one morning he went for a walk .": "",
 "409: he doesn 't know what to do with his money .": "",
-"40: he applied himself to the study of music .": "",
+"40: he applied himself to the study of music .": "彼は音楽の研究に自分を当てはまった。",
 "410: are you feeling sick ?": "あなたは具合が悪いですか。",
 "411: it 's been five years since i came to tokyo .": "",
 "412: carrying out the plan was easy .": "",
@@ -919,7 +920,7 @@
 "170: i was ten minutes late for school .": "私は学校のために遅く１０分だった。",
 "171: how 's the weather ?": "天気はどうですか。",
 "172: she worked to excess .": "彼女は過度に働いていた。",
-"173: father took his place at the head of the table .": "",
+"173: father took his place at the head of the table .": "父はテーブルの頭で彼の場所を取った。",
 "174: he is still alive .": "彼はまだ生きている。",
 "175: my father put a ladder against the tree .": "私の父は木に反対してはしごを置く。",
 "176: would you please open the door ?": "ドアを開けてくださいませんか。",
@@ -1099,7 +1100,7 @@
 "332: you should have replied to his letter .": "あなたは彼の手紙に返事をするべきだった。",
 "333: which do you like better , this or that ?": "",
 "334: she does not take a rest for an instant .": "彼女は瞬間のために休まない。",
-"335: he shook hands with his friend .": "",
+"335: he shook hands with his friend .": "彼は彼の友達と手を振った。",
 "336: i 'll be fine if i take a little rest .": "",
 "337: we want something new .": "私たちは何か新しいものが欲しい。",
 "338: he is fatter than when i last saw him .": "",
@@ -1308,7 +1309,7 @@
 "70: nothing is so precious as time .": "何も時間としてとても貴重ではない。",
 "71: you did not need to come so early .": "あなたはとても早く来る必要がある。",
 "72: i had some questions and raised my hand .": "",
-"73: she expressed satisfaction with her life .": "",
+"73: she expressed satisfaction with her life .": "彼女は彼女の人生で満足を表した。",
 "74: it was around eight last night when the meeting broke up .": "",
 "75: the life of a person is a transient thing .": "人の人生は一時的なことだ。",
 "76: don 't raise my hopes like that .": "それのように私の希望を上げないでください。",
@@ -1379,7 +1380,7 @@
 },
 {
 "control": "he went home .",
-"control.matrix": "彼は帰った。",
+"control.matrix": "彼は家に行った。",
 "control.rules": "彼は帰った。",
 "phenomenon": "do-support takes the bare verb; tense is marked once",
 "sentence": "he did went home .",
@@ -1388,7 +1389,7 @@
 },
 {
 "control": "the train arrived .",
-"control.matrix": null,
+"control.matrix": "電車は着いた。",
 "control.rules": "電車は着いた。",
 "phenomenon": "an unaccusative verb has no passive",
 "sentence": "the train was arrived .",
@@ -1478,7 +1479,7 @@
 },
 {
 "control": "the book is here .",
-"control.matrix": null,
+"control.matrix": "本はここにある。",
 "control.rules": "本はここにある。",
 "phenomenon": "one determiner per noun phrase",
 "sentence": "the a book is here .",
@@ -1487,7 +1488,7 @@
 },
 {
 "control": "the red book is on the table .",
-"control.matrix": "赤い本はテーブルのためにある。",
+"control.matrix": "赤い本はテーブルにある。",
 "control.rules": "赤い本はテーブルにある。",
 "phenomenon": "attributive adjectives precede the noun",
 "sentence": "the book red is on the table .",
@@ -3812,5 +3813,5 @@
 }
 ]
 },
-"taken": "2026-11-09 at 264c7ab"
+"taken": "2026-11-09 at f22bca9"
 }

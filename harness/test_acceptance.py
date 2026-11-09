@@ -80,7 +80,7 @@ def test_decoder_emits_japanese(root):
 
 def test_hand_modules_agree(root):
     """with the PP machine, predicate and copula_predicate translated by hand, the matrix parses every single-clause sentence the rules parse"""
-    hm = ST.HandModules()
+    hm = PM.HandModules()
     rules = list(hm.pp_rules()) + list(hm.predicate_rules()) + list(hm.copula_rules())
     assert rules, "no hand-translated rules for the PP machine, predicate or copula_predicate"
     comp, mp, sents = small_cell(root); gaps = []

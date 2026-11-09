@@ -32,7 +32,7 @@ from parser_rules import Parser, Clause, ParseFail, Overflow, parse_bounded
 WINDOW = 4
 NP_ROLES = ("subj", "obj", "iobj", "pp1", "pp2", "pp3", "cop", "cmp")        # cmp: the noun phrase of a than / as comparison
 NP_SUB = ("det", "poss", "num", "adj1", "adj2", "noun", "cls")
-FLAGS = ("past", "neg", "prog", "perf", "question", "imp", "please", "lets", "there", "tag", "coord", "sub", "neg_inner", "noless", "perf_had")
+FLAGS = ("past", "neg", "prog", "perf", "question", "imp", "please", "lets", "there", "tag", "coord", "sub", "neg_inner", "noless", "perf_had", "from_seen")
 ENUMS = ("modal", "want", "degree", "obj_particle", "wh", "time", "adv1", "adv2", "front", "cop_kind", "cop_adj", "cop_adv", "cop_part",
          "pp1_part", "pp2_part", "pp3_part", "cmp_kind", "verb", "purpose", "causative")
 UNSUPPORTED_REGS = ("infinitive", "control", "embedded", "purpose_clause", "pre_clause", "manner", "so_that", "howabout",
@@ -51,21 +51,40 @@ def readings_of(tok):
 
 def window_features(toks, i):
     """what the lexical layer hands the parser for slots 0..3: per slot, the surface for closed-class tokens, the
-    reading classes, and the class-level extras (verb classes, noun class, adjective kind)"""
+    reading classes, and the class-level extras (verb classes, noun class, adjective kind, the adverb's Japanese, membership
+    in the duration and hearsay tables)"""
     feats = []
     for k in range(WINDOW):
         t = toks[i + k] if i + k < len(toks) else None
         rs = readings_of(t); classes = tuple(sorted(set(c for c, _ in rs)))
         surface = t if (t is None or not (set(classes) & OPEN) or (set(classes) & CLOSED_CLASSES) or t in IDENTITY_WORDS) else "*"
-        extra = []
+        extra = []; first_verb = next((v for c, v in rs if c == "verb"), None)
+        if first_verb: extra.append(("vform1", first_verb[1]))                      # the first verb reading's form: what parser_rules.verb_form reads
         for c, v in rs:
             if c == "verb":
                 extra.append(("vc", tuple(sorted(cls for cls, s in R.VC.items() if v[0] in s)))); extra.append(("vform", v[1]))
             elif c == "noun": extra.append(("ncls", v[1]))
             elif c == "adj": extra.append(("akind", v[1]))
             elif c == "pron": extra.append(("prole", v[1]))
-        feats.append((surface, classes, tuple(sorted(set(extra)))))
+            elif c == "adv": extra.append(("adv", v))
+        if t in R.DURATION: extra.append(("dur", "1"))
+        if t in R.HEARSAY: extra.append(("hearsay", "1"))
+        feats.append((surface, classes, tuple(sorted(set(extra), key=str))))
     return tuple(feats)
+
+def window_sources(toks, i):
+    """copy sources spanning more than one token, read at slot 0: a duration phrase (two years -> ２年間, in 50 minutes -> ５０分で)"""
+    out = {}
+    t0 = toks[i] if i < len(toks) else None; t1 = toks[i + 1] if i + 1 < len(toks) else None; t2 = toks[i + 2] if i + 2 < len(toks) else None
+    n0 = dict(readings_of(t0)).get("num") if t0 else None
+    if t1 in R.DURATION and (n0 or t0 in DUR_DETS): out["dur"] = (n0 or DUR_DETS[t0]) + R.DURATION[t1]
+    if t0 == "in" and t1 and t2 in R.DURATION and t2 not in ("times", "time") and dict(readings_of(t1)).get("num"): out["dur_in"] = dict(readings_of(t1))["num"] + R.DURATION[t2] + "で"
+    return out
+DUR_DETS = {"a": "一", "an": "一", "several": "数", "many": "何", "few": "数", "some": "数"}
+
+def window_source_vocab():
+    return {"dur": sorted({n + d for n in list(R.NUMBERS.values()) + list(DUR_DETS.values()) for d in set(R.DURATION.values())}),
+            "dur_in": sorted({n + d + "で" for n in R.NUMBERS.values() for d in set(R.DURATION.values())})}
 
 def table_hits(toks, i, verb):
     """table lookups that join the frame's verb with the window: idiom / phrasal / tail / use rows"""
@@ -123,7 +142,7 @@ def trace(toks, choices=()):
     p = Parser(list(toks), list(choices))
     events = []            # dicts: i (token index consumed), k (how many), cp, snap_before, np spans
     np_spans = []          # (i0, i1, ja, cls, depth_of_c)
-    st = {"last_i": 0, "line": 0, "cp": None}
+    st = {"last_i": 0, "line": 0, "cp": None, "frames": ()}
     def chain_of(frame):
         """the Parser-method frames on the stack, outermost first, as (method, current line)"""
         names = []; f = frame
@@ -131,16 +150,26 @@ def trace(toks, choices=()):
             if f.f_code.co_name in PMETH and f.f_locals.get("self") is p: names.append((f.f_code.co_name, f.f_lineno))
             f = f.f_back
         return tuple(reversed(names))
+    def frames_of(frame):
+        """the same frames as (method, frame id, parameters of a module method), outermost first"""
+        out = []; f = frame
+        while f is not None:
+            if f.f_code.co_name in PMETH and f.f_locals.get("self") is p:
+                out.append((f.f_code.co_name, id(f), {k: f.f_locals.get(k) for k in MODULE_PARAMS.get(f.f_code.co_name, ())}))
+            f = f.f_back
+        return tuple(reversed(out))
     def stack_of(frame): return tuple(n for n, _ in chain_of(frame))
     def tracer(frame, event, arg):
         if frame.f_code.co_filename != R.__file__ and not frame.f_code.co_filename.endswith("parser_rules.py"): return tracer
         if event == "line":
             if p.i != st["last_i"]:
+                # the consumption happened in the code of the previous line event: that frame's module owns it (the change is noticed
+                # one statement later, which may already be inside a method called on the same line)
                 events.append({"i": st["last_i"], "k": p.i - st["last_i"], "cp": (stack_of(frame), st["line"]), "snap": st["snap"],
-                               "chain": chain_of(frame), "win_reads": set(reads["win"]), "reg_reads": set(reads["reg"])})
+                               "chain": chain_of(frame), "owner": owner_of(st["frames"]), "frames": st["frames"], "win_reads": set(reads["win"]), "reg_reads": set(reads["reg"])})
                 reads["win"].clear(); reads["reg"].clear()
                 st["last_i"] = p.i
-            st["line"] = frame.f_lineno
+            st["line"] = frame.f_lineno; st["frames"] = frames_of(frame)
             try: st["snap"] = snapshot(p.c) if p.c is p.main else None
             except OutOfScope as e: st["snap"] = e
         return tracer
@@ -182,9 +211,9 @@ def trace(toks, choices=()):
         try: fs = snapshot(p.main)
         except OutOfScope as e2: fs = e2
         p.fail_info = (err, fs, set(reads["win"]), set(reads["reg"]), p.i)
-        tb = err.__traceback__; p.fail_stack = []
+        tb = err.__traceback__; p.fail_stack = []; p.fail_frames = []
         while tb is not None:
-            if tb.tb_frame.f_code.co_name in PMETH and tb.tb_frame.f_locals.get("self") is p: p.fail_stack.append(tb.tb_frame.f_code.co_name)
+            if tb.tb_frame.f_code.co_name in PMETH and tb.tb_frame.f_locals.get("self") is p: p.fail_stack.append(tb.tb_frame.f_code.co_name); p.fail_frames.append(id(tb.tb_frame))
             tb = tb.tb_next
         if events: events[0]["snap"] = initial
         raise err
@@ -194,8 +223,101 @@ def trace(toks, choices=()):
     except OutOfScope as e: final = e                 # the finished frame holds a register the cell has no block for
     return events, final, np_spans, p
 
+# ----------------------------------------------------------------------------------------------- the hand-translated clause modules
+# method of the rule parser -> module name; the module's rules (pp_module.py, predicate_module.py) replace the extracted rules
+# for the consumption events the method's activations own
+MODULE_METHODS = {"predicate": "pred", "copula_predicate": "cop", "tail_pp_adv": "pp"}
+MODULE_START = {"pred": ("M", "pred", "PR0"), "cop": ("M", "cop", "CP0"), "pp": ("M", "pp", "PP0")}
+MODULE_PARAMS = {"copula_predicate": ("allow_empty",)}          # a method's parameter the module reads as the slot param.<name>
+STRUCTURAL = {"parse", "pre", "after_wh", "question_inversion", "predicate", "copula_predicate", "verb_phrase", "tail", "tail_pp_adv", "end",
+              "sub_clause", "coord", "embedded_question", "embedded_after", "predicate_noend", "parse_np", "parse_np_rest_after_poss"}
+NP_METHODS = ("parse_np", "parse_np_rest_after_poss")
+
+def owner_of(frames):
+    """the module activation that owns a consumption event — (module, frame id, params) — or None: the innermost structural method
+    that is a module method, with no other structural method between it and the event; a noun phrase inside a module belongs to
+    the module, a noun phrase anywhere else is the noun-phrase module's own span"""
+    for name, fid, params in reversed([f for f in frames if f[0] in STRUCTURAL]):
+        if name in NP_METHODS: continue
+        if name in MODULE_METHODS: return (MODULE_METHODS[name], fid, params)
+        return None
+    return None
+
+_modules = {"on": False, "by_prev": None, "derived": None}       # set by build_hybrid: the compiled rules the simulation steps
+
+def failed_in_module(fail_stack):
+    """the parser's refusal happened in a clause module's own code: the innermost structural method on the failing stack (a noun
+    phrase inside the module counts as the module's) is a module method"""
+    structural = [n for n in fail_stack if n in STRUCTURAL]
+    while structural and structural[-1] in NP_METHODS: structural.pop()
+    return bool(structural) and structural[-1] in MODULE_METHODS
+
+def clause_module_rules():
+    """the three modules' rules and derived predicates in the compiler's format: states ("M", module, name), RET -> ("RETM", module),
+    FAIL:<why> -> FAIL, a tuple target (a noun-phrase entry) as it is"""
+    import pp_module as PPM, predicate_module as PDM
+    rules = []; derived = {}
+    for mod, mrules, D in (("pp", PPM.rules(), PPM.derived()), ("pred", PDM.pred_rules(), PDM.pred_derived()), ("cop", PDM.cop_rules(), PDM.cop_derived())):
+        derived.update(D)
+        for state, lits, (nxt, k, acts) in mrules:
+            prev = state if isinstance(state, tuple) else ("M", mod, state)
+            if isinstance(nxt, tuple): tgt = nxt
+            elif nxt == "RET": tgt = ("RETM", mod, "")                               # (not ("RET", mod): "cop" is also a noun-phrase role)
+            elif nxt == "RETCOP": tgt = ("RETM", mod, "cop")                         # the predicate module's second exit: the copula follows
+            elif nxt.startswith("FAIL:"): tgt = FAIL
+            else: tgt = ("M", mod, nxt)
+            rules.append((prev, tuple((l[1:], False) if l.startswith("¬") else (l, True) for l in lits), (tgt, k, norm_actions(acts))))
+    return rules, derived
+
+def snapshot_to_frame(snap, classes):
+    """a trace snapshot (the register view) -> a flat frame for the simulation: flags and enums as slots, every noun-phrase role as a
+    stand-in head noun (its whole string) with the class the trace recorded for it"""
+    frame = {}
+    for f in FLAGS:
+        if snap.get(f): frame[f] = True
+    for k in ("modal", "want", "degree", "obj_particle", "wh", "time", "adv1", "front", "cop_kind", "cop_adj", "cop_adv", "cop_part", "pp1_part", "pp2_part", "pp3_part", "cmp_kind", "verb", "purpose", "causative"):
+        v = snap.get(k)
+        if v not in (None, "", False): frame[k] = v
+    for role in NP_ROLES:
+        s = snap.get(role)
+        if s: frame[f"{role}.noun"] = s; frame[f"{role}.cls"] = snap.get("subj_cls") if role == "subj" else classes.get(role, "t")
+    if snap.get("subj_num") and snap.get("subj"): frame["subj.number"] = snap["subj_num"]
+    return frame
+
+def step_rules(by_prev, derived, state, toks, i, frame, pend):
+    """the unique rule of `state` whose literals hold on the flat frame and the window at i -> (cp, k, actions); raises ParseFail"""
+    P = predicates(toks, i, frame_to_snapshot(frame), set(range(i, i + WINDOW)), ALL_REGS | {"ret", "mret"}, pend, heads_of(frame)) | slot_predicates(frame)
+    P.discard("agree.bad")                       # read as the derived predicate, from the slot and the window
+    hits = [out for lits, out in by_prev.get(state, []) if all(eval_rule_lit(q, t, P, derived, frame) for q, t in lits)]
+    if len(hits) != 1: raise ParseFail(f"RULES: {len(hits)} rules fire at {state} token {i}", i)
+    return hits[0]
+
+def exit_kind(mod, events, last):
+    """which exit the parser took from a module activation, from the trace: the predicate module returns to the copula ("cop") or to
+    the verb phrase (""); the other modules have one exit"""
+    if mod != "pred" or last + 1 >= len(events): return ""
+    chain = [n for n, _ in events[last + 1]["chain"]]
+    return "cop" if any(chain[j] == "predicate" and chain[j + 1] == "copula_predicate" for j in range(len(chain) - 1)) else ""
+
+def simulate_module(mod, toks, i0, frame, pend, bound=400):
+    """step a module's rules (and the noun-phrase module's, when it hands over) from its start on a flat frame; -> (i, frame, pend,
+    exit kind) at its return, or None when it refuses or the rules do not decide"""
+    by_prev, derived = _modules["by_prev"], _modules["derived"]
+    state, i, frame = MODULE_START[mod], i0, dict(frame)
+    for _ in range(bound):
+        if isinstance(state, tuple) and state[:2] == ("RETM", mod): return i, frame, pend, state[2]
+        if state == FAIL: return None
+        try: cp, k, actions = step_rules(by_prev, derived, state, toks, i, frame, pend)
+        except ParseFail: return None
+        try: apply_actions(frame, actions, toks, i)
+        except ParseFail: return None
+        for j in range(i, i + k):
+            if j < len(toks) and "prep" in dict(readings_of(toks[j])): pend = toks[j]
+        i += k; state = cp
+    return None
+
 # ----------------------------------------------------------------------------------------------- predicates and induction
-ENUM_REGS = ("modal", "want", "cop_kind", "degree", "obj_particle", "wh", "purpose", "causative", "subj_cls", "time", "adv1", "front", "cmp_kind", "ret")
+ENUM_REGS = ("modal", "want", "cop_kind", "degree", "obj_particle", "wh", "purpose", "causative", "subj_cls", "time", "adv1", "front", "cmp_kind", "ret", "mret")
 # subject-verb agreement as one predicate over the subject's number and the current token (parser_rules.agrees, mirrored):
 # true exactly when no verb reading of the token fits the subject.  Compiled as AND units over the slot and the window
 # and read by the FAIL rules that agreement_fail_rows adds at every finite-verb consumption.
@@ -263,6 +385,7 @@ def predicates(toks, i, before, win_idx, reg_rd, pend_prep, heads=None):
                 for cls in e[1]: P.add(f"w{k}.vc={cls}")
             else: P.add(f"w{k}.{e[0]}={e[1]}")
     for h in table_hits(toks, i, before["verb"]): P.add("hit=" + ",".join(map(str, h)))
+    if i + 2 < len(toks) and toks[i] == toks[i + 2]: P.add("w0=w2")                     # longer and longer
     for rname in reg_rd:
         if rname == "subj":
             if before.get("subj") is not None: P.add("reg.subj")
@@ -402,15 +525,45 @@ def hybrid_rows(toks):
         if e["snap"] is None: raise OutOfScope("inner clause")
     snaps = [e["snap"] for e in events] + [final]
     rows, roles, prev, pend = transition_rows(toks, events, snaps, np_spans, final)
+    if prev is None: return rows, roles                   # a clause module refused inside: the sentence ends in the module's refusal
     P_end = frozenset(predicates(toks, len(toks), final, set(range(len(toks), len(toks) + WINDOW)), ALL_REGS, pend))
     rows.append((prev, P_end, frozenset(), (("DONE",), 0, ())))
     return rows, roles
 
+def module_spans(events):
+    """the activations of the clause modules: maximal runs of consecutive events one activation owns, as (first, last, module,
+    params); an activation that consumed no token of its own (the copula method before a progressive verb, the predicate method
+    before a plain verb) is on the stack of the event that follows it and gets an empty span (last = first - 1) before that event"""
+    if not _modules["on"]: return []
+    spans = []; seen = set()
+    for k, e in enumerate(events):
+        o = e.get("owner")
+        for name, fid, params in e.get("frames", ()):
+            if name in MODULE_METHODS and fid not in seen and (o is None or o[1] != fid) and not any(x.get("owner") and x["owner"][1] == fid for x in events[k:]):
+                seen.add(fid); spans.append([k, k - 1, MODULE_METHODS[name], params, fid])
+        if o is None: continue
+        if spans and spans[-1][1] == k - 1 and spans[-1][4] == o[1]: spans[-1][1] = k
+        else: seen.add(o[1]); spans.append([k, k, o[0], o[2], o[1]])
+    return [(a, b, m, prm) for a, b, m, prm, fid in spans]
+
+def module_site(chain, method):
+    """the return address of a module activation: (caller methods, line of the call), from the event's chain"""
+    for idx, (name, line) in enumerate(chain):
+        if name == method: return (tuple(n for n, _ in chain[:idx]), chain[idx - 1][1] if idx > 0 else 0)
+    return None
+
 def transition_rows(toks, events, snaps, np_spans, final):
     """the rows of the consumption events given (a whole parse, or the prefix of one up to the point where it stops being
-    representable or is refused): -> (rows, roles used, the control state after the last event, the pending preposition)"""
+    representable or is refused): -> (rows, roles used, the control state after the last event, the pending preposition).
+    A noun phrase outside the clause modules and every activation of a clause module become hand-overs: an entry row into the
+    module and an exit row from its RET, carrying what the caller wrote after the module returned."""
     import np_module as NPM
-    info = np_span_info(events, snaps, np_spans, final)
+    mspans = module_spans(events); in_mspan = {k: n for n, (first, last, *_) in enumerate(mspans) for k in range(first, last + 1)}
+    empty_before = {first: n for n, (first, last, *_) in enumerate(mspans) if last < first}; emitted_empty = set()
+    own_np = [sp for sp in np_spans if not any(events[k]["i"] <= sp[0] < events[k]["i"] + events[k]["k"] and k in in_mspan for k in range(len(events)))]
+    info = np_span_info(events, snaps, own_np, final)
+    try: classes = {role: cls for (first, last, role, ja, cls, *_) in np_span_info(events, snaps, np_spans, final)}       # the class of every noun phrase, for the simulation's stand-ins
+    except OutOfScope: classes = {}
     in_span = {k: n for n, (first, last, *_) in enumerate(info) for k in range(first, last + 1)}
     rows = []; roles = set(); prev = ("START",); pend = None
     if not hasattr(hybrid_rows, "module_log"): hybrid_rows.module_log = collections.Counter()
@@ -418,6 +571,39 @@ def transition_rows(toks, events, snaps, np_spans, final):
     ei = 0
     while ei < len(events):
         e = events[ei]
+        if ei in in_mspan or (ei in empty_before and empty_before[ei] not in emitted_empty):
+            empty = ei not in in_mspan
+            if empty: emitted_empty.add(empty_before[ei])
+            first, last, mod, params = mspans[in_mspan[ei]] if not empty else mspans[empty_before[ei]]
+            method = next(m for m, name in MODULE_METHODS.items() if name == mod)
+            site = module_site(events[first]["chain"], method); sid = (mod + "@" + site_id(site)) if site else mod
+            acts = [("mret", sid, ("const",))] + [(f"param.{k}", True, ("const",)) for k, v in (params or {}).items() if v]
+            e1 = events[first]; e2 = events[first + 1] if first + 1 < len(events) else noreads
+            P_read = frozenset(predicates(toks, e1["i"], snaps[first], set(e1["win_reads"]) | set(e2["win_reads"]), set(e1["reg_reads"]) | set(e2["reg_reads"]), pend))
+            P_all = frozenset(predicates(toks, e1["i"], snaps[first], set(range(e1["i"], e1["i"] + WINDOW)), ALL_REGS, pend))
+            rows.append((prev, P_all, P_read, (MODULE_START[mod], 0, norm_actions(acts))))
+            roles |= {"pp1", "pp2", "pp3", "cmp", "cop"}
+            i1 = events[last]["i"] + events[last]["k"] if not empty else e1["i"]
+            frame0 = snapshot_to_frame(snaps[first], classes); frame0["mret"] = sid
+            for k, v in (params or {}).items():
+                if v: frame0[f"param.{k}"] = True
+            sim = simulate_module(mod, toks, e1["i"], frame0, pend); kind = exit_kind(mod, events, last)
+            if sim is None or sim[0] != i1 or sim[3] != kind:
+                hybrid_rows.module_log[f"{mod} module differs" if sim else f"{mod} module refuses"] += 1
+                return rows, roles, None, pend                       # the module decides for itself from here: no row may follow (prev None = cut)
+            hybrid_rows.module_log[f"{mod} module agrees"] += 1
+            i_exit, frame_exit, pend, _ = sim
+            exit_view = frame_to_snapshot(frame_exit); exit_view["mret"] = sid
+            post = register_actions(exit_view, snaps[last + 1], None, allow_copy=False)
+            post += np_register_actions(exit_view, snaps[last + 1], toks[i1] if i1 < len(toks) else None, set())      # (the diff clears mret: the next snapshot has none)
+            heads = heads_of(frame_exit)
+            en = events[last + 1] if last + 1 < len(events) else noreads
+            P_read = frozenset(predicates(toks, i1, exit_view, set(en["win_reads"]), set(en["reg_reads"]) | {"mret"}, pend, heads))
+            P_all = frozenset(predicates(toks, i1, exit_view, set(range(i1, i1 + WINDOW)), ALL_REGS | {"mret"}, pend, heads))
+            post_state = ("MRET", mod, sid, kind)
+            rows.append((("RETM", mod, kind), P_all, P_read, (post_state, 0, norm_actions(post))))
+            prev = post_state; ei = last + 1
+            continue                                    # (an empty span: ei = first, the event that follows the activation, is next)
         if ei in in_span:
             first, last, role, ja, cls, site, old, moved_to, dropped = info[in_span[ei]]
             roles.add(role); sid = site_id(site)
@@ -512,6 +698,9 @@ def hybrid_fail_rows(toks):
         cut = len(events)                                   # events inside the unfinished noun phrase are the module's, not ours
         for k, e in enumerate(events):
             if any(n == "parse_np" for n, _ in e["chain"]) and not any(main and i0 <= e["i"] < i1 for (i0, i1, ja, cls, main) in spans): cut = k; break
+        if _modules["on"] and failed_in_module(p.fail_stack):           # the parser died in a clause module's own code: the module refuses by itself from its entry
+            for k, e in enumerate(events):
+                if e.get("owner") and e["owner"][1] in p.fail_frames: cut = min(cut, k); break
         if p.forks:                                         # this is the default reading; from its first fork on, the path is the choice's, not the window's
             fpos = p.forks[0][0]
             cut = min(cut, next((k for k, e in enumerate(events) if e["i"] + e["k"] > fpos), cut))
@@ -521,7 +710,7 @@ def hybrid_fail_rows(toks):
         if not isinstance(final_snap, dict): return []
         try: rows, roles, prev, pend = prefix_rows(toks, events, spans, cut, final_snap)
         except OutOfScope: return []
-        if cut < len(events) or "parse_np" in p.fail_stack: return rows
+        if prev is None or cut < len(events) or "parse_np" in p.fail_stack or (_modules["on"] and failed_in_module(p.fail_stack)): return rows
         P_all = predicates(toks, i, fs, set(range(i, i + WINDOW)), ALL_REGS, p.pend_at_end)
         P_read = predicates(toks, i, fs, win_rd, reg_rd, p.pend_at_end)
         return rows + [(prev, frozenset(P_all), frozenset(P_read), (FAIL, 0, ()))]
@@ -537,8 +726,14 @@ def hybrid_fail_rows(toks):
     if cut < 0: return []
     cut = np_entry_event(events, spans, cut)              # a cut inside a noun phrase moves to the phrase's entry
     if cut is None or not isinstance(events[cut]["snap"], dict): return []
+    if _modules["on"] and events[cut].get("owner"):       # the frame left the scope inside a clause module: the module refuses by itself from its entry
+        fid = events[cut]["owner"][1]
+        while cut > 0 and events[cut - 1].get("owner") and events[cut - 1]["owner"][1] == fid: cut -= 1
+        try: return prefix_rows(toks, events, spans, cut, events[cut]["snap"])[0]
+        except OutOfScope: return []
     try: rows, roles, prev, pend = prefix_rows(toks, events, spans, cut, events[cut]["snap"])
     except OutOfScope: return []
+    if prev is None: return rows
     e = events[cut]
     nxt_e = events[cut + 1] if cut + 1 < len(events) else {"win_reads": set(), "reg_reads": set()}
     P_all = predicates(toks, e["i"], e["snap"], set(range(e["i"], e["i"] + WINDOW)), ALL_REGS, pend)
@@ -566,10 +761,12 @@ def module_rules(roles):
         rules.append(((("RET", NPM.of_role(role))), (), (("RET", role), 0, ())))           # the of-phrase's return is the phrase's return
     return rules, derived
 
-def eval_rule_lit(q, truth, P, derived):
+def eval_rule_lit(q, truth, P, derived, frame=None):
     if q in derived:
-        v = any(all(eval_rule_lit(l[1:] if l.startswith("¬") else l, not l.startswith("¬"), P, derived) for l in conj) for conj in derived[q])
-    else: v = q in P
+        v = any(all(eval_rule_lit(l[1:] if l.startswith("¬") else l, not l.startswith("¬"), P, derived, frame) for l in conj) for conj in derived[q])
+    elif q in P: v = True
+    elif frame is not None and (q.startswith("flag.") or GM.family_of(q)): v = GM.base_pred(q, frame)     # the printer's predicate families, on the flat frame
+    else: v = False
     return v == truth
 
 def run_rules(rules, derived, toks, bound_per_token=12):
@@ -580,11 +777,7 @@ def run_rules(rules, derived, toks, bound_per_token=12):
     for _ in range(bound_per_token * (len(toks) + 2)):
         if state == ("DONE",): return frame
         if state == FAIL: raise ParseFail(f"RULES: FAIL at token {i}", i)
-        P = predicates(toks, i, frame_to_snapshot(frame), set(range(i, i + WINDOW)), ALL_REGS | {"ret"}, pend, heads_of(frame)) | slot_predicates(frame)
-        P.discard("agree.bad")                       # the rules read it as the derived predicate, evaluated from the slot and the window
-        hits = [out for lits, out in by_prev.get(state, []) if all(eval_rule_lit(q, t, P, derived) for q, t in lits)]
-        if len(hits) != 1: raise ParseFail(f"RULES: {len(hits)} rules fire at {state} token {i}", i)
-        cp, k, actions = hits[0]
+        cp, k, actions = step_rules(by_prev, derived, state, toks, i, frame, pend)
         if cp == ("CONFLICT",) or (isinstance(cp, tuple) and cp and cp[0] == "CONFLICT"): raise ParseFail("RULES: conflict", i)
         apply_actions(frame, actions, toks, i)
         for j in range(i, i + k):
@@ -593,9 +786,17 @@ def run_rules(rules, derived, toks, bound_per_token=12):
         if i > len(toks): raise ParseFail("RULES: ran past the end", i)
     raise ParseFail("RULES: did not finish", i)
 
-def build_hybrid(sentences, verbose=False):
-    """rows from the corpus (outer transitions + NP hand-overs + FAIL rows), induced trees, the module's rules -> compiled cell"""
+def build_hybrid(sentences, verbose=False, modules=True):
+    """rows from the corpus (outer transitions + NP hand-overs + the clause modules' hand-overs + FAIL rows), induced trees, the
+    modules' rules -> compiled cell"""
     rows = []; roles = set(); scope = collections.Counter()
+    _modules["on"] = modules
+    if modules:
+        crules, cderived = clause_module_rules()
+        mrules0, mderived0 = module_rules(set(NP_ROLES))
+        by_prev = collections.defaultdict(list)
+        for prev, lits, out in crules + mrules0: by_prev[prev].append((lits, out))
+        _modules["by_prev"] = by_prev; _modules["derived"] = {**cderived, **mderived0, "agree.bad": AGREE_DNF}
     for toks in sentences:
         toks = list(toks)
         try:
@@ -610,12 +811,14 @@ def build_hybrid(sentences, verbose=False):
     trees = induce(rows)
     mrules, derived = module_rules(roles)
     derived["agree.bad"] = AGREE_DNF
+    if modules:
+        crules, cderived = clause_module_rules(); mrules = crules + mrules; derived.update(cderived)
     comp = compile_matrices(trees, extra_rules=mrules, derived=derived)       # the printing rules join inside (decoder_rules)
     if verbose: print("hybrid build:", dict(scope), "| data rows", len(rows), "| module rules", len(mrules), "| roles", sorted(roles))
     comp["scope"] = scope; comp["rows"] = rows
     return comp
 
-GUARD_PREFIXES = ("w0.class=", "verb.", "flag.", "reg.", "hit=", "pp.count", "use.", "np.")   # the leaf guard: classes and registers, not surfaces or the later window slots
+GUARD_PREFIXES = ("w0.class=", "verb.set", "verb.vc=", "verb.phrasal", "verb.use", "flag.", "reg.", "hit=", "pp.count", "use.", "np.")   # the leaf guard: classes and registers the parser reads — not surfaces, the later window slots, or the conjugation class it never branches on
 def induce(rows):
     """per previous control point, a decision tree over predicates whose leaves are outcomes; returns {prev: tree}.
     A leaf also carries the guard the rule parser itself applied: the class and register predicates (GUARD_PREFIXES) that
@@ -665,8 +868,10 @@ def tree_rules(tree, path=()):
 def frame_to_snapshot(frame):
     """the slot dict as the snapshot() view (so predicates read it the same way)"""
     s = {f: bool(frame.get(f)) for f in FLAGS}
-    for r in ("modal", "want", "degree", "obj_particle", "wh", "time", "purpose", "causative", "verb", "adv1", "adv2", "front", "cop_kind", "cop_adj", "cop_adv", "cop_part", "pp1_part", "pp2_part", "pp3_part", "cmp_kind", "ret"):
+    for r in ("modal", "want", "obj_particle", "wh", "time", "purpose", "causative", "verb", "front", "cop_kind", "cop_adj", "cop_adv", "cop_part", "pp1_part", "pp2_part", "pp3_part", "cmp_kind", "ret", "mret"):
         s[r] = frame.get(r)
+    s["adv1"] = ((frame.get("adv1") or "") + (frame.get("adv2") or "")) or None; s["adv2"] = None       # the parser's one adverb string
+    s["degree"] = ((frame.get("degree") or "") + (frame.get("degree2") or "")) or None
     for role in NP_ROLES:
         s[role] = np_string(frame, role)
     s["subj_cls"] = frame.get("subj.cls") if s["subj"] else None
@@ -696,8 +901,10 @@ def slot_predicates(frame):
 def apply_actions(frame, actions, toks, i):
     tok = toks[i] if i < len(toks) else None; rs = collections.defaultdict(list)
     for c, v in readings_of(tok): rs[c].append(v)
+    wsrc = window_sources(toks, i)
     for slot, v, src in actions:
-        if src[0] == "copy" and src[1] not in ("ncls", "nnum") and not rs[{"num_time": "num", "adj_pair": "adj", "adj_mono": "adj", "adj_caus": "adj", "pron_poss": "pron", "adv_front": "adv"}.get(src[1], src[1])]:
+        if src[0] == "copy" and src[1] in ("dur", "dur_in") and src[1] not in wsrc: raise ParseFail(f"TABLE: no {src[1]} phrase at {tok!r}", i)
+        if src[0] == "copy" and src[1] not in ("ncls", "nnum", "dur", "dur_in") and not rs[{"num_time": "num", "adj_pair": "adj", "adj_pair_plain": "adj", "adj_mono": "adj", "adj_caus": "adj", "pron_poss": "pron", "adv_front": "adv", "adv_too": "adv"}.get(src[1], src[1])]:
             raise ParseFail(f"TABLE: nothing to copy into {slot} from {src[1]} at {tok!r}", i)       # the machine's crash: the rule fired on a token without that reading
     old = dict(frame)                                   # moves and clears read the state before this step, as the matrix does
     for slot, v, src in actions:
@@ -717,7 +924,7 @@ def apply_actions(frame, actions, toks, i):
         if src[0] == "clear": frame.pop(slot, None)
         elif src[0] == "const": frame[slot] = v
         elif src[0] in ("move", "move_time"):              # the gate clears the slot; the write lands only if the source slot is filled
-            if old.get(src[1]) is not None: frame[slot] = old.get(src[1]) + ("時" if src[0] == "move_time" else "")
+            if old.get(src[1]) is not None: frame[slot] = old.get(src[1]) + "時" if src[0] == "move_time" else old.get(src[1])
             else: frame.pop(slot, None)
         elif src[0] == "copy":
             cls = src[1]
@@ -734,6 +941,9 @@ def apply_actions(frame, actions, toks, i):
             elif cls == "adj_caus": ja, kind = rs["adj"][-1]; frame[slot] = ("make+" + tok, R.adj_causative(ja, kind), "i")
             elif cls == "adv": frame[slot] = rs["adv"][-1]
             elif cls == "adv_front": frame[slot] = rs["adv"][-1] + "、"
+            elif cls == "adv_too": frame[slot] = "あまりに" + rs["adv"][-1]
+            elif cls == "adj_pair_plain": ja, kind = rs["adj"][-1]; frame[slot] = (ja[2:] if ja.startswith("より") else ja, kind)
+            elif cls in ("dur", "dur_in"): frame[slot] = wsrc[cls]
             elif cls == "time": frame[slot] = rs["time"][-1]
             elif cls == "loc": frame[slot] = rs["loc"][-1]
             elif cls == "wh": frame[slot] = rs["wh"][-1]
@@ -746,7 +956,8 @@ def frame_to_clause(frame):
     c = Clause()
     for f in FLAGS: setattr(c, f, bool(frame.get(f)))
     for r in ("modal", "want", "obj_particle", "wh", "purpose", "causative", "verb"): setattr(c, r, frame.get(r))
-    c.degree = frame.get("degree") or ""; c.time = frame.get("time") or ""; c.adv = frame.get("adv1") or ""; c.front = frame.get("front") or ""
+    c.degree = (frame.get("degree") or "") + (frame.get("degree2") or ""); c.time = frame.get("time") or ""
+    c.adv = (frame.get("adv1") or "") + (frame.get("adv2") or ""); c.front = frame.get("front") or ""
     c.subj = np_string(frame, "subj"); c.subj_cls = frame.get("subj.cls") or "h"
     c.subj_num = frame.get("subj.number") if frame.get("subj.number") != "none" else None
     c.obj = np_string(frame, "obj"); c.iobj = np_string(frame, "iobj")
@@ -771,7 +982,7 @@ class Index:
     def __contains__(self, name): return name in self.pos
     def __getitem__(self, name): return self.pos[name]
 
-COPY_SOURCES = ("noun", "ncls", "pron", "pron_poss", "det", "num", "num_time", "adj", "adj_pair", "adj_mono", "adj_caus", "adv", "adv_front", "time", "wh", "modal", "verb", "nnum", "loc")
+COPY_SOURCES = ("noun", "ncls", "pron", "pron_poss", "det", "num", "num_time", "adj", "adj_pair", "adj_pair_plain", "adj_mono", "adj_caus", "adv", "adv_front", "adv_too", "time", "wh", "modal", "verb", "nnum", "loc", "dur", "dur_in")
 
 def source_values(tok):
     """the copy-source readings of a token, as (source, value) pairs — what the lexical layer emits for window slot 0"""
@@ -783,9 +994,9 @@ def source_values(tok):
         elif c == "num": out.append(("num", v)); out.append(("num_time", v + "時"))
         elif c == "adj":
             out.append(("adj", v[0] + ("な" if v[1] == "na" and not v[0].endswith("な") else ""))); out.append(("adj_pair", v))
-            out.append(("adj_mono", v[0] + ("な" if v[1] == "na" and not v[0].endswith("な") else "") + "もの"))
+            out.append(("adj_mono", v[0] + ("な" if v[1] == "na" and not v[0].endswith("な") else "") + "もの")); out.append(("adj_pair_plain", (v[0][2:] if v[0].startswith("より") else v[0], v[1])))
             out.append(("adj_caus", ("make+" + tok, R.adj_causative(v[0], v[1]), "i")))
-        elif c == "adv": out.append(("adv", v)); out.append(("adv_front", v + "、"))
+        elif c == "adv": out.append(("adv", v)); out.append(("adv_front", v + "、")); out.append(("adv_too", "あまりに" + v))
         elif c == "loc": out.append(("loc", v))
         elif c == "time": out.append(("time", v))
         elif c == "wh": out.append(("wh", v))
@@ -796,7 +1007,7 @@ def source_values(tok):
     last = {}; first = {}
     for s, v in out:
         last[s] = v; first.setdefault(s, v)
-    pick = {s: (last[s] if s in ("noun", "ncls", "adj", "adj_pair", "adj_mono", "adj_caus", "adv", "adv_front", "loc", "time", "wh") else first[s]) for s in last}
+    pick = {s: (last[s] if s in ("noun", "ncls", "adj", "adj_pair", "adj_pair_plain", "adj_mono", "adj_caus", "adv", "adv_front", "adv_too", "loc", "time", "wh") else first[s]) for s in last}
     return pick
 
 PRINT_SRC = ("emit",)          # the action of a printing rule: ("out", token, PRINT_SRC)
@@ -832,6 +1043,15 @@ def output_lexicon(unit):
     if kind == "af": _, _, strip, v = unit; return GM.adj_stem(v, strip)
     raise ValueError(unit)
 
+def implied(sets, by_superset):
+    """drop a literal another literal of the same conjunction implies: a positive one whose units are a superset of another positive
+    one's (B => A), a negative one whose units are a subset of another negative one's (not B => not A)"""
+    keep = []
+    for i, a in enumerate(sets):
+        if any(j != i and (b < a if by_superset else a < b) or (b == a and j < i) for j, b in enumerate(sets)): continue
+        keep.append(a)
+    return keep
+
 def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None, decoder=True):
     """trees (per previous control point) + hand-written rules -> the cell: five sparse ReLU layers over a one-hot state and
     the lexical input, then the new state.  `derived` maps a predicate name to a DNF over base literals (np_module.derived).
@@ -860,6 +1080,7 @@ def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None, decoder
     src_vocab = collections.defaultdict(set)
     for tok in list(R.LEX) + list(R.PRONOUNS) + list(R.DETS) + list(R.NUMBERS) + list(R.WH) + list(R.MODALS) + list(R.VERB_FORMS):
         for s, v in source_values(tok).items(): src_vocab[s].add(v)
+    for s, vals in window_source_vocab().items(): src_vocab[s] |= set(vals)
     for s in src_vocab: src_vocab[s] = sorted(src_vocab[s], key=str)
     copy_pairs = set(); move_pairs = set()
     MOVE_FN = {"move": lambda v: v, "move_time": lambda v: v + "時"}
@@ -936,6 +1157,12 @@ def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None, decoder
         if q == "subj.sore": return [(("S", S[("slot", "subj.noun", "それ")]), 1.0)] if ("slot", "subj.noun", "それ") in S else None
         if q.startswith("pend_prep="): return [(("S", S[("pend", q[10:])]), 1.0)] if ("pend", q[10:]) in S else None
         if q.startswith("reg.ret="): return [(("S", S[("slot", "ret", q[8:])]), 1.0)] if ("slot", "ret", q[8:]) in S else None
+        if q.startswith("reg.mret="): return [(("S", S[("slot", "mret", q[9:])]), 1.0)] if ("slot", "mret", q[9:]) in S else None
+        if q.startswith("reg.") and "=" in q:
+            e, v = q[4:].split("=", 1); e = {"adv": "adv1"}.get(e, e)
+            if v == "set": return [(("S", u), 1.0) for u in slot_units(e)] or None
+            vals = [u for u in slot_vocab.get(e, []) if str(u) == v]
+            return [(("S", S[("slot", e, u)]), 1.0) for u in vals] or None
         if q.startswith("flag."): return [(("S", u), 1.0) for u in slot_units(q[5:])] or None
         fam = GM.family_of(q)                                       # a printer predicate: a test on one slot's value, an OR over the values that pass
         if fam:
@@ -988,20 +1215,26 @@ def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None, decoder
         for conj in conjs:
             key = tuple(sorted(conj))
             if key not in conj_units:
-                edges = []; npos = 0; ok = True
+                pos, neg_, ok = [], [], True
                 for l in conj:
                     neg = l.startswith("¬"); q = l[1:] if neg else l
                     es = base_edges(q)
                     if es is None:
                         if not neg: ok = False; break            # a positive literal the cell cannot see: the conjunction is never true
                         continue                                  # a negative literal on an unseen predicate is vacuously true
-                    for ref, w in es: edges.append((ref, -w if neg else w))
-                    if not neg: npos += 1
+                    (neg_ if neg else pos).append(frozenset(ref for ref, w in es))
                 if not ok: conj_units[key] = None; dead_conj += 1
                 else:
                     u = L1.add(("conj", key))
-                    for ref, w in edges: W1.append((u, ref, w))
-                    b1[u] = -(npos - 1) if npos else 0.0
+                    pos, neg_ = implied(pos, True), implied(neg_, False)       # a literal another literal implies adds nothing: weights stay ±1
+                    acc = collections.defaultdict(float)
+                    for refs in pos:
+                        for ref in refs: acc[ref] += 1.0
+                    for refs in neg_:
+                        for ref in refs: acc[ref] -= 1.0
+                    for ref, w in acc.items():
+                        if w: W1.append((u, ref, w))
+                    b1[u] = -(len(pos) - 1)                       # AND: all positives on and no negative; with no positive, 1 unless a negative is on
                     conj_units[key] = u
             if conj_units[key] is not None: derived_terms[name].append(conj_units[key])
     # USE pairs: verb unit AND head-noun unit (head = noun2 if present else noun)
@@ -1041,14 +1274,6 @@ def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None, decoder
         if ("pred", q) in X: return ("X", X[("pred", q)])
         return None
     unresolved = collections.Counter()
-    def implied(sets, by_superset):
-        """drop a literal another literal of the same rule implies: a positive one whose units are a superset of another positive
-        one's (B => A), a negative one whose units are a subset of another negative one's (not B => not A)"""
-        keep = []
-        for i, a in enumerate(sets):
-            if any(j != i and (b < a if by_superset else a < b) or (b == a and j < i) for j, b in enumerate(sets)): continue
-            keep.append(a)
-        return keep
     for ri, (prev, lits, (cp, k, actions)) in enumerate(rules):
         u = L3.add(("rule", ri)); npos = 1
         W3.append((u, ("S", S[("ctrl", prev)]), 1.0))
@@ -1065,7 +1290,7 @@ def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None, decoder
             if es is None:
                 if truth:
                     unseen = True                                                           # a positive literal the cell cannot see: the rule can never fire
-                    if prev[0] != "P": unresolved[q] += 1                                  # (a printing rule on a value no reading rule writes is dead by design)
+                    if prev[0] not in ("P", "M"): unresolved[q] += 1                       # (a printing or module rule on a value no reading rule writes is dead by design)
                 continue                                                                # a negative literal on an unseen predicate is vacuously true
             (pos if truth else neg).append(frozenset(ref for ref, w in es))
         pos, neg = implied(pos, True), implied(neg, False)
@@ -1282,6 +1507,9 @@ class MatrixParser:
         tok = toks[i] if i < len(toks) else None
         for sname, v in source_values(tok).items():
             if ("src", sname, v) in X: x[X[("src", sname, v)]] = 1
+        for sname, v in window_sources(toks, i).items():
+            if ("src", sname, v) in X: x[X[("src", sname, v)]] = 1
+        if i + 2 < len(toks) and toks[i] == toks[i + 2] and ("pred", "w0=w2") in X: x[X[("pred", "w0=w2")]] = 1
         if tok in R.PREPS: x[X[("prep0", tok)]] = 1
         x[X[("one",)]] = 1
         return x
@@ -1397,11 +1625,20 @@ class MatrixParser:
         """the print head on a frame placed in the state: -> the output units"""
         return self.print_out(self.load_frame(frame))
 
+class HandModules:
+    """the three clause-level machines translated by hand (pp_module.py, predicate_module.py), in the module rule format"""
+    def pp_rules(self):
+        import pp_module as PPM; return PPM.rules()
+    def predicate_rules(self):
+        import predicate_module as PDM; return PDM.pred_rules()
+    def copula_rules(self):
+        import predicate_module as PDM; return PDM.cop_rules()
+
 class Decoder:
     """the decoder of a compiled cell: its compilation (part of every cell compile_matrices builds), the print head on a
     frame, and the output lexical layer"""
     def compile(self, comp):
         if ("emit",) in comp["S"]: return comp
-        return compile_matrices({}, extra_rules=[r for r in comp["rules"] if r[0][0] != "P" and r[0] != ("DONE",)], derived={k: v for k, v in comp["derived"].items() if not k.startswith("d.") or "@" in k})
+        return compile_matrices({}, extra_rules=[r for r in comp["rules"] if r[0][0] != "P" and r[0] != ("DONE",)], derived={k: v for k, v in comp["derived"].items() if not k.startswith("d.") or "@" in k or k.startswith(("d.pp.", "d.pr.", "d.cp."))})
     def decode(self, mp, frame): return mp.decode(frame)
     def output_lexicon(self, unit): return output_lexicon(unit)

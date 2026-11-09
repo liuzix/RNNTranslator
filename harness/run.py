@@ -34,7 +34,7 @@ CORPUS_FILES = ("dev.en", "dev.ja", "test.en", "test.ja")
 CORPUS_REL = os.path.join("data", "small_parallel_enja")
 
 SOURCES = ["rules_ja.py", "tables.py", "tables/*.tbl", "parser.py", "parser_rules.py", "run_rules.py"]
-CELL = ["parser_matrix.py", "np_module.py", "gen_module.py"]          # the compiled cell: the compiler, the noun-phrase module, the printing rules
+CELL = ["parser_matrix.py", "np_module.py", "pp_module.py", "predicate_module.py", "gen_module.py"]   # the compiled cell: the compiler, the hand-translated modules, the printing rules
 ACTIONS = {
     "rules":  {"version": 1, "script": "harness/eval_rules.py",  "inputs": SOURCES, "corpus": True,  "args": []},
     "matrix": {"version": 1, "script": "harness/eval_matrix.py", "inputs": SOURCES + CELL, "corpus": True, "args": []},

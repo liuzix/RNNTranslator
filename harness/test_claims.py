@@ -69,12 +69,13 @@ def test_rule_parser_bounds(root):
 def test_matrix_cell_shape(root):
     comp, mp = small_cell(root)
     assert len(comp["layers"]) == 5
-    kinds = {"module": 0, "outer": 0, "print": 0}
+    kinds = {"module": 0, "outer": 0, "print": 0, "clause": 0}
     for prev, lits, out in comp["rules"]:
         if prev[0] == "P" or prev == ("DONE",): kinds["print"] += 1
+        elif prev[0] in ("M", "RETM") or (prev[0] == "RET" and out[0][0] == "M"): kinds["clause"] += 1
         elif isinstance(prev[0], str) and prev[0].startswith("NP"): kinds["module"] += 1
         elif not (prev[0] == "RET" or out[0][0] == "NP0" or out[0] == PM.FAIL): kinds["outer"] += 1
-    assert kinds["module"] > 0 and kinds["outer"] > 0 and kinds["print"] > 0
+    assert kinds["module"] > 0 and kinds["outer"] > 0 and kinds["print"] > 0 and kinds["clause"] > 0
     assert ("shift",) in comp["S"] and ("emit",) in comp["S"]
     assert {n[0] for n in comp["S"].names} == {"ctrl", "slot", "pend", "shift", "emit", "out"}, "the state is not the six kinds of block"
     assert all(("ctrl", prev) in comp["S"] for prev, _, _ in comp["rules"] if prev[0] == "P"), "a printing position outside the control block"
@@ -244,6 +245,31 @@ def test_np_two_adjective_slots(root):
     out = NPM.run_module("obj", toks, 0, {"verb": None, "cop_kind": None, "subj": None}, None)
     assert out[0] == "FAIL" and out[1] == "three adjectives", out
     assert NPM.run_module("obj", ["a lot", "absent", "bus stop", "."], 0, {"verb": None, "cop_kind": None, "subj": None}, None)[0] == "RET"
+
+def test_clause_modules_replace_extraction(root):
+    """the PP machine, predicate and copula_predicate are hand-translated modules spliced into the cell: no extracted rule is left
+    whose control point lies in those methods, each module's positions decide completely (every position has an otherwise-rule
+    whose literals are the negations of its branches' conditions), and the cell translates the small cell's in-scope sentences
+    as the rule transducer does"""
+    import pp_module as PPM, predicate_module as PDM
+    comp, mp = small_cell(root)
+    for prev, lits, out in comp["rules"]:
+        for cp in (prev, out[0]):
+            if isinstance(cp, tuple) and cp and isinstance(cp[0], tuple):
+                assert cp[0][-1] not in PM.MODULE_METHODS, f"an extracted rule at {cp}"
+    hm = PM.HandModules(); modules = {"pp": hm.pp_rules(), "pred": hm.predicate_rules(), "cop": hm.copula_rules()}
+    assert all(len(rs) > 20 for rs in modules.values())
+    for mod, rs in modules.items():
+        by_state = collections.defaultdict(list)
+        for st, lits, out in rs: by_state[st].append((lits, out))
+        assert ("M", mod, PM.MODULE_START[mod][2]) in {("M", mod, st) for st in by_state if isinstance(st, str)}
+        for st, rules in by_state.items():
+            if not isinstance(st, str) or not any(l.startswith(f"d.{mod}.{st}.") for lits, _ in rules for l in lits): continue
+            conds = sorted({l.lstrip("¬") for lits, _ in rules for l in lits if l.startswith(f"d.{mod}.{st}.")})
+            assert any(set(lits) == {"¬" + c for c in conds} for lits, _ in rules), f"{mod} {st}: no otherwise-rule"
+    assert any(out[0] == PM.FAIL and prev[0] == "M" for prev, lits, out in comp["rules"]), "no refusal in the modules"
+    for s in ("i like the big dog .", "she took a rest ."):
+        toks = R.merge_multiword(s.split()); assert mp.translate(toks) == R.translate(s.split())
 
 def test_np_of_phrase(root):
     """an of-phrase is the noun-phrase module run once more on the role's of-phrase slots, printing before the head with の, and a

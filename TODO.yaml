@@ -56,18 +56,19 @@ items:
 
 - id: hand-modules
   title: Translate the PP machine, predicate and copula_predicate by hand into modules with complete guards
-  status: open
+  status: done
   round: 3
   context:
-  - text: np_module, translated by hand from parse_np, agrees with it on every window of at most two tokens over the token classes.
+  - text: np_module, translated by hand from parse_np, agrees with it on every window of at most two tokens over the token classes, of-phrases included.
     pinned_by: np
-  - text: The clause-level rules of the cell are induced from traces of the rule parser, and the matrix refuses sentences the rules parse where the induced rules do not cover them.
+  - text: "The PP machine, predicate and copula_predicate are hand-translated modules with complete guards (`pp_module.py`, `predicate_module.py`): per position an ordered decision whose last rule is the refusal, spliced into the cell at every activation of those methods in place of the rules extracted for them; what is still extracted is the start of the sentence, the question paths, the verb phrase, its objects and the end."
+    pinned_by: test_clause_modules_replace_extraction
+  - text: The cell misfires on no sentence of the corpus, and refuses the sentences the rules parse that its scope does not hold.
     pinned_by: matrix
-  - text: The remaining misfires come from the extracted clause-level rules, so the next modules to translate by hand are the PP machine, predicate and copula_predicate.
+  - text: The gaps that remain are inner clauses, folded frames and the paths still extracted; translating pre, the question paths, verb_phrase and tail by hand would leave the cell no induced guard.
     hypothesis: true
-  stubs: [HandModules]
   acceptance: test_hand_modules_agree
-  touches: [pp_module.py, predicate_module.py, parser_matrix.py, harness/eval_np.py]
+  touches: [pp_module.py, predicate_module.py, parser_matrix.py, np_module.py, parser_rules.py, gen_module.py]
 
 - id: inner-clauses
   title: Inner clauses in one frame — printing at clause end, clearing, the outer predicate in tag slots

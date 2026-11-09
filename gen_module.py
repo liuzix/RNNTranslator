@@ -23,7 +23,7 @@ from rules_ja import Pred, make_pred, adj_pred
 
 NP_ROLES = ("subj", "obj", "iobj", "pp1", "pp2", "pp3", "cop", "cmp")
 NP_SUBS = ("det", "poss", "num", "adj1", "adj2", "noun", "noun2", "cls", "mono", "compound")
-FLAGS = ("past", "neg", "prog", "perf", "question", "imp", "please", "lets", "there", "tag", "coord", "sub", "neg_inner", "noless", "perf_had")
+FLAGS = ("past", "neg", "prog", "perf", "question", "imp", "please", "lets", "there", "tag", "coord", "sub", "neg_inner", "noless", "perf_had", "from_seen")
 UNSUPPORTED = ("infinitive", "control", "embedded", "purpose_clause", "pre_clause", "manner", "so_that", "howabout", "exclaim", "fixed_out", "relative", "suffix")
 # (a `folded` frame — one whose string came from an inner clause — prints like any other: the string is opaque to the rules; only the cell cannot hold it)
 PRON6 = ("私", "彼", "彼女", "私たち", "彼ら", "あなた")            # generate(): a possessive coreferent with one of these subjects is dropped
@@ -132,11 +132,14 @@ FAMILIES = {
     "subj.negpol": ("subj.noun", lambda v, arg: v.endswith(("誰も", "何も"))),
     "obj.negpol":  ("obj.noun", lambda v, arg: v.endswith(("何も", "誰も"))),
     "adv.never":   ("adv1", lambda v, arg: "決して" in v),
+    "adv2.never":  ("adv2", lambda v, arg: "決して" in v),
     "want.complement": ("want", lambda v, arg: v in R.COMPLEMENTS),
 }
 
 def family_of(name):
-    """-> (slot, test, argument) when `name` is a family predicate, else None"""
+    """-> (slot, test, argument) when `name` is a family predicate, else None.  np.time=<role>: the role's head noun is a clock
+    time (ends in 時), a family whose slot is named by the argument"""
+    if name.startswith("np.time="): return f"{name[8:]}.noun", (lambda v, arg: isinstance(v, str) and v.endswith("時")), name[8:]
     for prefix, (slot, test) in FAMILIES.items():
         if name == prefix or (prefix.endswith("=") and name.startswith(prefix)): return slot, test, name[len(prefix):]
     return None
@@ -149,10 +152,10 @@ def base_pred(name, F):
             slot, v = q.split("=", 1); val = F.get(slot)
             return filled(val) and str(val) == v
         return filled(F.get(q))
-    for prefix, (slot, test) in FAMILIES.items():
-        if name == prefix or (prefix.endswith("=") and name.startswith(prefix)):
-            val = F.get(slot)
-            return filled(val) and bool(test(val, name[len(prefix):]))
+    fam = family_of(name)
+    if fam:
+        slot, test, arg = fam; val = F.get(slot)
+        return filled(val) and bool(test(val, arg))
     raise KeyError(name)
 
 def eval_lit(lit, F, D):
@@ -163,11 +166,11 @@ def eval_lit(lit, F, D):
 def derived():
     """the derived predicates: name -> DNF (a list of conjunctions of base literals)"""
     D = {}
-    D["d.neg"] = [["flag.neg"], ["adv.never"], ["subj.negpol"], ["obj.negpol"]]         # generate() turns these into c.neg before it prints the predicate
+    D["d.neg"] = [["flag.neg"], ["adv.never"], ["adv2.never"], ["subj.negpol"], ["obj.negpol"]]   # generate() turns these into c.neg before it prints the predicate
     D["d.whcop"] = [["slot.wh", "slot.cop_kind=wh"]]
     D["d.weather"] = [["subj.sore", "verb.weather"]]
     D["d.polite"] = [["flag.question"]]
-    NEGS = ["flag.neg", "adv.never", "subj.negpol", "obj.negpol"]; NOT_NEG = ["¬" + n for n in NEGS]
+    NEGS = ["flag.neg", "adv.never", "adv2.never", "subj.negpol", "obj.negpol"]; NOT_NEG = ["¬" + n for n in NEGS]
     # the tense generate() prints: c.past, except that a negative perfect takes the tense of its auxiliary (perf_had), and will takes none
     past_eff = [["flag.past", "¬flag.perf"], ["flag.past", "flag.perf"] + NOT_NEG] + [["flag.perf", "flag.perf_had", n] for n in NEGS]
     D["d.past_eff"] = [conj + ["¬slot.modal=will"] for conj in past_eff]
@@ -181,7 +184,6 @@ def derived():
     for role in ("obj", "cmp"):                                                           # the possessive coreferent with the subject is dropped
         D[f"d.{role}_coref"] = [[f"slot.subj.noun={p}", "¬slot.subj.det", "¬slot.subj.poss", "¬slot.subj.num", "¬slot.subj.adj1", "¬slot.subj.noun2", "¬slot.subj.mono",
                                  f"slot.{role}.poss={p}の", f"¬slot.{role}.det"] for p in PRON6]
-    D["d.neg_tai"] = [["flag.neg"], ["adv.never"], ["subj.negpol"], ["obj.negpol"]]
     return D
 
 # ------------------------------------------------------------------------------------------------ the rules
@@ -310,13 +312,15 @@ def build_rules():
     B.rule("M_OBJ_PART", ["¬obj.negpol", "¬slot.obj_particle", "slot.verb", "¬d.obj_default_ga", "¬d.obj_default_ni"], "M_WH_O", [C("を")])
     B.rule("M_OBJ_PART", ["¬obj.negpol", "¬slot.obj_particle", "¬slot.verb"], "M_WH_O", [C("を")])
     B.rule("M_WH_O", ["wh.kind=o", "¬slot.cop_kind"], "M_ADV", [S("wh", 0), C("を")]); B.rule("M_WH_O", ["wh.kind=o", "slot.cop_kind"], "M_ADV"); B.rule("M_WH_O", ["¬wh.kind=o"], "M_ADV")
-    B.rule("M_ADV", ["slot.adv1"], "M_TAIL", [S("adv1")]); B.rule("M_ADV", ["¬slot.adv1"], "M_TAIL")
+    B.rule("M_ADV", ["slot.adv1"], "M_ADV2", [S("adv1")]); B.rule("M_ADV", ["¬slot.adv1"], "M_ADV2")      # the cell holds a second adverb in adv2
+    B.rule("M_ADV2", ["slot.adv2"], "M_TAIL", [S("adv2")]); B.rule("M_ADV2", ["¬slot.adv2"], "M_TAIL")
     # ---- the tail: a question-word copula (何ですか), or the copula adverb, the degree and the predicate
     whk = ["o", "s", "adv", "loc", "t", "count"]
     for k in whk: B.rule("M_TAIL", ["d.whcop", f"wh.kind={k}"], ("FIN", "NA", "whcop"), [S("wh", 0)])
     B.rule("M_TAIL", ["d.whcop"] + [f"¬wh.kind={k}" for k in whk], "M_COPADV"); B.rule("M_TAIL", ["¬d.whcop"], "M_COPADV")
     B.rule("M_COPADV", ["slot.cop_kind=adv"], "M_DEGREE", [S("cop_adv")]); B.rule("M_COPADV", ["¬slot.cop_kind=adv"], "M_DEGREE")
-    B.rule("M_DEGREE", ["slot.degree"], "PRED", [S("degree")]); B.rule("M_DEGREE", ["¬slot.degree"], "PRED")
+    B.rule("M_DEGREE", ["slot.degree"], "M_DEGREE2", [S("degree")]); B.rule("M_DEGREE", ["¬slot.degree"], "M_DEGREE2")
+    B.rule("M_DEGREE2", ["slot.degree2"], "PRED", [S("degree2")]); B.rule("M_DEGREE2", ["¬slot.degree2"], "PRED")
     # ---- after the predicate: か / ね, then 。
     B.rule("Q", ["flag.there", "wh.kind=count"], "END", [C("か")])
     B.rule("Q", ["flag.there", "¬wh.kind=count", "flag.question"], "END", [C("か")]); B.rule("Q", ["flag.there", "¬wh.kind=count", "¬flag.question"], "END")
