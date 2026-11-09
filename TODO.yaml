@@ -1,0 +1,185 @@
+# The open items of the plan.  Schema: schemas/todo.schema.json; check: harness/check_todo.py (run by the hook).
+#
+# Each item carries its context as statements, every one pinned — by a test in harness/test_claims.py, an action or a
+# static check of harness/run.py (check_todo pins what the item's own acceptance test shows while it fails) — or marked
+# a hypothesis; the stubs (stubs.py) its acceptance test is written against; and the acceptance test itself, a function
+# of harness/test_acceptance.py that must fail while the item is open and pass when it is done.  Numbers are not written
+# here: they live in harness/baseline.json and the README.
+$schema: schemas/todo.schema.json
+items:
+
+# ---------------------------------------------------------------------------------------------------- round 3
+- id: torch-pinned
+  title: The cell runs under PyTorch, pinned by a `torch` action in the hook
+  status: in_progress
+  round: 3
+  context:
+  - text: The compiled cell is five sparse ReLU layers and a readout of zeros and ones whose weights are plus or minus one, except a large negative weight on a literal the cell cannot see, with integer thresholds, so single precision is exact.
+    pinned_by: test_cell_weights_are_named_integers
+  - text: "`cell_torch.py` builds the same matrices as torch sparse CSR buffers and `harness/eval_torch.py` steps the scipy and torch runners side by side; there is no `torch` action in the hook yet and the baseline has no torch result."
+    pinned_by: check_todo
+  - text: The PyTorch CPU index is unreachable from the sandbox this was written in and the PyPI wheel needs the CUDA libraries, so torch is not in uv.lock yet.
+    hypothesis: true
+  acceptance: test_torch_action_in_hook
+  touches: [pyproject.toml, uv.lock, harness/run.py, harness/baseline.json, docs/README.tmpl.md]
+  notes: "On a machine that reaches download.pytorch.org: add the pytorch-cpu index (explicit) and `uv add --group torch torch`, then add the action and re-baseline."
+
+- id: print-rules
+  title: Printing rules in normal form for single-clause frames, checked against generate()
+  status: open
+  round: 3
+  context:
+  - text: The semantic layer generates the Japanese from the frame, and the frame never looks at the English again.
+    pinned_by: test_layers_roundtrip
+  - text: generate() prints the slots in a fixed order with three lookups — particles from the verb class, conjugation from the flags, drops — and contains string surgery that slices the inner predicate off a printed string, which cannot compile and marks registers the frame lacks.
+    hypothesis: true
+  - text: A printing rule has the shape of a parsing rule — per position, an ordered decision diagram over slot predicates whose terminals emit one token — and can be checked against generate() exhaustively over the predicates it tests.
+    hypothesis: true
+  stubs: [PrintRules]
+  acceptance: test_print_rules_match_generate
+  touches: [gen_module.py, harness/eval_printer.py, harness/test_claims.py]
+
+- id: decoder-compile
+  title: "Compile the printing rules into the cell: emit, read gates, form gates, y(t)"
+  status: open
+  round: 3
+  depends_on: [print-rules]
+  context:
+  - text: The state is four kinds of one-hot block — control, slots, the pending preposition and the shift — with no emit unit and no output units.
+    pinned_by: test_matrix_cell_shape
+  - text: A slot write is a gated copy — a block gate and a source gate in one layer, write and keep units in the next, the readout summing them into the block — and the read the decoder needs is the same circuit with the arrows reversed.
+    pinned_by: test_slot_write_circuit
+  - text: The decoder is the same cell run backwards, sharing one state and one set of layers with the encoder, with an emit unit mirroring shift, read gates mirroring write gates and a form lookup mirroring the USE lookup.
+    hypothesis: true
+  stubs: [Decoder]
+  acceptance: test_decoder_emits_japanese
+  touches: [parser_matrix.py, cell_torch.py, harness/eval_matrix.py, harness/lattice.py]
+
+- id: hand-modules
+  title: Translate the PP machine, predicate and copula_predicate by hand into modules with complete guards
+  status: open
+  round: 3
+  context:
+  - text: np_module, translated by hand from parse_np, agrees with it on every window of at most two tokens over the token classes.
+    pinned_by: np
+  - text: The clause-level rules of the cell are induced from traces of the rule parser, and the matrix refuses sentences the rules parse where the induced rules do not cover them.
+    pinned_by: matrix
+  - text: The remaining misfires come from the extracted clause-level rules, so the next modules to translate by hand are the PP machine, predicate and copula_predicate.
+    hypothesis: true
+  stubs: [HandModules]
+  acceptance: test_hand_modules_agree
+  touches: [pp_module.py, predicate_module.py, parser_matrix.py, harness/eval_np.py]
+
+- id: inner-clauses
+  title: Inner clauses in one frame — printing at clause end, clearing, the outer predicate in tag slots
+  status: open
+  round: 3
+  depends_on: [decoder-compile, hand-modules]
+  context:
+  - text: The rule parser is a bounded transducer with a frame stack of depth at most two, and the matrix state has no second bank of slots for an inner clause.
+    pinned_by: test_rule_parser_bounds
+  - text: Sentences whose frame uses an inner-clause register are out of the matrix's scope and are refused by it.
+    pinned_by: matrix
+  - text: Inner clauses need no second bank — when a clause closes its printing positions run at once, its slots are cleared by the gates that write them, the outer predicate waits in a few tag slots, and a clause that writes a slot the open frame already holds is refused.
+    hypothesis: true
+  stubs: [ClauseFlush]
+  acceptance: test_inner_clause_sentence_agrees
+  touches: [parser_matrix.py, parser_rules.py, np_module.py]
+
+- id: lexical-layer0
+  title: "The lexical layer as layer 0: verb-conditioned readings inside the cell"
+  status: open
+  round: 3
+  context:
+  - text: Two feedback edges cross the layers — the noun's use-verb rewrites the verb, and the parser's state decides which reading of a token is used.
+    pinned_by: test_feedback_edges
+  - text: The second edge is computed outside the matrices today, by table_hits reading the verb from the state before each step.
+    hypothesis: true
+  stubs: [Layer0Lexical]
+  acceptance: test_lexical_hits_inside_cell
+  touches: [parser_matrix.py, cell_torch.py]
+
+- id: normal-form
+  title: Reduced ordered decision diagrams as the canonical form of the rules
+  status: open
+  round: 3
+  context:
+  - text: A compiled rule is a control point, a conjunction of literals and a target with the tokens consumed and the slot writes; the cell holds rules of the module kind and rules extracted from traces.
+    pinned_by: test_matrix_cell_shape
+  - text: Per control point, a reduced ordered decision diagram over a fixed literal order is canonical — the same machine always yields the same diagram, every path ends in a terminal or a refusal, and "module equals induced" becomes diagram equality.
+    hypothesis: true
+  stubs: [Canon]
+  acceptance: test_canonical_diagrams
+  touches: [canon.py, parser_matrix.py, np_module.py]
+
+# ---------------------------------------------------------------------------------------------------- carried over
+- id: matrix-chain-scope
+  title: Matrix items only for sentences the rules parse
+  status: open
+  round: 2
+  context:
+  - text: The matrix parser on a sentence is MISFIRE, GAP or AGREE against the rule parser.
+    pinned_by: test_lattice_order
+  - text: Both parsers refusing a sentence counts as AGREE today, so a rule-parser gain the matrix cannot represent reads as a down move on the matrix item.
+    pinned_by: check_todo
+  acceptance: test_matrix_items_scope
+  touches: [harness/lattice.py, harness/baseline.json, CLAUDE.md]
+
+- id: passives
+  title: Passives and absolute clauses (suite I)
+  status: deferred
+  round: 2
+  context:
+  - text: Passives are refused by design — the frame has no passive register — and the absolute clause is an inner clause.
+    pinned_by: suites
+  acceptance: test_suite_i_closed
+  touches: [parser_rules.py, rules_ja.py, tables/verb_classes.tbl]
+
+- id: suite-d
+  title: Gerunds (suite D)
+  status: open
+  round: 2
+  context:
+  - text: A V-ing clause as a noun phrase is parsed only in some of its positions.
+    pinned_by: suites
+  acceptance: test_suite_d_closed
+- id: suite-e
+  title: Degree and superlative (suite E)
+  status: open
+  round: 2
+  context:
+  - text: The comparative inside a there-is sentence ("there are more girls than boys") is mistranslated.
+    pinned_by: suites
+  acceptance: test_suite_e_closed
+- id: suite-g
+  title: Complement patterns (suite G)
+  status: open
+  round: 2
+  context:
+  - text: The hearsay suffix ("i hear ...") over a perfect predicate is refused.
+    pinned_by: suites
+  acceptance: test_suite_g_closed
+- id: suite-h
+  title: Discourse, ellipsis, coordination (suite H)
+  status: open
+  round: 2
+  context:
+  - text: The coordinate clause with ellipsis ("does not either") is an inner clause and is refused.
+    pinned_by: suites
+  acceptance: test_suite_h_closed
+- id: suite-l
+  title: Sense and reading selection (suite L)
+  status: open
+  round: 2
+  context:
+  - text: The purpose clause after a motion verb ("has gone to study medicine") is read as a noun phrase, and one more reading is still chosen wrongly.
+    pinned_by: suites
+  acceptance: test_suite_l_closed
+- id: suite-m
+  title: Register and dropped words (suite M)
+  status: open
+  round: 2
+  context:
+  - text: A past-leaning adverb does not yet decide the tense of an ambiguous verb form.
+    pinned_by: suites
+  acceptance: test_suite_m_closed

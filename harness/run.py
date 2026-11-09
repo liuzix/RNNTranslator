@@ -16,7 +16,7 @@ replays without running.  Nothing an action did not declare can reach it, so a h
     python harness/run.py readme                  render README.md from docs/README.tmpl.md (numbers from harness/facts.py)
     python harness/run.py render-diagram          render docs/*.puml with the pinned PlantUML jar and update its lock
 
-Static checks (fast, run every time, not cached): the schema, file-tree, diagram, README and claim checks (STATIC below).
+Static checks (fast, run every time, not cached): the schema, file-tree, diagram, README, claim and TODO checks (STATIC below).
 Actions (inputs listed in ACTIONS below):
     rules    coverage and char-BLEU of the rule transducer on dev and test, and every output
     matrix   the hybrid matrix parser compiled on dev+test and cross-tabulated against the bounded rule parser
@@ -156,8 +156,9 @@ STATIC = [
     ("harness/check_diagram.py", lambda c: []),
     ("harness/check_readme.py",  lambda c: []),
     ("harness/test_claims.py",   lambda c: ["--corpus", c["corpus"]]),
+    ("harness/check_todo.py",    lambda c: ["--corpus", c["corpus"]]),
 ]
-READS_BASELINE = {"harness/check_readme.py", "harness/test_claims.py", "harness/check_tree.py"}   # depend on the baseline (the README is rendered from it): skipped while it is rewritten; `check` runs them
+READS_BASELINE = {"harness/check_readme.py", "harness/test_claims.py", "harness/check_tree.py", "harness/check_todo.py"}   # depend on the baseline (the README is rendered from it): skipped while it is rewritten; `check` runs them
 
 def static_checks(exe, src_root, corpus, staged, skip_baseline=False):
     """the schema, tree, diagram, README and claim checks on the tree under test; exit 1 on an error"""

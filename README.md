@@ -40,6 +40,7 @@ The compiled cell is a recurrent network: the state is a register file of one-ho
 │   ├── check_diagram.py              the diagram files against their lock
 │   ├── check_readme.py               README.md against the template, the facts and the appendix
 │   ├── check_schemas.py              tables, corpus lock and baseline against their JSON Schemas
+│   ├── check_todo.py                 TODO.yaml: schema, pins, acceptance tests run, stubs exercised
 │   ├── check_tree.py                 this file tree against the tracked files
 │   ├── corpus.lock.json              the pinned corpus: commit, sha256 and line count per file
 │   ├── eval_matrix.py                action: hybrid cell compiled on dev+test, cross-tab vs the rule parser
@@ -57,6 +58,7 @@ The compiled cell is a recurrent network: the state is a register file of one-ho
 │   ├── run.py                        the action cache, sandbox, baseline comparison, corpus fetch
 │   ├── suites/
 │   │   └── *.json                    one acceptance suite per residual class
+│   ├── test_acceptance.py            one acceptance test per item of TODO.yaml, failing until the item is done
 │   ├── test_claims.py                the tests the README's claims are pinned to
 │   └── trace_rules.py                step the hybrid rule set through one sentence
 ├── schemas/
@@ -69,7 +71,8 @@ The compiled cell is a recurrent network: the state is a register file of one-ho
 │   ├── diagram-lock.schema.json
 │   ├── integrity.schema.json         the format of integrity.json
 │   ├── negatives.schema.json
-│   └── suite.schema.json
+│   ├── suite.schema.json
+│   └── todo.schema.json
 ├── tables/
 │   └── *.tbl                         the tables, each a small DSL file with its own header
 ├── .gitattributes
@@ -87,7 +90,9 @@ The compiled cell is a recurrent network: the state is a register file of one-ho
 ├── pyproject.toml
 ├── rules_ja.py                       lexical layer, frame, generator, translate()
 ├── run_rules.py                      evaluation on dev/test with samples
+├── stubs.py                          the interfaces of work not done yet, for the acceptance tests to be written against
 ├── tables.py                         table loader and record view
+├── TODO.yaml                         the open items: context pinned like this README, stubs, an acceptance test each
 └── uv.lock                           every dependency with its sha256
 ```
 <!-- tree:end -->
@@ -105,7 +110,7 @@ uv run python harness/run.py readme                # re-render README.md after e
 
 ## Harness
 
-Every commit runs the harness on the staged tree through the pre-commit hook, and the commit is refused if any item of the lattice moves down or an unjudged output changes without a verdict. Each action declares its inputs and runs in a sandbox that holds only those inputs, cached under `.cache/actions/` by the hash of the inputs, `uv.lock` and the interpreter. Every dependency is pinned with its sha256 in `uv.lock` (7 packages). The corpus is pinned to commit 312408a11c5f with a sha256 and line count per file, and is not vendored. Every table row, the corpus lock and the baseline are validated against JSON Schemas (draft 2020-12), with uniqueness and cross-table references declared in `schemas/tables/integrity.json`, and every sentence the baseline cites is verified against the pinned corpus line. The file tree above is compared with the tracked files. The architecture and cell diagrams are rendered from `docs/architecture.puml` and `docs/cell.puml` by PlantUML 1.2025.10, pinned by the jar's sha256, the neuron drawing by `harness/render_neurons.py` with nothing but Python, and each committed SVG must match the hash recorded at render time and, for the drawing, be exactly what the script emits. Every number in this README is rendered from a named fact, and every sentence is either pinned to a test or declared a hypothesis in the appendix below. Retired files leave the tree, and what is worth reading later goes into `archive/` as a compressed blob that no text search sees into. `CLAUDE.md` states the rules every agent and human follows here, and every file and check it names exists.
+Every commit runs the harness on the staged tree through the pre-commit hook, and the commit is refused if any item of the lattice moves down or an unjudged output changes without a verdict. Each action declares its inputs and runs in a sandbox that holds only those inputs, cached under `.cache/actions/` by the hash of the inputs, `uv.lock` and the interpreter. Every dependency is pinned with its sha256 in `uv.lock` (8 packages). The corpus is pinned to commit 312408a11c5f with a sha256 and line count per file, and is not vendored. Every table row, the corpus lock and the baseline are validated against JSON Schemas (draft 2020-12), with uniqueness and cross-table references declared in `schemas/tables/integrity.json`, and every sentence the baseline cites is verified against the pinned corpus line. The file tree above is compared with the tracked files. The architecture and cell diagrams are rendered from `docs/architecture.puml` and `docs/cell.puml` by PlantUML 1.2025.10, pinned by the jar's sha256, the neuron drawing by `harness/render_neurons.py` with nothing but Python, and each committed SVG must match the hash recorded at render time and, for the drawing, be exactly what the script emits. Every number in this README is rendered from a named fact, and every sentence is either pinned to a test or declared a hypothesis in the appendix below. Retired files leave the tree, and what is worth reading later goes into `archive/` as a compressed blob that no text search sees into. Every open item of the plan is in `TODO.yaml`: its context is statements pinned like this README's, it names an acceptance test in `harness/test_acceptance.py` that must fail while the item is open and pass once it is done, and every stub those tests are written against is exercised by them. `CLAUDE.md` states the rules every agent and human follows here, and every file and check it names exists.
 
 The `rules` action measures coverage and char-BLEU of the transducer on dev and test and records every output. The `matrix` action compiles the hybrid cell on dev and test and cross-tabulates it against the rule parser. The `np` action checks `np_module` against `parse_np` over every window of at most 2 tokens, or 3 with `--full`. The `negatives` action runs the 18 ungrammatical sentences of `harness/negatives.json`, taken or adapted from the syntax literature, asserts that the rule parser refuses every one and accepts every grammatical control, and counts what the matrix does with them.
 
@@ -166,13 +171,14 @@ Every sentence above is quoted here with what pins it: a test in `harness/test_c
 - "Hypothesis: the compiled cell runs unchanged as a PyTorch module whose 5 layers are sparse matrices held as fixed buffers, because its arithmetic is small integers and exact in single precision, and the read head and print head are the only operations outside the matrices.": Hypothesis
 - "Every commit runs the harness on the staged tree through the pre-commit hook, and the commit is refused if any item of the lattice moves down or an unjudged output changes without a verdict.": Pinned by `test_precommit_hook_runs_check`
 - "Each action declares its inputs and runs in a sandbox that holds only those inputs, cached under `.cache/actions/` by the hash of the inputs, `uv.lock` and the interpreter.": Pinned by `test_sandbox_holds_only_declared_inputs`
-- "Every dependency is pinned with its sha256 in `uv.lock` (7 packages).": Pinned by `test_dependencies_hash_pinned`
+- "Every dependency is pinned with its sha256 in `uv.lock` (8 packages).": Pinned by `test_dependencies_hash_pinned`
 - "The corpus is pinned to commit 312408a11c5f with a sha256 and line count per file, and is not vendored.": Pinned by `test_corpus_pinned`
 - "Every table row, the corpus lock and the baseline are validated against JSON Schemas (draft 2020-12), with uniqueness and cross-table references declared in `schemas/tables/integrity.json`, and every sentence the baseline cites is verified against the pinned corpus line.": Pinned by `check_schemas`
 - "The file tree above is compared with the tracked files.": Pinned by `check_tree`
 - "The architecture and cell diagrams are rendered from `docs/architecture.puml` and `docs/cell.puml` by PlantUML 1.2025.10, pinned by the jar's sha256, the neuron drawing by `harness/render_neurons.py` with nothing but Python, and each committed SVG must match the hash recorded at render time and, for the drawing, be exactly what the script emits.": Pinned by `check_diagram`
 - "Every number in this README is rendered from a named fact, and every sentence is either pinned to a test or declared a hypothesis in the appendix below.": Pinned by `check_readme`
 - "Retired files leave the tree, and what is worth reading later goes into `archive/` as a compressed blob that no text search sees into.": Pinned by `test_archive_is_opaque`
+- "Every open item of the plan is in `TODO.yaml`: its context is statements pinned like this README's, it names an acceptance test in `harness/test_acceptance.py` that must fail while the item is open and pass once it is done, and every stub those tests are written against is exercised by them.": Pinned by `check_todo`
 - "`CLAUDE.md` states the rules every agent and human follows here, and every file and check it names exists.": Pinned by `test_claude_md_references_exist`
 - "The `rules` action measures coverage and char-BLEU of the transducer on dev and test and records every output.": Pinned by `rules`
 - "The `matrix` action compiles the hybrid cell on dev and test and cross-tabulates it against the rule parser.": Pinned by `matrix`

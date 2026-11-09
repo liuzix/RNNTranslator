@@ -1,0 +1,55 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://github.com/liuzix/RNNTranslator/schemas/todo.schema.json",
+ "title": "TODO.yaml: the open items of the plan",
+ "description": "Every item of work that is not done: its context as statements pinned like the README's (a test, an action or a check that would fail if the statement were false, or an explicit hypothesis), the stubs its acceptance test is written against, and the acceptance test itself, a function of harness/test_acceptance.py that must fail while the item is open and pass once it is done. harness/check_todo.py validates this schema, resolves every pin, runs every acceptance test and requires each stub to be exercised by one.",
+ "type": "object",
+ "required": ["items"],
+ "additionalProperties": false,
+ "properties": {
+  "$schema": {"type": "string"},
+  "items": {
+   "type": "array",
+   "minItems": 1,
+   "items": {
+    "type": "object",
+    "required": ["id", "title", "status", "round", "context", "acceptance"],
+    "additionalProperties": false,
+    "properties": {
+     "id": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$", "description": "stable slug, referenced by depends_on"},
+     "title": {"type": "string", "minLength": 3, "maxLength": 120},
+     "status": {"type": "string", "enum": ["open", "in_progress", "blocked", "deferred", "done"],
+                "description": "the acceptance test must fail unless the status is done, and must pass when it is"},
+     "round": {"type": "integer", "minimum": 1, "description": "the round of work the item belongs to"},
+     "depends_on": {"type": "array", "items": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"}, "uniqueItems": true},
+     "context": {
+      "type": "array",
+      "minItems": 1,
+      "description": "prose, one statement per entry; each is pinned or a hypothesis",
+      "items": {
+       "type": "object",
+       "required": ["text"],
+       "additionalProperties": false,
+       "properties": {
+        "text": {"type": "string", "minLength": 10},
+        "pinned_by": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                      "description": "a test of harness/test_claims.py or harness/test_acceptance.py, an action of harness/run.py, or a static check (check_<name>)"},
+        "hypothesis": {"type": "boolean", "const": true}
+       },
+       "oneOf": [{"required": ["pinned_by"]}, {"required": ["hypothesis"]}]
+      }
+     },
+     "stubs": {
+      "type": "array",
+      "uniqueItems": true,
+      "description": "classes of stubs.py the acceptance test is written against; every method of each must be exercised by the acceptance tests",
+      "items": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$"}
+     },
+     "acceptance": {"type": "string", "pattern": "^test_[a-z0-9_]+$", "description": "a function of harness/test_acceptance.py"},
+     "touches": {"type": "array", "items": {"type": "string"}, "description": "files the item is expected to change or create"},
+     "notes": {"type": "string"}
+    }
+   }
+  }
+ }
+}

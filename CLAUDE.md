@@ -76,7 +76,22 @@ measurement, a reason. A claim is either **pinned** (a test or check that would 
 - A check that fails tells you what is incoherent. Fix the cause. If the cause is the README being right and the
   code wrong, fix the code; if the code is right and the README wrong, fix the template and its pin.
 
-## 5. Retirement and scope
+## 5. The plan is data
+
+- Open work lives in `TODO.yaml` (schema `schemas/todo.schema.json`, checked by `harness/check_todo.py` in the hook),
+  not in chat or tracker docs. An item has a `context` of statements, each pinned like a README sentence (a test, an
+  action, a static check — `check_todo` itself pins what the item's own failing acceptance test shows) or marked a
+  hypothesis; the `stubs` its acceptance test is written against; and an `acceptance` test in
+  `harness/test_acceptance.py`.
+- An acceptance test says what done means and is written when the item is opened, against the stubs in `stubs.py`
+  where the implementation does not exist. It must fail while the item is open and pass once it is marked done; a
+  passing test on an open item means the file is stale, a failing test on a done item means the work regressed. Every
+  method of every stub is exercised by the acceptance run, so an interface no test reaches cannot be declared.
+- Finishing an item means: the implementation, the stub retired from `stubs.py`, the test importing the real module,
+  the status set to `done` in the same commit. Numbers do not go into `TODO.yaml`; they live in the baseline and the
+  README.
+
+## 6. Retirement and scope
 
 - A file that is no longer reachable from the current work leaves the tree in the commit that retires it. What is
   worth reading later goes into `archive/` as a compressed blob with a manifest inside, listed in
