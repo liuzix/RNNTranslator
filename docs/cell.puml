@@ -1,6 +1,7 @@
 @startuml cell
-' The compiled cell as a recurrent network: a one-hot register file for the state, five ReLU layers per step, a 0/1
-' readout into the next state, and the recurrence; below it, one slot write drawn as the circuit the layers make of it.
+' The compiled cell as a recurrent network with two heads: a read head over the English (advanced by the shift unit) and a
+' print head over the Japanese (advanced by the emit unit).  One state, one set of layers; reading rules consume a token
+' and write slots, printing rules read slots and emit a token.  Below, one slot write and its mirror, one slot read.
 ' Dashed boxes are proposed, not built.  Rendered hermetically by `harness/render_diagram.py` with the PlantUML jar
 ' pinned in docs/architecture.lock.json.
 skinparam shadowing false
@@ -14,7 +15,32 @@ skinparam rectangle {
 }
 left to right direction
 
-rectangle "**one slot write**: the same layers, seen from one block of s(t)" as WRITE #FFFBEA {
+rectangle "**x(t)**  lexical input\nthe window under the read head" as X #F7D9D9 {
+  rectangle "window predicates\nw0..w3: class, surface, form" as XP
+  rectangle "copy sources\nnoun · adj · verb · det · …" as XS
+}
+
+rectangle "**s(t)**  state: a register file\nof one-hot blocks" as S #D8ECD4 {
+  rectangle "ctrl\nreading positions, then\nprinting positions" as CTRL
+  rectangle "slots: the frame\nnoun-phrase roles · verb · adv\nfront · time · want · flags" as SLOTS
+  rectangle "tag slots (proposed)\nthe outer predicate while\nan inner clause is open" as TAGS #FFFFFF;line.dashed
+  rectangle "pend · shift · emit" as PEND
+}
+
+rectangle "**one step**: five ReLU layers, weights ±1, integer thresholds" as STEP {
+  rectangle "L1  predicates\nOR over a block\nAND conjunctions" as L1
+  rectangle "L2  NOT\ncounts · USE pairs" as L2
+  rectangle "L3  rules\nAND(ctrl, literals)\nexactly one fires" as L3
+  rectangle "L4  next ctrl · shift · emit\nwrite gates · read gates\nform gates" as L4
+  rectangle "L5  keep · write\nread · lookups · crash" as L5
+}
+
+rectangle "**s(t+1)**" as SN #FDE7C8
+rectangle "**y(t)**  one morpheme (proposed)\none-hot: slot values · stem forms\nparticles · suffixes · 。" as Y #FFFFFF;line.dashed
+rectangle "**output lexical layer** (proposed)\nunit → string; the print head\nappends it when emit = 1" as OUT #EEEEEE;line.dashed
+rectangle "**read head**\nadvances when shift = 1" as HEAD #EEEEEE
+
+rectangle "**one slot write**: the layers seen from one block of s(t)" as WRITE #FFFBEA {
   rectangle "L3  the rules that\nwrite this block" as RULE
   rectangle "x(t)  the source\none-hot over its values" as SRC
   rectangle "s(t)  the block\none-hot over its values" as OLD
@@ -33,30 +59,26 @@ rectangle "**one slot write**: the same layers, seen from one block of s(t)" as 
   KEEP --> NEXTB
 }
 
-rectangle "**x(t)**  lexical input\none-hot per reading" as X #F7D9D9 {
-  rectangle "window predicates\nw0..w3: class, surface, form" as XP
-  rectangle "copy sources\nnoun · adj · verb · det · …" as XS
+rectangle "**one slot read** (proposed): the same layers seen from the output" as READ #FFFBEA;line.dashed {
+  rectangle "L3  the rules that\nprint this block" as RRULE
+  rectangle "s(t)  the block\none-hot over its values" as RBLK
+  rectangle "s(t)  verb · flags\npast · neg · polite" as RFLAGS
+  rectangle "L4  read gate\nOR of those rules\n(+ emit)" as RGATE
+  rectangle "L4  form gate\nAND(rule, flags): which\nstem form or suffix" as RFORM
+  rectangle "L5  read units, one per value\nReLU(read gate + block − 1)\nthe gate selects: a mux" as RAND
+  rectangle "L5  lookup units\nReLU(form gate + verb − 1)\nconjugation as a table" as RLOOK
+  rectangle "W6  y(t) = read + lookup\n0/1 sums, one morpheme" as YTOK
+  RRULE --> RGATE
+  RRULE --> RFORM
+  RBLK --> RAND
+  RGATE --> RAND
+  RFLAGS --> RFORM
+  RFORM --> RLOOK
+  RAND --> YTOK
+  RLOOK --> YTOK
 }
 
-rectangle "**s(t)**  state: a register file\nof one-hot blocks" as S #D8ECD4 {
-  rectangle "ctrl\none unit per control point" as CTRL
-  rectangle "slots: the frame\nnoun-phrase roles · verb · adv\nfront · time · want · flags" as SLOTS
-  rectangle "tag slots (proposed)\nwho said · which marker" as TAGS #FFFFFF;line.dashed
-  rectangle "pend · shift" as PEND
-}
-
-rectangle "**one step**: five ReLU layers, weights ±1, integer thresholds" as STEP {
-  rectangle "L1  predicates\nOR over a block\nAND conjunctions" as L1
-  rectangle "L2  NOT\ncounts · USE pairs" as L2
-  rectangle "L3  rules\nAND(ctrl, literals)\nexactly one fires" as L3
-  rectangle "L4  next ctrl · gates\nwrite enable per\n(block, source)" as L4
-  rectangle "L5  keep · write\nmove · crash" as L5
-}
-
-rectangle "**s(t+1)**" as SN #FDE7C8
-rectangle "**y(t)**  output layer (proposed)\na frame leaves when its clause ends\nand its slots are cleared" as Y #FFFFFF;line.dashed
-rectangle "**semantic layer**\ngenerate(): frame → Japanese" as GEN #EEEEEE
-
+HEAD --> X
 X --> L1
 S --> L1
 L1 --> L2
@@ -64,11 +86,12 @@ L2 --> L3
 L3 --> L4
 L4 --> L5
 L5 --> SN : W6
-SN --> S : one step per word
-SN --> GEN : at DONE
-SN .[#777777].> Y
-Y .[#777777].> GEN
+L5 .[#777777].> Y : W6
+SN --> S : one step
+Y .[#777777].> OUT
+SN .[#777777,norank].> HEAD : shift
 
-' the inset's columns line up with the layers they zoom into
+' the insets' columns line up with the layers they zoom into
 L2 -[hidden]-> RULE
+L2 -[hidden]-> RRULE
 @enduml
