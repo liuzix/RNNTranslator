@@ -11,18 +11,17 @@ items:
 # ---------------------------------------------------------------------------------------------------- round 3
 - id: torch-pinned
   title: The cell runs under PyTorch, pinned by a `torch` action in the hook
-  status: in_progress
+  status: done
   round: 3
   context:
   - text: The compiled cell is five sparse ReLU layers and a readout of zeros and ones whose weights are plus or minus one, except a large negative weight on a literal the cell cannot see, with integer thresholds, so single precision is exact.
     pinned_by: test_cell_weights_are_named_integers
-  - text: "`cell_torch.py` builds the same matrices as torch sparse CSR buffers and `harness/eval_torch.py` steps the scipy and torch runners side by side; there is no `torch` action in the hook yet and the baseline has no torch result."
-    pinned_by: check_todo
-  - text: The PyTorch CPU index is unreachable from the sandbox this was written in and the PyPI wheel needs the CUDA libraries, so torch is not in uv.lock yet.
-    hypothesis: true
+  - text: "`cell_torch.py` builds the same matrices as torch sparse CSR buffers, and the `torch` action (`harness/eval_torch.py`) steps the scipy and torch runners side by side on every dev and test sentence and counts the sentences whose states ever differ, an item of the lattice (torch.exact) whose top is zero."
+    pinned_by: torch
+  - text: torch comes from the PyTorch CPU index, declared as an explicit index in pyproject.toml and locked by sha256 like every other dependency, in a dependency group the hook's sync installs by default.
+    pinned_by: test_dependencies_hash_pinned
   acceptance: test_torch_action_in_hook
-  touches: [pyproject.toml, uv.lock, harness/run.py, harness/baseline.json, docs/README.tmpl.md]
-  notes: "On a machine that reaches download.pytorch.org: add the pytorch-cpu index (explicit) and `uv add --group torch torch`, then add the action and re-baseline."
+  touches: [pyproject.toml, uv.lock, harness/run.py, harness/lattice.py, harness/baseline.json, docs/README.tmpl.md]
 
 - id: print-rules
   title: Printing rules in normal form for single-clause frames, checked against generate()

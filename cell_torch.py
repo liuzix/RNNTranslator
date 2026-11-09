@@ -2,9 +2,9 @@
 parameters), stepped with torch.sparse.mm and ReLU.  Nothing is learned; the module exists so the circuit runs under a
 real tensor framework, batched, exportable, and comparable step for step with the scipy MatrixParser.
 
-hypothesis (to be pinned by the `torch` action, harness/eval_torch.py, once torch is in the lock): the arithmetic is
-small integers — weights ±1 (and the −5 that silences a rule), biases integer thresholds, activations 0/1 and small
-counts — so single precision is exact and the two runners agree bit for bit at every step.
+The arithmetic is small integers — weights ±1 (and the −5 that silences a rule), biases integer thresholds, activations
+0/1 and small counts — so single precision is exact and the two runners agree bit for bit at every step: pinned by the
+`torch` action (harness/eval_torch.py), which steps both runners on every dev and test sentence.
 
     uv run python -c "import cell_torch; cell_torch.demo()"       # needs torch importable in the environment
 """

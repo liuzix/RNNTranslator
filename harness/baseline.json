@@ -3,7 +3,7 @@
 "matrix": {
 "both_refuse": 263,
 "cell": {
-"build_seconds": 26,
+"build_seconds": 27,
 "input_units": 2030,
 "layers": [
 995,
@@ -219,6 +219,15 @@
 "open": 7,
 "right": 22,
 "summary": "suites: 22/33 cases right, 4 of 11 classes closed (open: D, E, G, H, I, L, M)"
+},
+"torch": {
+"diverging": 0,
+"dtype": "float32",
+"seconds": 44.5,
+"sentences": 995,
+"steps": 13875,
+"summary": "torch 2.15.0+cpu: 995 sentences, 13875 steps compared, 0 diverging",
+"torch": "2.15.0+cpu"
 }
 },
 "metrics": {
@@ -234,7 +243,8 @@
 "rules.test.covered": 416,
 "suites.cases": 33,
 "suites.closed": 4,
-"suites.right": 22
+"suites.right": 22,
+"torch.diverging": 0
 },
 "outputs": {
 "matrix": {
@@ -2972,5 +2982,5 @@
 }
 ]
 },
-"taken": "2026-11-08 at e52a8e5 (staged)"
+"taken": "2026-11-09 at 561c0c1"
 }

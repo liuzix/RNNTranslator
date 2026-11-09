@@ -169,7 +169,8 @@ def _fake_world(tmp, dev_outputs, matrix_outputs, negatives, adjudications=None)
                          "test": {"n": 0, "covered": 0, "bleu_all": 0.0, "outputs": {}, "refusals": {}}},
                "matrix": {"identical": 0, "wrong_frame": 0, "matrix_parses_refused": 0, "outputs": {"dev": matrix_outputs, "test": {}}},
                "np": {"mismatches": 0}, "negatives": {"accepted": 0, "controls_refused_by_rules": 0, "matrix_accepted": 0, "rows": negatives},
-               "suites": {"classes": {}, "cases": 0, "right": 0, "closed": 0, "open": 0, "rows": []}}
+               "suites": {"classes": {}, "cases": 0, "right": 0, "closed": 0, "open": 0, "rows": []},
+               "torch": {"sentences": 2, "steps": 8, "diverging": 0, "torch": "0", "dtype": "float32"}}
     return corpus, os.path.join(tmp, "src"), results
 
 def test_lattice_order(root):
@@ -185,6 +186,10 @@ def test_lattice_order(root):
     assert LT.sentence_level("ok", "ref", "k", V, U) == "RIGHT" and LT.sentence_level("new", "ref", "k", V, U) == "UNKNOWN"
     assert LT.sentence_level("", "ref", "u", V, U) == "RIGHT" and LT.sentence_level("anything", "ref", "u", V, U) == "WRONG"
     assert LT.matrix_level("a", "a") == "AGREE" and LT.matrix_level("", "") == "AGREE" and LT.matrix_level("a", "") == "GAP" and LT.matrix_level("", "b") == "MISFIRE" and LT.matrix_level("a", "b") == "MISFIRE"
+    assert LT.CHAINS["torch.exact"] == ["DIVERGING", "EXACT"] and LT.TOP["torch.exact"] == "EXACT" and LT.cmp("torch.exact", "EXACT", "DIVERGING") == "down"
+    empty = {"dev": {}, "test": {}}
+    assert LT.levels({}, {}, [], 0, empty, {}, {}, [], torch_diverging=0)["torch.exact"] == ("torch.exact", "EXACT", 0)
+    assert LT.levels({}, {}, [], 0, empty, {}, {}, [], torch_diverging=3)["torch.exact"][1] == "DIVERGING" and "torch.exact" not in LT.levels({}, {}, [], 0, empty, {}, {}, [])
 
 def test_precommit_hook_runs_check(root):
     """the hook runs the check on the staged tree, and the gate refuses a down move or an unjudged change"""

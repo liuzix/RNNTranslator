@@ -36,6 +36,8 @@ def facts(root=ROOT):
     f["suites.classes"] = len(su["classes"]); f["suites.cases"] = su["cases"]; f["suites.right"] = su["right"]; f["suites.closed"] = su["closed"]; f["suites.open"] = su["open"]
     for cls, c in su["classes"].items():
         f[f"suite.{cls}.title"] = c["title"]; f[f"suite.{cls}.cases"] = c["cases"]; f[f"suite.{cls}.right"] = c["right"]; f[f"suite.{cls}.status"] = "closed" if c["closed"] else "open"
+    t = base["detail"]["torch"]
+    f["torch.sentences"] = t["sentences"]; f["torch.steps"] = t["steps"]; f["torch.diverging"] = t["diverging"]; f["torch.version"] = t["torch"]
     f["baseline.taken"] = base["taken"]
     # the lattice (harness/lattice.py): levels of every item in the committed baseline
     import importlib.util
@@ -49,11 +51,12 @@ def facts(root=ROOT):
         en = [l.split() for l in open(os.path.join(corpus, split + ".en"), encoding="utf-8")]
         ja = ["".join(l.split()) for l in open(os.path.join(corpus, split + ".ja"), encoding="utf-8")]
         refs[split] = {f"{i}: {' '.join(e)}": j for i, (e, j) in enumerate(zip(en, ja), 1) if e and e[-1] in (".", "?", "!") and not any(t in (".", "?", "!") for t in e[:-1])}
-    L = LT.levels(base["outputs"]["rules"], base["outputs"]["matrix"], base["outputs"]["negatives"], base["detail"]["np"]["mismatches"], refs, verdicts, ungrammatical)
+    L = LT.levels(base["outputs"]["rules"], base["outputs"]["matrix"], base["outputs"]["negatives"], base["detail"]["np"]["mismatches"], refs, verdicts, ungrammatical,
+                  base["outputs"].get("suites", []), torch_diverging=base["detail"].get("torch", {}).get("diverging"))
     S = LT.summary(L)
     for kind, counts in S.items():
         for lv, n in counts.items(): f[f"lattice.{kind}.{lv.lower()}"] = n
-    for kind in ("sentence", "matrix", "negative", "control", "negative.matrix", "np.exhaustive"):
+    for kind in ("sentence", "matrix", "negative", "control", "negative.matrix", "np.exhaustive", "suite", "torch.exact"):
         for lv in (["RIGHT", "UNKNOWN", "REFUSED", "WRONG"] if kind == "sentence" else LT.CHAINS[kind]): f.setdefault(f"lattice.{kind}.{lv.lower()}", 0)
     F = LT.frontier(L, {f"{s} {k}": r for s, m in base["outputs"]["refusals"].items() for k, r in m.items()})
     f["lattice.frontier.items"] = sum(len(v) for v in F.values()); f["lattice.frontier.groups"] = len(F)

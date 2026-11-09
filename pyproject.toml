@@ -12,6 +12,21 @@ dependencies = [
     "scipy>=1.15,<2",
 ]
 
+[dependency-groups]
+# the cell under PyTorch (cell_torch.py, the `torch` action): CPU wheels only, from the PyTorch index below
+torch = [
+    "torch>=2.9,<3",
+]
+
 [tool.uv]
 # Every dependency is resolved into uv.lock with its sha256; `uv sync --locked` refuses to run on a stale lock.
 required-version = ">=0.9"
+default-groups = ["torch"]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }

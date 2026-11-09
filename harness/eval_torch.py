@@ -25,8 +25,9 @@ def main():
             if bad is not None: diverge.append({"split": split, "index": k, "step": bad})
     res = {"sentences": sum(len(v) for v in sents.values()), "steps": steps, "diverging": len(diverge), "diverging_items": diverge[:20],
            "torch": torch.__version__, "dtype": "float32", "seconds": round(time.time() - t0, 1)}
+    res["summary"] = f"torch {torch.__version__}: {res['sentences']} sentences, {steps} steps compared, {len(diverge)} diverging"
     json.dump(res, open(a.out, "w", encoding="utf-8"), indent=1, ensure_ascii=False)
-    print(f"torch {torch.__version__}: {res['sentences']} sentences, {steps} steps compared, {len(diverge)} diverging")
+    print(res["summary"])
 
 if __name__ == "__main__":
     main()

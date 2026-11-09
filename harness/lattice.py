@@ -16,6 +16,7 @@ Items and their chains (levels rise left to right; a lower index is worse):
   negative.matrix <sentence>    ACCEPTED < REFUSED            (the matrix parser on an ungrammatical sentence)
   np.exhaustive                 MISMATCHES < MATCH            (np_module against parse_np: the mismatch count, 0 is the top)
   suite <class> <sentence>      WRONG < REFUSED < RIGHT       (an acceptance case: RIGHT = the output equals the suite's expectation)
+  torch.exact                   DIVERGING < EXACT             (the torch runner against the scipy runner: sentences whose states differ, 0 is the top)
 
 Coverage and quality are views of this state, not gates: coverage = |RIGHT ∪ UNKNOWN| / N, quality = chrF over the outputs.
 """
@@ -24,8 +25,10 @@ import json, os, collections
 # the poset of sentence levels: pairs (lower, higher)
 SENTENCE_ORDER = {("WRONG", "REFUSED"), ("WRONG", "RIGHT"), ("REFUSED", "RIGHT"), ("UNKNOWN", "RIGHT")}
 CHAINS = {"matrix": ["MISFIRE", "GAP", "AGREE"], "negative": ["ACCEPTED", "REFUSED"], "control": ["REFUSED", "ACCEPTED"],
-          "negative.matrix": ["ACCEPTED", "REFUSED"], "np.exhaustive": ["MISMATCHES", "MATCH"], "suite": ["WRONG", "REFUSED", "RIGHT"]}
-TOP = {"sentence": "RIGHT", "matrix": "AGREE", "negative": "REFUSED", "control": "ACCEPTED", "negative.matrix": "REFUSED", "np.exhaustive": "MATCH", "suite": "RIGHT"}
+          "negative.matrix": ["ACCEPTED", "REFUSED"], "np.exhaustive": ["MISMATCHES", "MATCH"], "suite": ["WRONG", "REFUSED", "RIGHT"],
+          "torch.exact": ["DIVERGING", "EXACT"]}
+TOP = {"sentence": "RIGHT", "matrix": "AGREE", "negative": "REFUSED", "control": "ACCEPTED", "negative.matrix": "REFUSED", "np.exhaustive": "MATCH", "suite": "RIGHT",
+       "torch.exact": "EXACT"}
 
 def cmp(kind, old, new):
     """-> 'up' | 'down' | 'same' | 'incomparable'"""
@@ -66,8 +69,9 @@ def matrix_level(rules_out, matrix_out):
     if rules_out and not matrix_out: return "GAP"
     return "MISFIRE"
 
-def levels(rules_outputs, matrix_outputs, negatives_rows, np_mismatches, references, verdicts, ungrammatical, suites_rows=None):
-    """every item -> (kind, level, detail).  rules_outputs / matrix_outputs: {split: {citation: output}}; references: {split: {citation: ja}}"""
+def levels(rules_outputs, matrix_outputs, negatives_rows, np_mismatches, references, verdicts, ungrammatical, suites_rows=None, torch_diverging=None):
+    """every item -> (kind, level, detail).  rules_outputs / matrix_outputs: {split: {citation: output}}; references: {split: {citation: ja}};
+    torch_diverging: the sentences on which the torch runner's states differ from the scipy runner's (None when the torch action did not run)"""
     L = {}
     for split in ("dev", "test"):
         for key, out in rules_outputs.get(split, {}).items():
@@ -82,6 +86,7 @@ def levels(rules_outputs, matrix_outputs, negatives_rows, np_mismatches, referen
     L["np.exhaustive"] = ("np.exhaustive", "MATCH" if np_mismatches == 0 else "MISMATCHES", np_mismatches)
     for row in suites_rows or []:
         L[f"suite {row['class']} {row['sentence']}"] = ("suite", row["level"], row["output"])
+    if torch_diverging is not None: L["torch.exact"] = ("torch.exact", "EXACT" if torch_diverging == 0 else "DIVERGING", torch_diverging)
     return L
 
 def compare_levels(old, new):

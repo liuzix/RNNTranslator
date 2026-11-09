@@ -32,7 +32,8 @@
     "negatives.matrix_accepted",
     "suites.right",
     "suites.cases",
-    "suites.closed"
+    "suites.closed",
+    "torch.diverging"
    ],
    "properties": {
     "rules.dev.covered": {
@@ -84,6 +85,10 @@
     "suites.closed": {
      "type": "integer",
      "minimum": 0
+    },
+    "torch.diverging": {
+     "type": "integer",
+     "minimum": 0
     }
    }
   },
@@ -94,7 +99,8 @@
     "matrix",
     "np",
     "negatives",
-    "suites"
+    "suites",
+    "torch"
    ],
    "additionalProperties": false,
    "properties": {
@@ -332,6 +338,37 @@
       },
       "open": {
        "type": "integer"
+      }
+     }
+    },
+    "torch": {
+     "type": "object",
+     "required": [
+      "sentences",
+      "steps",
+      "diverging",
+      "torch",
+      "dtype"
+     ],
+     "description": "the torch action: the scipy and torch runners stepped side by side on every dev and test sentence",
+     "properties": {
+      "sentences": {
+       "type": "integer",
+       "minimum": 0
+      },
+      "steps": {
+       "type": "integer",
+       "minimum": 0
+      },
+      "diverging": {
+       "type": "integer",
+       "minimum": 0
+      },
+      "torch": {
+       "type": "string"
+      },
+      "dtype": {
+       "type": "string"
       }
      }
     }
