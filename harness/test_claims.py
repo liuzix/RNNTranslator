@@ -116,6 +116,65 @@ def test_slot_write_circuit(root):
     for tgt, srcs in into6.items():
         if S.names[tgt][0] == "slot": assert all(w == 1.0 and src[0] == "L5" and L5.names[src[1]][0] in ("keep", "write", "writec", "writem", "writeu") for src, w in srcs)
 
+def _diagrams(root):
+    """every control point of the small cell -> (its rules, its canonical diagram), built in one hash-consing table"""
+    import canon as C
+    comp, mp = small_cell(root)
+    by_prev = collections.defaultdict(list)
+    for p, l, o in comp["rules"]: by_prev[p].append((l, o))
+    tab = C.Table()
+    return C, tab, {prev: (rs, C.diagram(rs, table=tab)) for prev, rs in by_prev.items()}
+
+def test_canon_is_canonical(root):
+    """a control point's rules have one reduced ordered decision diagram: the same object whatever order the rules come in,
+    and its paths are the rules in normal form — each path's region is covered by exactly the original rules whose outcome
+    the leaf carries, with no literal repeated along a path"""
+    C, tab, D = _diagrams(root)
+    assert len(D) > 100
+    for prev, (rs, d) in D.items():
+        assert C.diagram(C.shuffled(rs, 1), table=tab) is d and C.diagram(list(reversed(rs)), table=tab) is d, f"{prev}: the diagram depends on the rules' order"
+        def no_repeat(n, seen=()):
+            if n.kind != "TEST": return True
+            return n.var not in seen and all(no_repeat(b, seen + (n.var,)) for b in n.branches.values())
+        assert no_repeat(d), f"{prev}: a variable tested twice on one path"
+        for lits, leaf in C.paths(d):
+            asg = dict(lits)
+            def holds(rule_lits):
+                for q, truth in rule_lits:
+                    k, v = C.var_of(q)
+                    if v is None:
+                        if q in asg and asg[q] != truth: return False
+                    else:
+                        pos = [u for u, tv in asg.items() if C.var_of(u)[0] == k and tv]
+                        neg = [u for u, tv in asg.items() if C.var_of(u)[0] == k and not tv]
+                        if pos and ((pos[0] == q) != truth): return False
+                        if not pos and truth and q in neg: return False
+                return True
+            outs = sorted({repr(o): o for l, o in rs if holds(l)}.values(), key=repr)
+            if leaf.kind == C.TERM: assert outs == [leaf.out], f"{prev}: path outcome differs from the rules"
+            elif leaf.kind == C.GAP: assert outs == [], f"{prev}: a gap the rules cover"
+            else: assert len(outs) > 1 and tuple(outs) == leaf.out, f"{prev}: conflict mismatch"
+
+def test_canon_dsl_roundtrip(root):
+    """the text form of every diagram parses back to the same diagram, and the name round-trips"""
+    C, tab, D = _diagrams(root)
+    for prev, (rs, d) in D.items():
+        name, back = C.parse(C.dump(d, str(prev)), table=tab)
+        assert back is d and name == str(prev), f"{prev}: text form does not round-trip"
+    text = C.dump(D[("NP1", "cop")][1], "NP1@cop")
+    assert "w0.class=num?" in text and "d.one_pronoun@cop?" in text and text.count("#1") == 2, text
+
+def test_canon_module_states_total(root):
+    """the hand-written noun-phrase states after the entry state are complete and consistent — every assignment of their
+    literals reaches exactly one outcome — and the induced clause-level control points are consistent but not complete"""
+    C, tab, D = _diagrams(root)
+    inner = {prev for prev in D if isinstance(prev[0], str) and prev[0] in ("NP1", "NP2", "NP3", "NP4", "NP5", "NP6", "NP7")}
+    outer = {prev for prev in D if isinstance(prev[0], tuple) or prev[0] in ("START",)}
+    assert len(inner) >= 42 and len(outer) >= 50
+    for prev in inner: assert C.complete(D[prev][1]) and C.consistent(D[prev][1]), f"{prev} is not a total function of its literals"
+    for prev in outer: assert C.consistent(D[prev][1]), f"{prev}: two induced rules with different outcomes overlap"
+    assert any(not C.complete(D[prev][1]) for prev in outer), "the induced control points have no gaps"
+
 def test_layers_roundtrip(root):
     toks = R.merge_multiword("a lot of people came .".split())
     assert toks[0] == "a lot"

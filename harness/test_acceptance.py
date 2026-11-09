@@ -114,18 +114,19 @@ def test_lexical_hits_inside_cell(root):
     finally: PM.table_hits = saved
 
 def test_canonical_diagrams(root):
-    """every control point of the compiled rules has a reduced ordered decision diagram that is complete and the same whatever the order the rules came in"""
+    """every control point's canonical diagram (canon.py) is complete and consistent: no gap and no conflict — which, for the
+    induced clause-level rules and the noun-phrase entry state, needs the diagram built over the feasible inputs of the
+    token model rather than over literals treated as independent"""
+    import canon as C
     comp, mp, sents = small_cell(root)
-    order = ("w0.", "w1.", "w2.", "w3.", "slot.", "reg.", "flag.", "verb.", "pp.count", "use.", "hit=", "np.", "d.")
     by_prev = {}
-    for prev, lits, out in comp["rules"]: by_prev.setdefault(prev, []).append((prev, lits, out))
-    c = ST.Canon(); prev0 = next(iter(by_prev))
-    d1 = c.diagram(by_prev[prev0], prev0, order); d2 = c.diagram(list(reversed(by_prev[prev0])), prev0, order)
-    complete = c.complete(d1); same = c.equal(d1, d2)
-    assert complete and same, "the first control point has no complete, order-independent diagram"
-    for prev, rules in by_prev.items():
-        d = c.diagram(rules, prev, order)
-        assert c.complete(d) and c.equal(d, c.diagram(list(reversed(rules)), prev, order)), f"control point {prev}"
+    for p, l, o in comp["rules"]: by_prev.setdefault(p, []).append((l, o))
+    tab = C.Table(); bad = []
+    for prev, rs in by_prev.items():
+        d = C.diagram(rs, table=tab)
+        assert C.diagram(C.shuffled(rs, 1), table=tab) is d
+        if not (C.complete(d) and C.consistent(d)): bad.append(prev)
+    assert not bad, f"{len(bad)} of {len(by_prev)} control points have a gap or a conflict, e.g. {bad[0]}"
 
 # ---------------------------------------------------------------- carried over from round 2
 def test_matrix_items_scope(root):
