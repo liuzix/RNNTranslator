@@ -11,10 +11,14 @@ adjective (より stripped when a comparison follows).  Literals are the base pr
 "flag.f", and the families verb.*, wh.*, adj.*, subj.*, obj.*, adv.*: each a test on one slot's value) or a derived
 predicate d.* defined as a DNF over base literals, as in np_module.
 
-What generate() does with inner clauses, infinitives, control, fixed sentences and the idiom copula is out of scope
+A that-clause (c.embedded) is printed in three runs of the same rules on one frame, as the cell does it: the outer frame
+in print mode `prefix` up to the clause (subject, arguments, adverbs; the run ends at OPEN), the inner frame in mode
+`embedded` (が on its subject, no politeness, then と; the run ends at RESTORE), then the outer predicate alone — the tag
+slots TAG_KEYS, which is all the suffix positions read — in mode `suffix` (the run starts at the tail and ends at DONE).
+What generate() does with infinitives, control, fixed sentences and the idiom copula is out of scope
 (parser_matrix.UNSUPPORTED_REGS): the frame cannot hold it, so render() refuses there.  Inside the scope the rules must
 print exactly what generate() prints — pinned by the `printer` action (harness/eval_printer.py) on every sentence the rule
-parser parses and on a sweep over the predicates the rules test.
+parser parses and on a sweep over the predicates the rules test, embedded under a reporting verb as well.
 
     uv run python -c "import gen_module, rules_ja as R, parser_rules as PR; print(gen_module.PrintRules().render(PR.parse_bounded('i like the big dog .'.split())))"
 """
@@ -27,6 +31,15 @@ FLAGS = ("past", "neg", "prog", "perf", "question", "imp", "please", "lets", "th
 UNSUPPORTED = ("infinitive", "control", "embedded", "purpose_clause", "pre_clause", "manner", "so_that", "howabout", "exclaim", "fixed_out", "relative", "suffix")
 # (a `folded` frame — one whose string came from an inner clause — prints like any other: the string is opaque to the rules; only the cell cannot hold it)
 PRON6 = ("私", "彼", "彼女", "私たち", "彼ら", "あなた")            # generate(): a possessive coreferent with one of these subjects is dropped
+# the tag slots: the registers of the outer predicate that the suffix positions (M_TAIL onward) read — everything else the outer
+# frame held was printed in the prefix or is refused at OPEN (a copula noun phrase, a comparison, the there-template).  The
+# negation the prefix carried (never, nobody, nothing) is folded into tag.neg at OPEN.  Pinned by test_inner_clause_in_one_frame.
+TAG_KEYS = ("verb", "past", "neg", "prog", "perf", "perf_had", "modal", "want", "neg_inner", "question", "tag", "imp", "lets", "please", "causative",
+            "cop_kind", "cop_adj", "degree", "degree2")
+# what OPEN refuses: an outer predicate the tags cannot hold — a copula that is not an adjective (its noun phrase or its subject's
+# animacy would be read after the clause), a comparison (the adjective stem reads it), the verb want (its predicate reads its object)
+OPEN_REFUSES = ("slot.cop_kind=np", "slot.cop_kind=pp", "slot.cop_kind=adv", "slot.cop_kind=wh", "slot.cmp.noun", "verb.lemma=want")
+PMODES = ("prefix", "embedded", "suffix")
 NOPART = "∅"                                                      # an explicit empty object particle (generate's ""), a value a slot can hold
 EMPTY = (None, "", False)
 
@@ -36,9 +49,11 @@ class Refuse(Exception):
 # ------------------------------------------------------------------------------------------------ the flat frame
 def filled(v): return v not in EMPTY
 
-def flatten(c):
-    """a parser_rules.Clause -> the flat frame the rules read; raises Refuse for a register the frame cannot hold"""
+def flatten(c, skip=()):
+    """a parser_rules.Clause -> the flat frame the rules read; raises Refuse for a register the frame cannot hold (those in
+    `skip` are left out instead: render() handles `embedded` itself)"""
     for r in UNSUPPORTED:
+        if r in skip: continue
         if filled(getattr(c, r, None)) and getattr(c, r) != []: raise Refuse(f"register {r}")
     if c.copula is not None and c.copula[0] not in ("adj", "np", "pp", "adv", "wh"): raise Refuse(f"copula kind {c.copula[0]}")
     if len(c.pp) > 3: raise Refuse("four PPs")
@@ -163,13 +178,22 @@ def eval_lit(lit, F, D):
     v = any(all(eval_lit(l, F, D) for l in conj) for conj in D[name]) if name.startswith("d.") else base_pred(name, F)
     return (not v) if neg else v
 
+def tag_frame(F, D):
+    """what OPEN leaves of an outer frame for the suffix: the tag slots, with the negation the printed arguments carried; raises
+    Refuse where OPEN refuses"""
+    for lit in OPEN_REFUSES:
+        if eval_lit(lit, F, D): raise Refuse(f"a that-clause under {lit}")
+    T = {k: F[k] for k in TAG_KEYS if filled(F.get(k))}
+    if eval_lit("d.neg", F, D): T["neg"] = True
+    return T
+
 def derived():
     """the derived predicates: name -> DNF (a list of conjunctions of base literals)"""
     D = {}
     D["d.neg"] = [["flag.neg"], ["adv.never"], ["adv2.never"], ["subj.negpol"], ["obj.negpol"]]   # generate() turns these into c.neg before it prints the predicate
     D["d.whcop"] = [["slot.wh", "slot.cop_kind=wh"]]
     D["d.weather"] = [["subj.sore", "verb.weather"]]
-    D["d.polite"] = [["flag.question"]]
+    D["d.polite"] = [["flag.question", "¬slot.pmode=embedded"]]                        # generate(inner, polite=False, embedded=True)
     NEGS = ["flag.neg", "adv.never", "adv2.never", "subj.negpol", "obj.negpol"]; NOT_NEG = ["¬" + n for n in NEGS]
     # the tense generate() prints: c.past, except that a negative perfect takes the tense of its auxiliary (perf_had), and will takes none
     past_eff = [["flag.past", "¬flag.perf"], ["flag.past", "flag.perf"] + NOT_NEG] + [["flag.perf", "flag.perf_had", n] for n in NEGS]
@@ -225,10 +249,13 @@ def godan_suffixes(kana):
 def build_rules():
     """every printing rule, in the order of generate()'s template"""
     B = Build()
-    # ---- the sentence: front, time, then the there-template or the main template
-    B.rule("P0", ["slot.front"], "P_TIME", [S("front")]); B.rule("P0", ["¬slot.front"], "P_TIME")
+    # ---- the sentence: front, time, then the there-template or the main template; in suffix mode (the outer clause after its
+    #      that-clause) the tail alone; the there-template has no that-clause
+    B.rule("P0", ["slot.pmode=suffix"], "M_TAIL")
+    B.rule("P0", ["¬slot.pmode=suffix", "slot.front"], "P_TIME", [S("front")]); B.rule("P0", ["¬slot.pmode=suffix", "¬slot.front"], "P_TIME")
     B.rule("P_TIME", ["slot.time"], "P_BRANCH", [S("time")]); B.rule("P_TIME", ["¬slot.time"], "P_BRANCH")
-    B.rule("P_BRANCH", ["flag.there"], "T_PP1"); B.rule("P_BRANCH", ["¬flag.there"], "M_SUBJ0")
+    B.rule("P_BRANCH", ["flag.there", "slot.pmode=prefix"], "FAIL:there-clause with a that-clause")
+    B.rule("P_BRANCH", ["flag.there", "¬slot.pmode=prefix"], "T_PP1"); B.rule("P_BRANCH", ["¬flag.there"], "M_SUBJ0")
     # ---- noun phrases: det poss num adj1 adj2 noun [の noun2] [mono]
     built = set()
     def np(role, cont, coref=None):
@@ -276,7 +303,8 @@ def build_rules():
     B.rule("M_SUBJ1", ["d.whcop", "wh.text=何時", "¬subj.sore", "slot.subj.noun", "subj.negpol"], np("subj", "M_WH_T"))
     B.rule("M_SUBJ1", ["d.whcop", "wh.text=何時", "¬subj.sore", "slot.subj.noun", "¬subj.negpol"], np("subj", "M_SUBJ_WA"))
     B.rule("M_SUBJ1", ["d.whcop", "wh.text=何時", "¬subj.sore", "¬slot.subj.noun"], "M_WH_T")
-    B.rule("M_SUBJ_WA", [], "M_WH_T", [C("は")])
+    B.rule("M_SUBJ_WA", ["slot.pmode=embedded", "¬flag.coord"], "M_WH_T", [C("が")])            # the subject of a that-clause
+    B.rule("M_SUBJ_WA", ["slot.pmode=embedded", "flag.coord"], "M_WH_T", [C("は")]); B.rule("M_SUBJ_WA", ["¬slot.pmode=embedded"], "M_WH_T", [C("は")])
     # ---- question words before the arguments
     B.rule("M_WH_T", ["¬d.whcop", "wh.kind=t", "wh.text=何時"], "M_WH_LOC", [S("wh", 0), C("に")])
     B.rule("M_WH_T", ["¬d.whcop", "wh.kind=t", "¬wh.text=何時"], "M_WH_LOC", [S("wh", 0)])
@@ -313,10 +341,14 @@ def build_rules():
     B.rule("M_OBJ_PART", ["¬obj.negpol", "¬slot.obj_particle", "¬slot.verb"], "M_WH_O", [C("を")])
     B.rule("M_WH_O", ["wh.kind=o", "¬slot.cop_kind"], "M_ADV", [S("wh", 0), C("を")]); B.rule("M_WH_O", ["wh.kind=o", "slot.cop_kind"], "M_ADV"); B.rule("M_WH_O", ["¬wh.kind=o"], "M_ADV")
     B.rule("M_ADV", ["slot.adv1"], "M_ADV2", [S("adv1")]); B.rule("M_ADV", ["¬slot.adv1"], "M_ADV2")      # the cell holds a second adverb in adv2
-    B.rule("M_ADV2", ["slot.adv2"], "M_TAIL", [S("adv2")]); B.rule("M_ADV2", ["¬slot.adv2"], "M_TAIL")
-    # ---- the tail: a question-word copula (何ですか), or the copula adverb, the degree and the predicate
+    B.rule("M_ADV2", ["slot.adv2", "slot.pmode=prefix"], "OPEN", [S("adv2")]); B.rule("M_ADV2", ["¬slot.adv2", "slot.pmode=prefix"], "OPEN")   # the that-clause follows
+    B.rule("M_ADV2", ["slot.adv2", "¬slot.pmode=prefix"], "M_TAIL", [S("adv2")]); B.rule("M_ADV2", ["¬slot.adv2", "¬slot.pmode=prefix"], "M_TAIL")
+    # ---- the tail: a question-word copula (何ですか; inside a that-clause 何か / 何だったか), or the copula adverb, the degree and the predicate
     whk = ["o", "s", "adv", "loc", "t", "count"]
-    for k in whk: B.rule("M_TAIL", ["d.whcop", f"wh.kind={k}"], ("FIN", "NA", "whcop"), [S("wh", 0)])
+    for k in whk:
+        B.rule("M_TAIL", ["d.whcop", f"wh.kind={k}", "¬slot.pmode=embedded"], ("FIN", "NA", "whcop"), [S("wh", 0)])
+        B.rule("M_TAIL", ["d.whcop", f"wh.kind={k}", "slot.pmode=embedded"], ("FIN", "NA", "whcop_emb"), [S("wh", 0)])
+    B.rule(("FIN", "NA", "whcop_emb"), ["flag.past"], "END", [C("だった"), C("か")]); B.rule(("FIN", "NA", "whcop_emb"), ["¬flag.past"], "END", [C("か")])
     B.rule("M_TAIL", ["d.whcop"] + [f"¬wh.kind={k}" for k in whk], "M_COPADV"); B.rule("M_TAIL", ["¬d.whcop"], "M_COPADV")
     B.rule("M_COPADV", ["slot.cop_kind=adv"], "M_DEGREE", [S("cop_adv")]); B.rule("M_COPADV", ["¬slot.cop_kind=adv"], "M_DEGREE")
     B.rule("M_DEGREE", ["slot.degree"], "M_DEGREE2", [S("degree")]); B.rule("M_DEGREE", ["¬slot.degree"], "M_DEGREE2")
@@ -326,9 +358,14 @@ def build_rules():
     B.rule("Q", ["flag.there", "¬wh.kind=count", "flag.question"], "END", [C("か")]); B.rule("Q", ["flag.there", "¬wh.kind=count", "¬flag.question"], "END")
     B.rule("Q", ["¬flag.there", "flag.tag"], "END", [C("ね")]); B.rule("Q", ["¬flag.there", "¬flag.tag", "flag.question"], "END", [C("か")])
     B.rule("Q", ["¬flag.there", "¬flag.tag", "¬flag.question"], "END")
-    B.rule("END", [], "DONE", [C("。")])
+    B.rule("END", ["slot.pmode=embedded"], "RESTORE", [C("と")])                # the that-clause closes: と, then the outer predicate
+    B.rule("END", ["¬slot.pmode=embedded"], "DONE", [C("。")])
     build_predicate(B, np)
     return reachable(B.rules)
+
+TERMINALS = ("DONE", "OPEN", "RESTORE")        # where a run of the rules ends: the sentence, the prefix before a that-clause, the clause itself
+
+def is_terminal(pos): return pos in TERMINALS or (isinstance(pos, str) and pos.startswith("FAIL:"))
 
 def reachable(rules):
     """the rules of the positions reachable from P0, in their order: a kind-and-mode combination no path needs is dropped"""
@@ -337,7 +374,7 @@ def reachable(rules):
     seen = {"P0"}; frontier = ["P0"]
     while frontier:
         for pos, lits, (nxt, tok) in by_pos.get(frontier.pop(), []):
-            if nxt not in seen and nxt != "DONE" and not (isinstance(nxt, str) and nxt.startswith("FAIL:")): seen.add(nxt); frontier.append(nxt)
+            if nxt not in seen and not is_terminal(nxt): seen.add(nxt); frontier.append(nxt)
     return [r for r in rules if r[0] in seen]
 
 def build_predicate(B, np):
@@ -564,12 +601,23 @@ class PrintRules:
         raise Refuse(f"unknown token {tok}")
 
     def render(self, frame, bound=200):
-        """the tokens the rules emit for a frame (a Clause or a flat frame), by stepping them; raises Refuse"""
-        F = flatten(frame) if not isinstance(frame, dict) else frame
+        """the tokens the rules emit for a frame (a Clause or a flat frame), by stepping them; raises Refuse.  A Clause with a
+        that-clause is three runs on one frame — prefix, the inner clause, suffix — as the cell prints it"""
+        if isinstance(frame, dict): return self.run(frame, bound=bound)
+        if frame.embedded is None: return self.run(flatten(frame), bound=bound)
+        outer = flatten(frame, skip=("embedded",)); inner = flatten(frame.embedded)
+        out = self.run(dict(outer, pmode="prefix"), "OPEN", bound)
+        out += self.run(dict(inner, pmode="embedded"), "RESTORE", bound)
+        return out + self.run(dict(tag_frame(outer, self._D), pmode="suffix"), "DONE", bound)
+
+    def run(self, F, stop="DONE", bound=200):
+        """step the rules from P0 on a flat frame until the terminal `stop`; another terminal, no rule, two rules, or a token
+        the frame cannot give are refusals"""
         state = "P0"; out = []
         for _ in range(bound):
-            if state == "DONE": return out
+            if state == stop: return out
             if isinstance(state, str) and state.startswith("FAIL:"): raise Refuse(state[5:])
+            if is_terminal(state): raise Refuse(f"the run ended at {state}, not {stop}")
             hits = [r for r in self._by_pos.get(state, []) if all(eval_lit(l, F, self._D) for l in r[1])]
             if len(hits) != 1: raise Refuse(f"{len(hits)} rules at {state}")
             nxt, tok = hits[0][2]

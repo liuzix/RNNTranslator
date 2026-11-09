@@ -108,9 +108,11 @@ def table_hits(toks, i, verb):
     return tuple(sorted(set(hits)))
 
 # ----------------------------------------------------------------------------------------------- frame as slots
-def snapshot(c):
-    """the frame's registers as a flat dict of slot -> value (strings/ids), raising OutOfScope for inner frames"""
+def snapshot(c, skip=()):
+    """the frame's registers as a flat dict of slot -> value (strings/ids), raising OutOfScope for a register the cell has no
+    block for (those in `skip` are not checked: view_of reads the outer clause of a that-clause with skip=("embedded",))"""
     for r in UNSUPPORTED_REGS:
+        if r in skip: continue
         v = getattr(c, r)
         if v not in (None, "", False, []) : raise OutOfScope(f"register {r}")
     s = {}
@@ -133,6 +135,24 @@ def snapshot(c):
     s["cmp_kind"] = c.compare[0] if c.compare else None; s["cmp"] = c.compare[1] if c.compare else None
     if kind not in (None, "adj", "np", "pp", "adv", "wh"): raise OutOfScope(f"copula kind {kind}")
     return s
+
+TAG_KEYS = GM.TAG_KEYS                 # the tag slots: the outer predicate while a that-clause is read (gen_module decides what the suffix reads)
+PRINT_CTRL = ("P", "OPEN", "CLOSE", "RESTORE")        # control states whose step reads no token: the print head and the clause flush
+
+def view_of(p):
+    """the cell's view of the rule parser's state — (view, outer): the registers of the clause in view.  Up to a that-clause that
+    is the main clause (outer None).  From the moment a that-clause (Clause.inner_of == "embedded") is open until the sentence
+    ends, it is the inner clause's registers with the outer predicate in the tag slots (tag.<k> for k in TAG_KEYS) and the print
+    mode `prefix`, and `outer` is the outer clause's own registers.  Raises OutOfScope for any other inner frame (control,
+    purpose, a subordinate or coordinated clause, a question clause) and for a that-clause inside a that-clause"""
+    main, c = p.main, p.c
+    if c is main and main.embedded is None: return snapshot(main), None
+    inner = main.embedded if c is main else c
+    if getattr(inner, "inner_of", None) != "embedded" or (main.embedded is not None and main.embedded is not inner): raise OutOfScope("inner frame")
+    outer = snapshot(main, skip=("embedded",)); s = snapshot(inner)
+    for k in TAG_KEYS: s["tag." + k] = outer.get(k)
+    s["pmode"] = "prefix"
+    return s, outer
 
 # ----------------------------------------------------------------------------------------------- tracing the rule parser
 PMETH = set(n for n in dir(Parser) if callable(getattr(Parser, n)) and not n.startswith("__"))
@@ -165,13 +185,14 @@ def trace(toks, choices=()):
             if p.i != st["last_i"]:
                 # the consumption happened in the code of the previous line event: that frame's module owns it (the change is noticed
                 # one statement later, which may already be inside a method called on the same line)
-                events.append({"i": st["last_i"], "k": p.i - st["last_i"], "cp": (stack_of(frame), st["line"]), "snap": st["snap"],
+                events.append({"i": st["last_i"], "k": p.i - st["last_i"], "cp": (stack_of(frame), st["line"]), "snap": st["snap"], "outer": st["outer"],
                                "chain": chain_of(frame), "owner": owner_of(st["frames"]), "frames": st["frames"], "win_reads": set(reads["win"]), "reg_reads": set(reads["reg"])})
                 reads["win"].clear(); reads["reg"].clear()
                 st["last_i"] = p.i
             st["line"] = frame.f_lineno; st["frames"] = frames_of(frame)
-            try: st["snap"] = snapshot(p.c) if p.c is p.main else None
-            except OutOfScope as e: st["snap"] = e
+            if type(p.c) is Clause: p.c.__class__ = TracedClause           # an inner clause's register reads count like the main clause's
+            try: st["snap"], st["outer"] = view_of(p)
+            except OutOfScope as e: st["snap"], st["outer"] = e, None
         return tracer
     reads = {"win": set(), "reg": set()}
     orig_peek = Parser.peek
@@ -187,12 +208,12 @@ def trace(toks, choices=()):
     def np_wrapped(self, role=None):
         i0 = self.i
         ja, cls = orig_np(self, role=role)
-        np_spans.append((i0, self.i, ja, cls, self.c is self.main))
+        np_spans.append((i0, self.i, ja, cls, self.c is self.main or getattr(self.c, "inner_of", None) == "embedded"))      # in the clause in view
         heads.append((i0, self.i, self.last_head))
         return ja, cls
     heads = []
     Parser.parse_np = np_wrapped
-    st["snap"] = initial = snapshot(p.c)
+    st["snap"], st["outer"] = view_of(p); initial = st["snap"]
     sys.settrace(tracer); err = None
     try:
         frame = p.parse()
@@ -208,7 +229,7 @@ def trace(toks, choices=()):
     for j in range(p.i):
         if j < len(p.toks) and "prep" in dict(readings_of(p.toks[j])): p.pend_at_end = p.toks[j]
     if err is not None:
-        try: fs = snapshot(p.main)
+        try: fs = view_of(p)[0]                           # the view where the parser refused: inside a that-clause, the inner clause's
         except OutOfScope as e2: fs = e2
         p.fail_info = (err, fs, set(reads["win"]), set(reads["reg"]), p.i)
         tb = err.__traceback__; p.fail_stack = []; p.fail_frames = []
@@ -219,7 +240,7 @@ def trace(toks, choices=()):
         raise err
     if events: events[-1]["win_reads"] |= reads["win"]; events[-1]["reg_reads"] |= reads["reg"]
     if events: events[0]["snap"] = initial          # writes made before the first consumption belong to the first step
-    try: final = snapshot(frame)
+    try: final = view_of(p)[0]                         # with a that-clause: the inner clause closed, the outer predicate in the tags
     except OutOfScope as e: final = e                 # the finished frame holds a register the cell has no block for
     return events, final, np_spans, p
 
@@ -282,6 +303,8 @@ def snapshot_to_frame(snap, classes):
         s = snap.get(role)
         if s: frame[f"{role}.noun"] = s; frame[f"{role}.cls"] = snap.get("subj_cls") if role == "subj" else classes.get(role, "t")
     if snap.get("subj_num") and snap.get("subj"): frame["subj.number"] = snap["subj_num"]
+    for k, v in snap.items():                                                     # the tag slots and the print mode, as they are
+        if (k.startswith("tag.") or k == "pmode") and v not in (None, "", False): frame[k] = v
     return frame
 
 def step_rules(by_prev, derived, state, toks, i, frame, pend):
@@ -436,8 +459,18 @@ def np_site(chain):
 def site_id(site):
     return ">".join(site[0][1:] or ("parse",)) + ":" + str(site[1])
 
+def views_of(events, snaps):
+    """(befores, afters): the view before and after each event.  afters[k] is the view before event k+1, except at the clause
+    boundary: the view after the event before a that-clause's first event is the outer clause's own (the inner view begins with
+    the boundary row, which the cell takes before that event)"""
+    befores = snaps[:len(events)]; afters = list(snaps[1:len(events) + 1])
+    for k, e in enumerate(events):
+        if e.get("outer") is not None and k > 0 and events[k - 1].get("outer") is None: afters[k - 1] = e["outer"]
+    return befores, afters
+
 def np_span_info(events, snaps, np_spans, final_snap):
-    """the outermost main-frame noun phrases: (first event, last event, role, ja, cls, site, old value of the role, where it moved)"""
+    """the outermost noun phrases of the clause in view: (first event, last event, role, ja, cls, site, old value of the role, where it moved)"""
+    befores, afters = views_of(events, snaps)
     spans = sorted(set((i0, i1) for (i0, i1, ja, cls, main) in np_spans if main))
     outer = [(i0, i1) for (i0, i1) in spans if not any(j0 <= i0 and i1 <= j1 and (j0, j1) != (i0, i1) for (j0, j1) in spans)]
     ja_of = {(i0, i1): (ja, cls) for (i0, i1, ja, cls, main) in np_spans if main}
@@ -451,20 +484,20 @@ def np_span_info(events, snaps, np_spans, final_snap):
         ja, cls = ja_of[(i0, i1)]
         first, last = ev_of_tok(i0), ev_of_tok(i1 - 1)
         role = None; dropped = False
-        for ei in range(last, len(snaps) - 1):
-            before, after = snaps[ei], snaps[ei + 1]
+        for ei in range(last, len(events)):
+            before, after = befores[ei], afters[ei]
             for r in NP_ROLES:
                 if after.get(r) == ja and before.get(r) != ja: role = r; break
             if role: break
-        if role is None and last + 1 < len(snaps) and snaps[last + 1].get("verb") and "+" in snaps[last + 1]["verb"][0]:
+        if role is None and afters[last].get("verb") and "+" in afters[last]["verb"][0]:
             role, dropped = "obj", True                       # take a rest -> 休む: the use-verb absorbs the object (USE particle "-")
         if role is None: raise OutOfScope(f"noun phrase {ja!r} not written to a slot")
         site = np_site(events[first]["chain"])
         if site is None: raise OutOfScope("noun phrase without a parse_np frame")
-        old = snaps[first].get(role); moved_to = None
-        if old is not None and last + 1 < len(snaps):
+        old = befores[first].get(role); moved_to = None
+        if old is not None:
             for r2 in NP_ROLES:
-                if r2 != role and snaps[last + 1].get(r2) == old and snaps[first].get(r2) != old: moved_to = r2
+                if r2 != role and afters[last].get(r2) == old and befores[first].get(r2) != old: moved_to = r2
         info.append((first, last, role, ja, cls, site, old, moved_to, dropped))
     return info
 
@@ -522,12 +555,11 @@ def hybrid_rows(toks):
     if isinstance(final, OutOfScope): raise final
     for e in events:
         if isinstance(e["snap"], OutOfScope): raise e["snap"]
-        if e["snap"] is None: raise OutOfScope("inner clause")
     snaps = [e["snap"] for e in events] + [final]
     rows, roles, prev, pend = transition_rows(toks, events, snaps, np_spans, final)
     if prev is None: return rows, roles                   # a clause module refused inside: the sentence ends in the module's refusal
     P_end = frozenset(predicates(toks, len(toks), final, set(range(len(toks), len(toks) + WINDOW)), ALL_REGS, pend))
-    rows.append((prev, P_end, frozenset(), (("DONE",), 0, ())))
+    rows.append((prev, P_end, frozenset(), (("CLOSE",), 0, ())))          # CLOSE: DONE, or with a that-clause in view its flush (clause_flush_rules)
     return rows, roles
 
 def module_spans(events):
@@ -547,9 +579,11 @@ def module_spans(events):
     return [(a, b, m, prm) for a, b, m, prm, fid in spans]
 
 def module_site(chain, method):
-    """the return address of a module activation: (caller methods, line of the call), from the event's chain"""
-    for idx, (name, line) in enumerate(chain):
-        if name == method: return (tuple(n for n, _ in chain[:idx]), chain[idx - 1][1] if idx > 0 else 0)
+    """the return address of a module activation: (caller methods, line of the call), from the event's chain.  The activation's
+    own frame is the innermost of its name: the predicate of a that-clause runs inside the outer clause's predicate (predicate >
+    verb_phrase > predicate_noend > predicate), and the two activations return to different sites"""
+    for idx in range(len(chain) - 1, -1, -1):
+        if chain[idx][0] == method: return (tuple(n for n, _ in chain[:idx]), chain[idx - 1][1] if idx > 0 else 0)
     return None
 
 def transition_rows(toks, events, snaps, np_spans, final):
@@ -565,13 +599,29 @@ def transition_rows(toks, events, snaps, np_spans, final):
     try: classes = {role: cls for (first, last, role, ja, cls, *_) in np_span_info(events, snaps, np_spans, final)}       # the class of every noun phrase, for the simulation's stand-ins
     except OutOfScope: classes = {}
     in_span = {k: n for n, (first, last, *_) in enumerate(info) for k in range(first, last + 1)}
+    befores, afters = views_of(events, snaps)
     rows = []; roles = set(); prev = ("START",); pend = None
     if not hasattr(hybrid_rows, "module_log"): hybrid_rows.module_log = collections.Counter()
     noreads = {"win_reads": set(), "reg_reads": set()}
+    boundary = next((k for k, x in enumerate(events) if x.get("outer") is not None), None)       # the first event inside the that-clause
     ei = 0
     while ei < len(events):
         e = events[ei]
-        if ei in in_mspan or (ei in empty_before and empty_before[ei] not in emitted_empty):
+        in_mod = ei in in_mspan or (ei in empty_before and empty_before[ei] not in emitted_empty)
+        if in_mod and boundary is not None:
+            first, last = (mspans[in_mspan[ei]] if ei in in_mspan else mspans[empty_before[ei]])[:2]
+            if first <= boundary <= last:                     # the clause opened inside a module activation (the copula's that-clause): the module refuses it
+                hybrid_rows.module_log["that-clause inside a module"] += 1
+                return rows, roles, None, pend
+        if ei == boundary:
+            # the clause boundary: the print head runs from P0 in mode prefix — the outer subject, arguments and adverbs — to OPEN,
+            # which moves the outer predicate into the tag slots and clears the rest; the inner clause is then read from INNER
+            e2 = events[ei + 1] if ei + 1 < len(events) else noreads
+            P_read = frozenset(predicates(toks, e["i"], e["outer"], set(e["win_reads"]) | set(e2["win_reads"]), set(e["reg_reads"]) | set(e2["reg_reads"]), pend))
+            P_all = frozenset(predicates(toks, e["i"], e["outer"], set(range(e["i"], e["i"] + WINDOW)), ALL_REGS, pend))
+            rows.append((prev, P_all, P_read, (("P", "P0"), 0, (("pmode", "prefix", ("const",)),))))
+            prev = ("INNER",)
+        if in_mod:
             empty = ei not in in_mspan
             if empty: emitted_empty.add(empty_before[ei])
             first, last, mod, params = mspans[in_mspan[ei]] if not empty else mspans[empty_before[ei]]
@@ -579,12 +629,12 @@ def transition_rows(toks, events, snaps, np_spans, final):
             site = module_site(events[first]["chain"], method); sid = (mod + "@" + site_id(site)) if site else mod
             acts = [("mret", sid, ("const",))] + [(f"param.{k}", True, ("const",)) for k, v in (params or {}).items() if v]
             e1 = events[first]; e2 = events[first + 1] if first + 1 < len(events) else noreads
-            P_read = frozenset(predicates(toks, e1["i"], snaps[first], set(e1["win_reads"]) | set(e2["win_reads"]), set(e1["reg_reads"]) | set(e2["reg_reads"]), pend))
-            P_all = frozenset(predicates(toks, e1["i"], snaps[first], set(range(e1["i"], e1["i"] + WINDOW)), ALL_REGS, pend))
+            P_read = frozenset(predicates(toks, e1["i"], befores[first], set(e1["win_reads"]) | set(e2["win_reads"]), set(e1["reg_reads"]) | set(e2["reg_reads"]), pend))
+            P_all = frozenset(predicates(toks, e1["i"], befores[first], set(range(e1["i"], e1["i"] + WINDOW)), ALL_REGS, pend))
             rows.append((prev, P_all, P_read, (MODULE_START[mod], 0, norm_actions(acts))))
             roles |= {"pp1", "pp2", "pp3", "cmp", "cop"}
             i1 = events[last]["i"] + events[last]["k"] if not empty else e1["i"]
-            frame0 = snapshot_to_frame(snaps[first], classes); frame0["mret"] = sid
+            frame0 = snapshot_to_frame(befores[first], classes); frame0["mret"] = sid
             for k, v in (params or {}).items():
                 if v: frame0[f"param.{k}"] = True
             sim = simulate_module(mod, toks, e1["i"], frame0, pend); kind = exit_kind(mod, events, last)
@@ -594,8 +644,9 @@ def transition_rows(toks, events, snaps, np_spans, final):
             hybrid_rows.module_log[f"{mod} module agrees"] += 1
             i_exit, frame_exit, pend, _ = sim
             exit_view = frame_to_snapshot(frame_exit); exit_view["mret"] = sid
-            post = register_actions(exit_view, snaps[last + 1], None, allow_copy=False)
-            post += np_register_actions(exit_view, snaps[last + 1], toks[i1] if i1 < len(toks) else None, set())      # (the diff clears mret: the next snapshot has none)
+            after_view = afters[last] if not empty else befores[first]          # (an empty activation: the view does not move)
+            post = register_actions(exit_view, after_view, None, allow_copy=False)
+            post += np_register_actions(exit_view, after_view, toks[i1] if i1 < len(toks) else None, set())      # (the diff clears mret: the next snapshot has none)
             heads = heads_of(frame_exit)
             en = events[last + 1] if last + 1 < len(events) else noreads
             P_read = frozenset(predicates(toks, i1, exit_view, set(en["win_reads"]), set(en["reg_reads"]) | {"mret"}, pend, heads))
@@ -613,12 +664,12 @@ def transition_rows(toks, events, snaps, np_spans, final):
                 if moved_to: acts += [(sl, None, ("move", sl2)) for sl, sl2 in zip(np_slots(moved_to), np_slots(role))]
                 acts += [(sl, None, ("clear",)) for sl in np_slots(role)]
             e1 = events[first]; e2 = events[first + 1] if first + 1 < len(events) else noreads
-            P_read = frozenset(predicates(toks, e1["i"], snaps[first], set(e1["win_reads"]) | set(e2["win_reads"]), set(e1["reg_reads"]) | set(e2["reg_reads"]), pend))
-            P_all = frozenset(predicates(toks, e1["i"], snaps[first], set(range(e1["i"], e1["i"] + WINDOW)), ALL_REGS, pend))
+            P_read = frozenset(predicates(toks, e1["i"], befores[first], set(e1["win_reads"]) | set(e2["win_reads"]), set(e1["reg_reads"]) | set(e2["reg_reads"]), pend))
+            P_all = frozenset(predicates(toks, e1["i"], befores[first], set(range(e1["i"], e1["i"] + WINDOW)), ALL_REGS, pend))
             rows.append((prev, P_all, P_read, (("NP0", role), 0, norm_actions(acts))))
             # exit: the module's slots as it leaves them (its own run), then the post-NP effects of the rule parser
             el = events[last]; i1 = el["i"] + el["k"]
-            regs = {"verb": snaps[first].get("verb"), "cop_kind": snaps[first].get("cop_kind"), "subj": snaps[first].get("subj") if role != "subj" else None}
+            regs = {"verb": befores[first].get("verb"), "cop_kind": befores[first].get("cop_kind"), "subj": befores[first].get("subj") if role != "subj" else None}
             mod = NPM.run_module(role, toks, e1["i"], regs, pend)
             heads = {}
             if mod[0] == "RET":
@@ -626,13 +677,13 @@ def transition_rows(toks, events, snaps, np_spans, final):
                 hybrid_rows.module_log["module agrees" if (NPM.np_string(slots, role) == ja and mod[1] == i1) else "module differs"] += 1
                 if NPM.np_string(slots, role) != ja or mod[1] != i1: hybrid_rows.module_log[("differs", " ".join(toks[e1["i"]:i1]), ja, NPM.np_string(slots, role))] += 1
             else: hybrid_rows.module_log["module refuses: " + mod[1].split(" at ")[0][:30]] += 1
-            snap_ret = dict(snaps[last]); snap_ret[role] = ja; snap_ret["ret"] = sid
+            snap_ret = dict(befores[last]); snap_ret[role] = ja; snap_ret["ret"] = sid
             if role == "subj": snap_ret["subj_cls"] = cls
             if moved_to: snap_ret[moved_to] = old
-            post = register_actions(snaps[last], snaps[last + 1], None, allow_copy=False)
-            post += np_register_actions(snap_ret, snaps[last + 1], toks[i1] if i1 < len(toks) else None, {role})
+            post = register_actions(befores[last], afters[last], None, allow_copy=False)
+            post += np_register_actions(snap_ret, afters[last], toks[i1] if i1 < len(toks) else None, {role})
             if dropped: post += [(sl, None, ("clear",)) for sl in np_slots(role)]
-            post = fold_use(post, role, heads.get(role), snaps[first].get("verb"))
+            post = fold_use(post, role, heads.get(role), befores[first].get("verb"))
             post.append(("ret", None, ("clear",)))
             for j in range(e1["i"], i1):
                 if "prep" in dict(readings_of(toks[j])): pend = toks[j]
@@ -643,7 +694,7 @@ def transition_rows(toks, events, snaps, np_spans, final):
             rows.append((("RET", role), P_all, P_read, (post_state, 0, norm_actions(post))))
             prev = post_state; ei = last + 1
             continue
-        before, after = snaps[ei], snaps[ei + 1]; tok = toks[e["i"]]
+        before, after = befores[ei], afters[ei]; tok = toks[e["i"]]
         actions = register_actions(before, after, tok) + np_register_actions(before, after, tok, set())
         nxt_e = events[ei + 1] if ei + 1 < len(events) else noreads
         win_idx = set(e["win_reads"]) | set(nxt_e["win_reads"]); reg_rd = set(e["reg_reads"]) | set(nxt_e["reg_reads"])
@@ -876,6 +927,9 @@ def frame_to_snapshot(frame):
         s[role] = np_string(frame, role)
     s["subj_cls"] = frame.get("subj.cls") if s["subj"] else None
     s["subj_num"] = (frame.get("subj.number") if frame.get("subj.number") != "none" else None) if s["subj"] else None
+    for k in TAG_KEYS: s["tag." + k] = bool(frame.get("tag." + k)) if k in FLAGS else frame.get("tag." + k)
+    s["tag.degree"] = ((frame.get("tag.degree") or "") + (frame.get("tag.degree2") or "")) or None; s["tag.degree2"] = None
+    s["pmode"] = frame.get("pmode")
     return s
 
 def np_string(frame, role):
@@ -1013,8 +1067,31 @@ def source_values(tok):
 PRINT_SRC = ("emit",)          # the action of a printing rule: ("out", token, PRINT_SRC)
 
 def print_state(pos):
-    """a printing position as a control state; a FAIL:<reason> exit is the cell's FAIL"""
-    return FAIL if isinstance(pos, str) and pos.startswith("FAIL:") else ("P", pos)
+    """a printing position as a control state; a FAIL:<reason> exit is the cell's FAIL; OPEN and RESTORE, where a run of the
+    printing rules ends at a clause boundary, are the clause flush's own states"""
+    if isinstance(pos, str) and pos.startswith("FAIL:"): return FAIL
+    if pos in ("OPEN", "RESTORE"): return (pos,)
+    return ("P", pos)
+
+def clause_flush_rules(slots):
+    """ClauseFlush: the fixed rules that run a that-clause in the one frame, over `slots` (every slot of the cell).
+    OPEN (entered when the prefix printing reaches the clause): the outer predicate moves into the tag slots — tag.neg also when
+    the printed arguments carried the negation (d.neg: never, nobody, nothing) — and every other slot is cleared by its own gate;
+    the inner clause is read from INNER.  OPEN refuses a frame the tags cannot hold: tags already in use (a that-clause inside a
+    that-clause), a copula that is not an adjective, a comparison, the verb want (whose predicate reads its object).  CLOSE (the end of every sentence): with a clause in view
+    (pmode prefix), the flush — the print head runs from P0 in mode embedded; otherwise DONE.  RESTORE (where the embedded run
+    ends, after と): the inner clause's slots are cleared, the tags move back, and the print head continues in mode suffix from DONE"""
+    tags = [f"tag.{k}" for k in TAG_KEYS]; others = [sl for sl in slots if sl not in tags and sl != "pmode"]
+    def clears(names): return [(sl, None, ("clear",)) for sl in names]
+    guard = [("slot.tag.verb", False), ("slot.tag.cop_kind", False)] + [(q, False) for q in GM.OPEN_REFUSES]
+    moves = [(f"tag.{k}", None, ("move", k)) for k in TAG_KEYS if k != "neg"]
+    rules = [(("OPEN",), tuple(guard + [("d.neg", True)]), (("INNER",), 0, norm_actions(moves + [("tag.neg", True, ("const",))] + clears(others)))),
+             (("OPEN",), tuple(guard + [("d.neg", False)]), (("INNER",), 0, norm_actions(moves + clears(o for o in others if o != "neg"))))]
+    for j, (q, t) in enumerate(guard): rules.append((("OPEN",), tuple(guard[:j] + [(q, not t)]), (FAIL, 0, ())))
+    rules.append((("CLOSE",), (("slot.pmode=prefix", True),), (("P", "P0"), 0, (("pmode", "embedded", ("const",)),))))
+    rules.append((("CLOSE",), (("slot.pmode=prefix", False),), (("DONE",), 0, ())))
+    rules.append((("RESTORE",), (), (("DONE",), 0, norm_actions([(k, None, ("move", f"tag.{k}")) for k in TAG_KEYS] + clears(tags) + clears(o for o in others if o not in TAG_KEYS) + [("pmode", "suffix", ("const",))]))))
+    return rules
 
 def decoder_rules():
     """gen_module's printing rules in the compiler's rule format, with the bridge from the end of reading to the first printing
@@ -1089,7 +1166,7 @@ def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None, decoder
             if src[0] == "copy": copy_pairs.add((slot, src[1])); slot_vocab[slot] |= set(src_vocab[src[1]])
             if src[0] in MOVE_FN: move_pairs.add((slot, src[1], src[0]))
     for _ in range(3):
-        for slot, src_slot, fn in list(move_pairs): slot_vocab[slot] |= {MOVE_FN[fn](v) for v in slot_vocab[src_slot]}
+        for slot, src_slot, fn in list(move_pairs): slot_vocab[slot] |= {MOVE_FN[fn](v) for v in slot_vocab.get(src_slot, ())}
     # the USE lookup: every value a pair of this cell can write (verb after the feedback, particle, prog)
     use_rules = collections.defaultdict(list)                                   # role -> the rules that apply the feedback on it
     for ri, (prev, lits, (cp, k, actions)) in enumerate(rules):
@@ -1103,6 +1180,15 @@ def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None, decoder
             slot_vocab["verb"].add(new_verb)
             if upart != "-": slot_vocab[f"{role}_part" if role.startswith("pp") else "obj_particle"].add((upart, upart) if role.startswith("pp") else upart)
             if stative: slot_vocab["prog"].add(True)
+    if not decoder: rules.append((("CLOSE",), (), (("DONE",), 0, ())))          # without a print head the end of reading is DONE at once
+    else:                                                         # the clause flush over every slot this cell has; its tag moves and modes join the vocabulary
+        frules = clause_flush_rules(sorted(slot_vocab)); rules += frules
+        for _, _, (cp, k, actions) in frules:
+            for slot, v, src in actions:
+                if src[0] == "const" and v is not None: slot_vocab[slot].add(v)
+                if src[0] in MOVE_FN: move_pairs.add((slot, src[1], src[0]))
+        for _ in range(3):
+            for slot, src_slot, fn in list(move_pairs): slot_vocab[slot] |= {MOVE_FN[fn](v) for v in slot_vocab.get(src_slot, ())}
     # ---- state index: control, slots, pend_prep, shift
     S = Index()
     ctrl_states = {("START",), ("DONE",), FAIL} | set(trees) | set(out[0] for _, _, out in rules) | set(prev for prev, _, _ in rules)
@@ -1290,7 +1376,7 @@ def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None, decoder
             if es is None:
                 if truth:
                     unseen = True                                                           # a positive literal the cell cannot see: the rule can never fire
-                    if prev[0] not in ("P", "M"): unresolved[q] += 1                       # (a printing or module rule on a value no reading rule writes is dead by design)
+                    if prev[0] not in ("P", "M", "OPEN"): unresolved[q] += 1               # (a printing, module or flush rule on a value no reading rule writes is dead by design)
                 continue                                                                # a negative literal on an unseen predicate is vacuously true
             (pos if truth else neg).append(frozenset(ref for ref, w in es))
         pos, neg = implied(pos, True), implied(neg, False)
@@ -1530,28 +1616,42 @@ class MatrixParser:
             elif name[0] == "slot": frame[name[1]] = name[2]
         if failed: return FAIL, frame
         return (ctrl if n_ctrl == 1 else ("MULTI", n_ctrl) if n_ctrl else None), frame
+    def emitted(self, s):
+        """the output unit a state carries when its emit unit is on: [] when the step emitted nothing, else the one unit"""
+        if self.emit_unit is None or s[self.emit_unit] <= 0.5: return []
+        on = [self.c["S"].names[i] for i in self.out_units if s[i] > 0.5]
+        if len(on) != 1: raise ParseFail(f"PRINT: {len(on)} output units on")
+        return on
     def read(self, toks, bound_per_token=12):
         """the read head: one matrix step per parser transition, the `shift` unit telling the window when to advance (k=0
-        transitions do not); -> (the state at DONE, the frame read out of it)"""
-        S = self.c["S"]; s = np.zeros(self.nS); s[S[("ctrl", ("START",))]] = 1.0; i = 0
-        for step in range(bound_per_token * (len(toks) + 2)):
+        transitions do not).  At a that-clause the print head runs in the middle of reading — the outer prefix when the clause
+        opens, the clause itself when it closes — on steps that read no token (PRINT_CTRL), and what it emits is collected;
+        -> (the state at DONE, the frame read out of it, the output units emitted while reading)"""
+        S = self.c["S"]; s = np.zeros(self.nS); s[S[("ctrl", ("START",))]] = 1.0; i = 0; out = []
+        for step in range(bound_per_token * (len(toks) + 2) + (400 if self.emit_unit is not None else 0)):
             ctrl, frame = self.read_state(s)
-            if ctrl == ("DONE",): return s, frame
+            if ctrl == ("DONE",): return s, frame, out
             if ctrl == FAIL: raise ParseFail(f"MATRIX: FAIL at token {i} ({toks[i] if i < len(toks) else 'END'!r})", i)
             if ctrl is None: raise ParseFail(f"MATRIX: no rule fired at token {i} ({toks[i] if i < len(toks) else 'END'!r})", i)
             if ctrl[0] == "MULTI": raise ParseFail(f"MATRIX: {ctrl[1]} rules fired at token {i}", i)
-            if i > len(toks): raise ParseFail("MATRIX: ran past the end", i)
-            s = self.step(s, self.input_vector(toks, i, frame.get("verb")))
-            if self.shift_unit is None or s[self.shift_unit] > 0.5: i += 1
+            if ctrl == ("P", "DONE"): raise ParseFail("MATRIX: the print head finished the sentence while reading", i)
+            printing = ctrl[0] in PRINT_CTRL
+            if not printing and i > len(toks): raise ParseFail("MATRIX: ran past the end", i)
+            s = self.step(s, self.empty_input() if printing else self.input_vector(toks, i, frame.get("verb")))
+            if printing: out += self.emitted(s)
+            elif self.shift_unit is None or s[self.shift_unit] > 0.5: i += 1
         raise ParseFail("MATRIX: did not reach DONE", i)
     def parse(self, toks, bound_per_token=12):
-        """the parser interface: the frame at the end of reading, as a Clause"""
-        return frame_to_clause(self.read(toks, bound_per_token)[1])
+        """the parser interface: the frame at the end of reading, as a Clause.  A sentence with a that-clause, whose tokens the
+        print head emitted while reading, comes back as a fixed sentence: at DONE the frame holds the outer predicate alone"""
+        s, frame, out = self.read(toks, bound_per_token)
+        if not out: return frame_to_clause(frame)
+        c = Clause(); c.fixed_out = "".join(output_lexicon(u) for u in out + self.print_out(s)); return c
     def print_out(self, s, bound=400):
         """the print head: from a state whose control is DONE or a printing position, step with no token until the last printing
         position, appending the one output unit that is on whenever `emit` is; -> the output units, in order"""
         if self.emit_unit is None: raise ParseFail("PRINT: this cell has no decoder")
-        S = self.c["S"]; out = []
+        out = []
         for _ in range(bound):
             ctrl, frame = self.read_state(s)
             if ctrl == ("P", "DONE"): return out
@@ -1559,15 +1659,13 @@ class MatrixParser:
             if ctrl is None: raise ParseFail(f"PRINT: no rule fired after {len(out)} morphemes")
             if ctrl[0] == "MULTI": raise ParseFail(f"PRINT: {ctrl[1]} rules fired after {len(out)} morphemes")
             s = self.step(s, self.empty_input())
-            if s[self.emit_unit] > 0.5:
-                on = [S.names[i] for i in self.out_units if s[i] > 0.5]
-                if len(on) != 1: raise ParseFail(f"PRINT: {len(on)} output units on at {ctrl}")
-                out.append(on[0])
+            out += self.emitted(s)
         raise ParseFail("PRINT: did not finish")
     def run(self, toks):
-        """read, then print: -> (the frame at the end of reading, the output units the print head emitted)"""
-        s, frame = self.read(toks)
-        return frame, self.print_out(s)
+        """read, then print: -> (the frame at the end of reading, every output unit the print head emitted — while reading, at a
+        that-clause, and after)"""
+        s, frame, out = self.read(toks)
+        return frame, out + self.print_out(s)
     def translate(self, toks):
         """the whole cell on a sentence: the output lexical layer's strings of the emitted units, joined"""
         return "".join(output_lexicon(u) for u in self.run(list(toks))[1])
@@ -1634,11 +1732,19 @@ class HandModules:
     def copula_rules(self):
         import predicate_module as PDM; return PDM.cop_rules()
 
+class ClauseFlush:
+    """a that-clause in the one frame: the tag slots that hold the outer predicate while the clause is read, and the fixed
+    rules (OPEN, CLOSE, RESTORE) that print the prefix, read the clause, print it and restore the outer predicate"""
+    def tag_slots(self): return [f"tag.{k}" for k in TAG_KEYS]
+    def flush_rules(self, slots=None):
+        if slots is None: slots = sorted(set(FLAGS) | set(ENUMS) | {"degree2", "subj.number", "ret", "mret"} | {sl for role in NP_ROLES for sl in np_slots(role)})
+        return clause_flush_rules(slots)
+
 class Decoder:
     """the decoder of a compiled cell: its compilation (part of every cell compile_matrices builds), the print head on a
     frame, and the output lexical layer"""
     def compile(self, comp):
         if ("emit",) in comp["S"]: return comp
-        return compile_matrices({}, extra_rules=[r for r in comp["rules"] if r[0][0] != "P" and r[0] != ("DONE",)], derived={k: v for k, v in comp["derived"].items() if not k.startswith("d.") or "@" in k or k.startswith(("d.pp.", "d.pr.", "d.cp."))})
+        return compile_matrices({}, extra_rules=[r for r in comp["rules"] if r[0][0] not in PRINT_CTRL and r[0] != ("DONE",)], derived={k: v for k, v in comp["derived"].items() if not k.startswith("d.") or "@" in k or k.startswith(("d.pp.", "d.pr.", "d.cp."))})
     def decode(self, mp, frame): return mp.decode(frame)
     def output_lexicon(self, unit): return output_lexicon(unit)

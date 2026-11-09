@@ -64,21 +64,27 @@ class TorchMatrixParser:
         acts = torch.from_numpy(np.concatenate([s, x]).astype(np.float32))[:, None]
         return self.cell.forward(acts)[:, 0].numpy()
     def read(self, toks, bound_per_token=12):
+        """as MatrixParser.read: the print head's steps (PRINT_CTRL) read no token and their output is collected"""
         import parser_matrix as PM
-        mp = self.mp; S = mp.c["S"]; s = np.zeros(mp.nS, dtype=np.float32); s[S[("ctrl", ("START",))]] = 1.0; i = 0
-        for _ in range(bound_per_token * (len(toks) + 2)):
+        mp = self.mp; S = mp.c["S"]; s = np.zeros(mp.nS, dtype=np.float32); s[S[("ctrl", ("START",))]] = 1.0; i = 0; out = []
+        for _ in range(bound_per_token * (len(toks) + 2) + (400 if mp.emit_unit is not None else 0)):
             ctrl, frame = mp.read_state(s)
-            if ctrl == ("DONE",): return s, frame
+            if ctrl == ("DONE",): return s, frame, out
             if ctrl == PM.FAIL: raise PM.ParseFail(f"TORCH: FAIL at token {i}", i)
             if ctrl is None: raise PM.ParseFail(f"TORCH: no rule fired at token {i}", i)
             if ctrl[0] == "MULTI": raise PM.ParseFail(f"TORCH: {ctrl[1]} rules fired at token {i}", i)
-            if i > len(toks): raise PM.ParseFail("TORCH: ran past the end", i)
-            s = self.step(s, mp.input_vector(toks, i, frame.get("verb")))
-            if mp.shift_unit is None or s[mp.shift_unit] > 0.5: i += 1
+            if ctrl == ("P", "DONE"): raise PM.ParseFail("TORCH: the print head finished the sentence while reading", i)
+            printing = ctrl[0] in PM.PRINT_CTRL
+            if not printing and i > len(toks): raise PM.ParseFail("TORCH: ran past the end", i)
+            s = self.step(s, mp.empty_input() if printing else mp.input_vector(toks, i, frame.get("verb")))
+            if printing: out += mp.emitted(s)
+            elif mp.shift_unit is None or s[mp.shift_unit] > 0.5: i += 1
         raise PM.ParseFail("TORCH: did not reach DONE", i)
     def parse(self, toks):
         import parser_matrix as PM
-        return PM.frame_to_clause(self.read(toks)[1])
+        s, frame, out = self.read(toks)
+        if not out: return PM.frame_to_clause(frame)
+        c = PM.Clause(); c.fixed_out = "".join(PM.output_lexicon(u) for u in out + self.print_out(s)); return c
     def print_out(self, s, bound=400):
         import parser_matrix as PM
         mp = self.mp; S = mp.c["S"]; out = []
@@ -87,25 +93,22 @@ class TorchMatrixParser:
             if ctrl == ("P", "DONE"): return out
             if ctrl == PM.FAIL or ctrl is None or ctrl[0] == "MULTI": raise PM.ParseFail(f"TORCH PRINT: {ctrl} after {len(out)} morphemes")
             s = self.step(s, mp.empty_input())
-            if s[mp.emit_unit] > 0.5:
-                on = [S.names[i] for i in mp.out_units if s[i] > 0.5]
-                if len(on) != 1: raise PM.ParseFail(f"TORCH PRINT: {len(on)} output units on")
-                out.append(on[0])
+            out += mp.emitted(s)
         raise PM.ParseFail("TORCH PRINT: did not finish")
     def translate(self, toks):
         import parser_matrix as PM
-        s, frame = self.read(list(toks))
-        return "".join(PM.output_lexicon(u) for u in self.print_out(s))
+        s, frame, out = self.read(list(toks))
+        return "".join(PM.output_lexicon(u) for u in out + self.print_out(s))
 
 def states_agree(mp, toks, bound_per_token=12):
     """run scipy and torch side by side on one sentence, reading then printing; -> (steps, first step where the states differ or None)"""
     tmp = TorchMatrixParser(mp)
     import parser_matrix as PM
-    S = mp.c["S"]; s = np.zeros(mp.nS); s[S[("ctrl", ("START",))]] = 1.0; i = 0; printing = False
-    for step in range(bound_per_token * (len(toks) + 2) + 400):
+    S = mp.c["S"]; s = np.zeros(mp.nS); s[S[("ctrl", ("START",))]] = 1.0; i = 0
+    for step in range(bound_per_token * (len(toks) + 2) + 800):
         ctrl, frame = mp.read_state(s)
+        printing = ctrl == ("DONE",) or (ctrl is not None and ctrl[0] in PM.PRINT_CTRL)       # a step that reads no token: the print head, the clause flush
         if ctrl in (PM.FAIL, None, ("P", "DONE")) or ctrl[0] == "MULTI" or (not printing and i > len(toks)): return step, None
-        if ctrl == ("DONE",): printing = True
         x = mp.empty_input() if printing else mp.input_vector(toks, i, frame.get("verb"))
         s_np = mp.step(s, x); s_t = tmp.step(s, x)
         if not np.array_equal(s_np.astype(np.float32), s_t): return step, step

@@ -32,12 +32,6 @@ class Stub:
     item = None                    # the TODO.yaml item this stub belongs to
     def _hit(self, name): CALLS[f"{type(self).__name__}.{name}"] += 1; return TODO
 
-class ClauseFlush(Stub):
-    """inner clauses in one frame: printing at clause end, clearing, the outer predicate in tag slots (item inner-clauses)"""
-    item = "inner-clauses"
-    def tag_slots(self): return self._hit("tag_slots")                       # -> the tag slot names of the state
-    def flush_rules(self): return self._hit("flush_rules")                   # -> the rules that run a clause's printing positions when it closes
-
 class Layer0Lexical(Stub):
     """the lexical layer as layer 0 of the cell, with the verb block as an input (item lexical-layer0)"""
     item = "lexical-layer0"

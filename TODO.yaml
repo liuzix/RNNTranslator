@@ -72,19 +72,29 @@ items:
 
 - id: inner-clauses
   title: Inner clauses in one frame — printing at clause end, clearing, the outer predicate in tag slots
-  status: open
+  status: done
   round: 3
   depends_on: [decoder-compile, hand-modules]
   context:
-  - text: The rule parser is a bounded transducer with a frame stack of depth at most two, and the matrix state has no second bank of slots for an inner clause.
-    pinned_by: test_rule_parser_bounds
-  - text: Sentences whose frame uses an inner-clause register are out of the matrix's scope and are refused by it.
-    pinned_by: matrix
-  - text: Inner clauses need no second bank — when a clause closes its printing positions run at once, its slots are cleared by the gates that write them, the outer predicate waits in a few tag slots, and a clause that writes a slot the open frame already holds is refused.
-    hypothesis: true
-  stubs: [ClauseFlush]
+    - text: The rule parser is a bounded transducer with a frame stack of depth at most two, and the matrix state has no second bank
+        of slots for an inner clause.
+      pinned_by: test_rule_parser_bounds
+    - text: A that-clause is read in the one frame — at the boundary the print head emits the outer prefix and OPEN moves the outer
+        predicate into the tag slots, exactly the registers the suffix positions read, clearing every other slot by its own gate;
+        the clause is read into the cleared slots, flushed at CLOSE (printed in embedded mode, then と) and cleared again at
+        RESTORE, which moves the tags back for the outer predicate; a frame whose tags are in use, or whose predicate the tags
+        cannot hold, is refused at OPEN.
+      pinned_by: test_inner_clause_in_one_frame
+    - text: The printing rules print a that-clause as generate() does on every parsed sentence of the corpus and on the sweep,
+        under a reporting verb and around a fixed inner clause.
+      pinned_by: printer
+    - text: The cell translates the corpus sentences whose that-clause follows a verb as the rules do; a that-clause after a
+        copula (I am sure that S) opens inside the copula module, which refuses it.
+      pinned_by: matrix
+    - text: A that-clause inside a that-clause, a folded frame and the paths still extracted are the gaps that remain.
+      hypothesis: true
   acceptance: test_inner_clause_sentence_agrees
-  touches: [parser_matrix.py, parser_rules.py, np_module.py]
+  touches: [parser_matrix.py, parser_rules.py, gen_module.py, cell_torch.py]
 
 - id: lexical-layer0
   title: "The lexical layer as layer 0: verb-conditioned readings inside the cell"

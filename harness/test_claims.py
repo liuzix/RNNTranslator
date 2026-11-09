@@ -19,13 +19,13 @@ def setup(root, corpus=None):
         for base in (root, ROOT):
             d = os.path.join(base, ".cache", "corpus", lock["commit"])
             if os.path.isdir(d): os.environ["ENJA_DATA"] = d; break
-    global R, P, PR, PM, NPM, H
-    import rules_ja as R, parser as P, parser_rules as PR, parser_matrix as PM, np_module as NPM, run_rules as H
+    global R, P, PR, PM, NPM, H, GM
+    import rules_ja as R, parser as P, parser_rules as PR, parser_matrix as PM, np_module as NPM, run_rules as H, gen_module as GM
 
 def small_cell(root):
     """the hybrid cell compiled on a few dev sentences (seconds), shared by the cell tests"""
     if "comp" not in _cell:
-        sents = [R.merge_multiword(en) for en, ja in H.load("dev")[:60]] + [R.merge_multiword(s.split()) for s in ("she took a rest .", "i like the big dog .")]
+        sents = [R.merge_multiword(en) for en, ja in H.load("dev")[:60]] + [R.merge_multiword(s.split()) for s in ("she took a rest .", "i like the big dog .", "he said that he was tired .")]
         _cell["comp"] = PM.build_hybrid(sents); _cell["mp"] = PM.MatrixParser(_cell["comp"])
     return _cell["comp"], _cell["mp"]
 
@@ -69,13 +69,14 @@ def test_rule_parser_bounds(root):
 def test_matrix_cell_shape(root):
     comp, mp = small_cell(root)
     assert len(comp["layers"]) == 5
-    kinds = {"module": 0, "outer": 0, "print": 0, "clause": 0}
+    kinds = {"module": 0, "outer": 0, "print": 0, "clause": 0, "flush": 0}
     for prev, lits, out in comp["rules"]:
         if prev[0] == "P" or prev == ("DONE",): kinds["print"] += 1
+        elif prev[0] in ("OPEN", "CLOSE", "RESTORE"): kinds["flush"] += 1
         elif prev[0] in ("M", "RETM") or (prev[0] == "RET" and out[0][0] == "M"): kinds["clause"] += 1
         elif isinstance(prev[0], str) and prev[0].startswith("NP"): kinds["module"] += 1
         elif not (prev[0] == "RET" or out[0][0] == "NP0" or out[0] == PM.FAIL): kinds["outer"] += 1
-    assert kinds["module"] > 0 and kinds["outer"] > 0 and kinds["print"] > 0 and kinds["clause"] > 0
+    assert kinds["module"] > 0 and kinds["outer"] > 0 and kinds["print"] > 0 and kinds["clause"] > 0 and kinds["flush"] > 0
     assert ("shift",) in comp["S"] and ("emit",) in comp["S"]
     assert {n[0] for n in comp["S"].names} == {"ctrl", "slot", "pend", "shift", "emit", "out"}, "the state is not the six kinds of block"
     assert all(("ctrl", prev) in comp["S"] for prev, _, _ in comp["rules"] if prev[0] == "P"), "a printing position outside the control block"
@@ -121,8 +122,8 @@ def test_slot_write_circuit(root):
 
 def test_print_rules_normal_form(root):
     """every printing rule is (position, literals, (next position, token)): the literals are base predicates of the flat frame or
-    derived predicates whose DNF is over base literals, the tokens are of the four kinds, every next position is a position or
-    DONE / FAIL, and the rules reach the sentence end from P0"""
+    derived predicates whose DNF is over base literals, the tokens are of the four kinds, every next position is a position, a
+    terminal (DONE; OPEN and RESTORE at a that-clause's boundary) or FAIL, and the rules reach the sentence end from P0"""
     import gen_module as G
     pr = G.PrintRules(); D = pr.derived(); positions = set(pr.positions()); F = G.flatten(PR.parse_bounded(R.merge_multiword("i like the big dog .".split())))
     assert pr.positions()[0] == "P0" and "DONE" not in positions
@@ -143,8 +144,8 @@ def test_print_rules_normal_form(root):
                 else: check_base(q)
             assert tok is None or tok[0] in ("c", "s", "vf", "af"), tok
             nxts.add(nxt)
-            if nxt not in reach and nxt != "DONE" and not (isinstance(nxt, str) and nxt.startswith("FAIL:")): reach.add(nxt); frontier.append(nxt)
-    assert "DONE" in nxts and reach == positions, f"{len(positions - reach)} positions unreachable from P0, {len(reach - positions)} targets without rules"
+            if nxt not in reach and not G.is_terminal(nxt): reach.add(nxt); frontier.append(nxt)
+    assert {"DONE", "OPEN", "RESTORE"} <= nxts and reach == positions, f"{len(positions - reach)} positions unreachable from P0, {len(reach - positions)} targets without rules"
     assert "".join(pr.render(F)) == R.generate(PR.parse_bounded(R.merge_multiword("i like the big dog .".split())))
 
 def test_decoder_is_the_cell_run_backwards(root):
@@ -200,7 +201,8 @@ def test_output_is_one_hot_morphemes(root):
     for n in S.names:
         if n[0] == "out": assert isinstance(PM.output_lexicon(n), str)
     toks = R.merge_multiword("she took a rest .".split())
-    s, frame = mp.read(toks); steps = 0; emitted = []
+    s, frame, out = mp.read(toks); steps = 0; emitted = []
+    assert out == []                                                              # no that-clause: the print head emits nothing while reading
     while True:
         ctrl, _ = mp.read_state(s)
         if ctrl == ("P", "DONE"): break
@@ -270,6 +272,62 @@ def test_clause_modules_replace_extraction(root):
     assert any(out[0] == PM.FAIL and prev[0] == "M" for prev, lits, out in comp["rules"]), "no refusal in the modules"
     for s in ("i like the big dog .", "she took a rest ."):
         toks = R.merge_multiword(s.split()); assert mp.translate(toks) == R.translate(s.split())
+
+def test_inner_clause_in_one_frame(root):
+    """a that-clause is read in the one frame.  At the boundary the print head emits the outer prefix (the run of the printing rules in
+    mode prefix ends at OPEN); OPEN moves the outer predicate into the tag slots — exactly the registers the suffix positions read,
+    the negation the printed arguments carried folded into tag.neg — and clears every other slot by its own gate; the clause is read
+    into the cleared slots; CLOSE flushes it (printed in mode embedded, が on its subject, then と) and RESTORE clears it, moves the
+    tags back and leaves the print head at DONE in mode suffix for the outer predicate.  OPEN refuses a frame whose tags are in use
+    (a that-clause inside a that-clause) or whose predicate the tags cannot hold.  The cell's string is the rule transducer's"""
+    comp, mp = small_cell(root); S = comp["S"]; V = comp["slot_vocab"]
+    cf = PM.ClauseFlush(); tags = cf.tag_slots()
+    assert tags == [f"tag.{k}" for k in GM.TAG_KEYS] and all(any(n[0] == "slot" and n[1] == t for n in S.names) for t in ("tag.verb", "tag.past", "tag.neg", "tag.question"))
+    assert all(("slot", "pmode", m) in S for m in GM.PMODES)
+    # the suffix positions read tag slots, the print mode, the negative-polarity sources folded into tag.neg, or slots of a predicate OPEN refuses
+    by_pos = collections.defaultdict(list)
+    for r in GM.PrintRules().rules(): by_pos[r[0]].append(r)
+    seen = {"M_TAIL"}; frontier = ["M_TAIL"]
+    while frontier:
+        for pos, lits, (nxt, tok) in by_pos.get(frontier.pop(), []):
+            if nxt not in seen and not GM.is_terminal(nxt): seen.add(nxt); frontier.append(nxt)
+    D = GM.derived()
+    def names(l):
+        q = l.lstrip("¬")
+        return [x for conj in D[q] for c in conj for x in names(c)] if q.startswith("d.") else [q]
+    def slot_of(q):
+        if q.startswith("flag."): return q[5:]
+        if q.startswith("slot."): return q[5:].split("=")[0]
+        return GM.family_of(q)[0]
+    read = {slot_of(q) for pos in seen for _, lits, _ in by_pos.get(pos, []) for l in lits for q in names(l)}
+    folded = {"adv1", "adv2", "subj.noun", "obj.noun"}                               # d.neg: never, nobody, nothing -> tag.neg; want's object (refused)
+    refused = {"wh", "there", "subj.cls", "cmp.noun"} | {sl for sl in read if sl.startswith(("cop.", "copof."))}       # whcop, there, いる/ある, the stem's より, the copula noun phrase
+    assert read <= set(GM.TAG_KEYS) | {"pmode"} | folded | refused, read - set(GM.TAG_KEYS) - {"pmode"} - folded - refused
+    # OPEN: a move for every tag, a clear for every other slot of the cell, tag.neg from d.neg; RESTORE: the tags back, the rest cleared
+    opens = [r for r in comp["rules"] if r[0] == ("OPEN",)]; restore = [r for r in comp["rules"] if r[0] == ("RESTORE",)]
+    assert len(restore) == 1 and len(opens) >= 2 and any(out[0] == PM.FAIL for _, _, out in opens)
+    into_inner = [r for r in opens if r[2][0] == ("INNER",)]
+    assert len(into_inner) == 2 and {dict(lits).get("d.neg") for _, lits, _ in into_inner} == {True, False}
+    for prev, lits, (cp, k, acts) in into_inner:
+        moved = {slot: src for slot, v, src in acts if src[0] == "move"}; cleared = {slot for slot, v, src in acts if src[0] == "clear"}
+        assert all(moved.get(f"tag.{key}") == ("move", key) for key in GM.TAG_KEYS if key != "neg")
+        assert (("tag.neg", True, ("const",)) in acts) == dict(lits)["d.neg"]
+        assert cleared >= {sl for sl in V if V[sl] and not sl.startswith("tag.") and sl != "pmode" and sl != "neg"}, "a slot OPEN does not clear"
+        assert all(dict(lits).get(q) is False for q in ("slot.tag.verb", "slot.tag.cop_kind") + GM.OPEN_REFUSES)
+    acts = restore[0][2][2]
+    assert all((key, None, ("move", f"tag.{key}")) in acts for key in GM.TAG_KEYS) and ("pmode", "suffix", ("const",)) in acts
+    assert {sl for sl, v, src in acts if src[0] == "clear"} >= {sl for sl in V if V[sl] and sl not in GM.TAG_KEYS and sl != "pmode"}
+    assert (("CLOSE",), (("slot.pmode=prefix", True),), (("P", "P0"), 0, (("pmode", "embedded", ("const",)),))) in comp["rules"]
+    assert (("CLOSE",), (("slot.pmode=prefix", False),), (("DONE",), 0, ())) in comp["rules"]
+    # the sentence: prefix emitted while reading, the clause and と at its end, the outer predicate after DONE; the same string as the rules
+    toks = R.merge_multiword("he said that he was tired .".split())
+    s, frame, out = mp.read(toks)
+    prefix_inner = "".join(PM.output_lexicon(u) for u in out); suffix = "".join(PM.output_lexicon(u) for u in mp.print_out(s))
+    assert prefix_inner == "彼は彼が疲れていたと" and suffix == "言った。" and frame.get("pmode") == "suffix" and frame.get("verb") == ("say", "言う", "g") and "subj.noun" not in frame
+    assert mp.translate(toks) == R.translate("he said that he was tired .".split()) == R.generate(mp.parse(toks))
+    for s_ in ("he said that she thought that he was tired .", "i 'm sure that he will come ."):           # tags in use; a copula's that-clause
+        try: mp.translate(R.merge_multiword(s_.split())); assert False, s_
+        except PR.ParseFail: pass
 
 def test_np_of_phrase(root):
     """an of-phrase is the noun-phrase module run once more on the role's of-phrase slots, printing before the head with の, and a

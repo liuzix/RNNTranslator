@@ -95,7 +95,7 @@ def test_hand_modules_agree(root):
 
 def test_inner_clause_sentence_agrees(root):
     """a sentence with an inner clause is parsed identically by the matrix, through flushing at clause end and tag slots"""
-    cf = ST.ClauseFlush(); tags = cf.tag_slots(); flush = cf.flush_rules()
+    cf = PM.ClauseFlush(); tags = cf.tag_slots(); flush = cf.flush_rules()
     assert tags and flush, "no tag slots or flush rules"
     comp, mp, sents = small_cell(root)
     toks = R.merge_multiword("he said that he was tired .".split())

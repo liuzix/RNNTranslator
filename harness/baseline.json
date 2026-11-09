@@ -3,35 +3,36 @@
 "matrix": {
 "both_refuse": 263,
 "cell": {
-"build_seconds": 37,
-"input_units": 2808,
+"build_seconds": 39,
+"input_units": 2806,
 "layers": [
-2678,
+2681,
 419,
-4925,
-1990,
-111672
+4982,
+2069,
+114897
 ],
-"nnz": 812387,
-"rules": 4648,
+"nnz": 834148,
+"rules": 4705,
 "rules_by_kind": {
-"clause": 1275,
-"entry": 111,
-"exit": 63,
-"fail": 131,
-"module": 1478,
-"outer": 320,
-"print": 1270
+"clause": 1282,
+"entry": 108,
+"exit": 65,
+"fail": 140,
+"flush": 13,
+"module": 1476,
+"outer": 335,
+"print": 1286
 },
 "scope": {
-"in scope": 566,
-"out of scope": 156,
+"in scope": 576,
+"out of scope": 146,
 "refused": 273
 },
-"state_units": 69782,
+"state_units": 70884,
 "unresolved": {}
 },
-"identical": 559,
+"identical": 567,
 "matrix_parses_refused": 0,
 "per_split": {
 "dev": {
@@ -46,19 +47,19 @@
 "wrong_frame": 0
 },
 "test": {
-"bleu_matrix_shared": 36.847,
-"bleu_rules_shared": 36.847,
+"bleu_matrix_shared": 36.768,
+"bleu_rules_shared": 36.768,
 "both_refuse": 83,
 "examples": {},
-"identical": 307,
+"identical": 315,
 "matrix_parses_refused": 0,
-"refused_parseable": 109,
-"shared": 307,
+"refused_parseable": 101,
+"shared": 315,
 "wrong_frame": 0
 }
 },
-"refused_parseable": 173,
-"summary": "identical 559, wrong frame 0, matrix parses refused 0, refused parseable 173, both refuse 263; nnz 812387, rules 4648",
+"refused_parseable": 165,
+"summary": "identical 567, wrong frame 0, matrix parses refused 0, refused parseable 165, both refuse 263; nnz 834148, rules 4705",
 "wrong_frame": 0
 },
 "negatives": {
@@ -78,24 +79,23 @@
 "max_len": 2,
 "mismatch_kinds": 0,
 "mismatches": 0,
-"seconds": 6,
+"seconds": 5,
 "summary": "np_module vs parse_np: 32040 cases (len<=2, 89 tokens), 0 mismatches"
 },
 "printer": {
-"agree": 610,
+"agree": 621,
 "derived": 14,
-"gap": 122,
+"gap": 111,
 "misfire": 0,
 "per_split": {
 "dev": {
-"agree": 276,
-"gap": 40,
+"agree": 278,
+"gap": 38,
 "misfire": 0,
 "misfire_examples": [],
 "refusals": {
 "copula kind idiom": 3,
 "register control": 2,
-"register embedded": 2,
 "register exclaim": 2,
 "register fixed_out": 1,
 "register infinitive": 9,
@@ -104,14 +104,13 @@
 }
 },
 "test": {
-"agree": 334,
-"gap": 82,
+"agree": 343,
+"gap": 73,
 "misfire": 0,
 "misfire_examples": [],
 "refusals": {
 "copula kind idiom": 12,
 "register control": 7,
-"register embedded": 9,
 "register exclaim": 1,
 "register fixed_out": 1,
 "register howabout": 1,
@@ -124,13 +123,13 @@
 }
 }
 },
-"positions": 630,
-"rules": 1269,
-"summary": "printer vs generate: agree 610, gap 122, misfire 0 on the corpus; sweep 146856 frames, 135836 match, 0 mismatches, 80 refused, 10940 generate() cannot print; 1269 rules at 630 positions",
+"positions": 632,
+"rules": 1285,
+"summary": "printer vs generate: agree 621, gap 111, misfire 0 on the corpus; sweep 167985 frames, 154333 match, 0 mismatches, 2576 refused, 11076 generate() cannot print; 1285 rules at 632 positions",
 "sweep": {
-"frames": 146856,
-"generate_crash": 10940,
-"match": 135836,
+"frames": 167985,
+"generate_crash": 11076,
+"match": 154333,
 "mismatch_examples": [],
 "mismatches": 0,
 "per_group": {
@@ -144,8 +143,17 @@
 "generate_crash": 100,
 "match": 8900
 },
+"inner": {
+"generate_crash": 68,
+"match": 10492
+},
 "np": {
 "match": 4608
+},
+"outer": {
+"generate_crash": 68,
+"match": 8005,
+"refused": 2496
 },
 "pp": {
 "match": 12096
@@ -164,10 +172,13 @@
 }
 },
 "refusal_reasons": {
-"imperative": "('verb', \"('eat', '食べる', 'i')\", ['neg', 'imp'], None, 'better')"
+"a that-clause under slot.cop_k": "('outer', 'np', \"('先生', 'h')\", [], None, None)",
+"a that-clause under verb.lemma": "('outer', 'verb', \"('want', '欲しがる', 'g')\", [], None, None)",
+"imperative": "('verb', \"('eat', '食べる', 'i')\", ['neg', 'imp'], None, 'better')",
+"there-clause with a that-claus": "('outer', 'there', 'None', [], None, None)"
 },
-"refused": 80,
-"seconds": 34.3
+"refused": 2576,
+"seconds": 50.8
 }
 },
 "rules": {
@@ -314,15 +325,15 @@
 "torch": {
 "diverging": 0,
 "dtype": "float32",
-"seconds": 248.6,
+"seconds": 275.0,
 "sentences": 995,
-"steps": 54070,
-"summary": "torch 2.15.0+cpu: 995 sentences, 54070 steps compared, 0 diverging",
+"steps": 55767,
+"summary": "torch 2.15.0+cpu: 995 sentences, 55767 steps compared, 0 diverging",
 "torch": "2.15.0+cpu"
 }
 },
 "metrics": {
-"matrix.identical": 559,
+"matrix.identical": 567,
 "matrix.silent_misfires": 0,
 "negatives.accepted": 0,
 "negatives.controls_refused": 0,
@@ -998,7 +1009,7 @@
 "240: the airplane fell to the earth .": "飛行機は地球に落ちた。",
 "241: she put down her pen .": "彼女はペンを置く。",
 "242: there was almost nothing in the room .": "部屋にほとんど何もなかった。",
-"243: i do not think it will rain this afternoon .": "",
+"243: i do not think it will rain this afternoon .": "私はこの午後を雨が降ると思わない。",
 "244: the road divides here into two .": "道路はここで２に分かれる。",
 "245: you have a genius for music .": "あなたは音楽のために天才を持っている。",
 "246: she is great at skiing .": "彼女はスキーで素晴らしい。",
@@ -1079,7 +1090,7 @@
 "313: it took them two years to build the house .": "",
 "314: i want to see my friends in canada .": "私はカナダで友達を見たい。",
 "315: i 'll let you know in advance .": "",
-"316: i thought i must do it .": "",
+"316: i thought i must do it .": "私は私がそれをしなければならないと思った。",
 "317: you should not waste your time .": "あなたは時間を無駄にするべきではない。",
 "318: never tell a lie !": "",
 "319: i 'll get him to carry this box upstairs .": "",
@@ -1096,7 +1107,7 @@
 "329: mr smith and i have been acquainted with each other for a long time .": "",
 "32: nobody has seen him ever since .": "誰も彼をそれ以来見ていない。",
 "330: he has seen much of the world .": "彼は世界のたくさん見た。",
-"331: i wish i could speak english .": "",
+"331: i wish i could speak english .": "私は私が英語が話せたと願う。",
 "332: you should have replied to his letter .": "あなたは彼の手紙に返事をするべきだった。",
 "333: which do you like better , this or that ?": "",
 "334: she does not take a rest for an instant .": "彼女は瞬間のために休まない。",
@@ -1128,7 +1139,7 @@
 "358: we played baseball .": "私たちは野球をした。",
 "359: how large is the population of tokyo ?": "東京の人口はどのくらいですか。",
 "35: i still bear his name in mind .": "私は彼の名前をまだ心に留める。",
-"360: we thought we had the game in the bag .": "",
+"360: we thought we had the game in the bag .": "私たちは私たちがかばんで試合を持っていたと思った。",
 "361: i can 't get along with that man any more .": "私はその男ともううまくやれない。",
 "362: can other people catch it ?": "他の人々はそれが捕まえられますか。",
 "363: she felt as if she had seen a ghost .": "",
@@ -1176,7 +1187,7 @@
 "401: when he got into trouble , he turned to his parents for help .": "",
 "402: the sun went behind the clouds .": "太陽は雲の後ろに行った。",
 "403: his talk was a mere game .": "彼の話は単なる試合だった。",
-"404: i dare say it is a lie .": "",
+"404: i dare say it is a lie .": "私はそれが嘘だと思う。",
 "405: she stood up when her teacher came in .": "",
 "406: he likes disney .": "彼はディズニーが好きだ。",
 "407: the rain came down in buckets .": "雨はバケツに下に来た。",
@@ -1235,7 +1246,7 @@
 "455: we must take this matter into account as a whole .": "",
 "456: are you for the war or against it ?": "",
 "457: it is probable that he forget about it .": "",
-"458: he said that he goes for a long walk every morning .": "",
+"458: he said that he goes for a long walk every morning .": "彼は毎朝彼が長い散歩のために行くと言った。",
 "459: i was astonished at the news .": "私はニュースで驚いていた。",
 "45: he doesn 't read many books .": "彼はたくさんの本を読まない。",
 "460: how far is it from here to tokyo ?": "",
@@ -1319,7 +1330,7 @@
 "7: i 'm about to tell you the answer .": "私はあなたに答えを話すところだ。",
 "80: he is a detective .": "彼は探偵だ。",
 "81: he always takes sides with her .": "彼は彼女と側をいつも取る。",
-"82: jane always made out that she was very rich .": "",
+"82: jane always made out that she was very rich .": "ジェーンはいつも彼女がとても金持ちだと主張した。",
 "83: what a bad boy he is !": "",
 "84: he is what we call the man of the hour .": "",
 "85: in fact , he is a nice fellow .": "実は、彼は素敵なやつだ。",
@@ -1329,7 +1340,7 @@
 "89: can we rent a car ?": "私たちは車が借りられますか。",
 "8: i 'm a person who lives for the moment .": "",
 "90: a wise man would not say such a thing .": "賢い男はそんなことを言わないだろう。",
-"91: he told me that she was sick .": "",
+"91: he told me that she was sick .": "彼は私に彼女が具合が悪いと話した。",
 "92: there was nobody in the garden .": "庭に誰もいなかった。",
 "93: our college is far from the station .": "私たちの大学は駅から遠い。",
 "94: he had been writing a letter .": "彼は手紙を書いていた。",
@@ -1787,7 +1798,7 @@
 "493: i just made it under the wire .": "私は電線の下でそれをちょうど作った。",
 "497: the flower is crying out for water .": "花は水のために外に泣いている。",
 "498: it rained yesterday .": "昨日雨が降った。",
-"49: i 'm afraid she will fail .": "",
+"49: i 'm afraid she will fail .": "私は彼女が失敗すると怖い。",
 "4: she wrote to me to come at once .": "",
 "500: thank you for your cooperation .": "",
 "51: the day will come someday when the business will succeed .": "",
@@ -1810,7 +1821,7 @@
 "7: i 'll pick him up at 5 .": "私は５時に彼を拾う。",
 "80: your behavior is too extraordinary .": "あなたの行動はすぎ並外れた。",
 "82: do you take me for a fool ?": "あなたはばかのために私を取りますか。",
-"83: i 'm sure she will come .": "",
+"83: i 'm sure she will come .": "私は彼女が来ると確かだ。",
 "84: he 's sympathetic to our plan .": "彼は私たちの計画に同情的だ。",
 "88: i just went into debt .": "私は借金にちょうど行った。",
 "89: i bought a cat at that shop .": "私はその店で猫を買った。",
@@ -1950,7 +1961,7 @@
 "240: the airplane fell to the earth .": "飛行機は地球に落ちた。",
 "241: she put down her pen .": "彼女はペンを置く。",
 "242: there was almost nothing in the room .": "部屋にほとんど何もなかった。",
-"243: i do not think it will rain this afternoon .": "",
+"243: i do not think it will rain this afternoon .": "私はこの午後を雨が降ると思わない。",
 "244: the road divides here into two .": "道路はここで２に分かれる。",
 "245: you have a genius for music .": "あなたは音楽のために天才を持っている。",
 "246: she is great at skiing .": "彼女はスキーで素晴らしい。",
@@ -2019,7 +2030,7 @@
 "313: it took them two years to build the house .": "",
 "314: i want to see my friends in canada .": "私はカナダで友達を見たい。",
 "315: i 'll let you know in advance .": "",
-"316: i thought i must do it .": "",
+"316: i thought i must do it .": "私は私がそれをしなければならないと思った。",
 "317: you should not waste your time .": "あなたは時間を無駄にするべきではない。",
 "319: i 'll get him to carry this box upstairs .": "",
 "31: i feel good in a special way .": "私は特別な道で良い。",
@@ -2032,7 +2043,7 @@
 "329: mr smith and i have been acquainted with each other for a long time .": "スミスさんと私はお互いと長い時間のために知り合いだ。",
 "32: nobody has seen him ever since .": "誰も彼をそれ以来見ていない。",
 "330: he has seen much of the world .": "彼は世界のたくさん見た。",
-"331: i wish i could speak english .": "",
+"331: i wish i could speak english .": "私は私が英語が話せたと願う。",
 "332: you should have replied to his letter .": "あなたは彼の手紙に返事をするべきだった。",
 "334: she does not take a rest for an instant .": "彼女は瞬間のために休まない。",
 "335: he shook hands with his friend .": "彼は彼の友達と手を振った。",
@@ -2057,7 +2068,7 @@
 "358: we played baseball .": "私たちは野球をした。",
 "359: how large is the population of tokyo ?": "東京の人口はどのくらいですか。",
 "35: i still bear his name in mind .": "私は彼の名前をまだ心に留める。",
-"360: we thought we had the game in the bag .": "",
+"360: we thought we had the game in the bag .": "私たちは私たちがかばんで試合を持っていたと思った。",
 "361: i can 't get along with that man any more .": "私はその男ともううまくやれない。",
 "362: can other people catch it ?": "他の人々はそれが捕まえられますか。",
 "363: she felt as if she had seen a ghost .": "",
@@ -2103,12 +2114,12 @@
 "401: when he got into trouble , he turned to his parents for help .": "",
 "402: the sun went behind the clouds .": "太陽は雲の後ろに行った。",
 "403: his talk was a mere game .": "彼の話は単なる試合だった。",
-"404: i dare say it is a lie .": "",
+"404: i dare say it is a lie .": "私はそれが嘘だと思う。",
 "405: she stood up when her teacher came in .": "",
 "406: he likes disney .": "彼はディズニーが好きだ。",
 "407: the rain came down in buckets .": "雨はバケツに下に来た。",
 "409: i 'll pick you up at your home .": "私はあなたの家であなたを拾う。",
-"40: i wish i knew where he was !": "",
+"40: i wish i knew where he was !": "私は私が彼がどこだったか知っていたと願う。",
 "410: let me know by wire .": "電線で知らせてください。",
 "411: i will make certain of the situation .": "私は状況を確かめる。",
 "412: it 's our pleasure .": "それは私たちの喜びだ。",
@@ -2152,7 +2163,7 @@
 "452: i bought a watch with cash .": "私は現金で腕時計を買った。",
 "453: his bicycle is blue .": "彼の自転車は青い。",
 "454: this door won 't shut .": "このドアは閉まらない。",
-"458: he said that he goes for a long walk every morning .": "",
+"458: he said that he goes for a long walk every morning .": "彼は毎朝彼が長い散歩のために行くと言った。",
 "459: i was astonished at the news .": "私はニュースで驚いていた。",
 "45: he doesn 't read many books .": "彼はたくさんの本を読まない。",
 "462: i arrived at narita airport this morning .": "今朝私は成田の空港に着いた。",
@@ -2222,7 +2233,7 @@
 "7: i 'm about to tell you the answer .": "私はあなたに答えを話すところだ。",
 "80: he is a detective .": "彼は探偵だ。",
 "81: he always takes sides with her .": "彼は彼女と側をいつも取る。",
-"82: jane always made out that she was very rich .": "",
+"82: jane always made out that she was very rich .": "ジェーンはいつも彼女がとても金持ちだと主張した。",
 "83: what a bad boy he is !": "",
 "85: in fact , he is a nice fellow .": "実は、彼は素敵なやつだ。",
 "86: where does the answer lie ?": "答えはどこで横になりますか。",
@@ -2231,7 +2242,7 @@
 "89: can we rent a car ?": "私たちは車が借りられますか。",
 "8: i 'm a person who lives for the moment .": "私は瞬間のために住んでいる人だ。",
 "90: a wise man would not say such a thing .": "賢い男はそんなことを言わないだろう。",
-"91: he told me that she was sick .": "",
+"91: he told me that she was sick .": "彼は私に彼女が具合が悪いと話した。",
 "92: there was nobody in the garden .": "庭に誰もいなかった。",
 "93: our college is far from the station .": "私たちの大学は駅から遠い。",
 "94: he had been writing a letter .": "彼は手紙を書いていた。",
@@ -3813,5 +3824,5 @@
 }
 ]
 },
-"taken": "2026-11-09 at f22bca9"
+"taken": "2026-11-09 at 37f3f28"
 }

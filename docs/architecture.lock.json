@@ -15,16 +15,16 @@
   {
    "source": "docs/cell.puml",
    "output": "docs/cell.svg",
-   "source_sha256": "81d5454491a669f7c72363a63ec690be22d9b6cc2cd1addcfcaaec4f5b8d7a32",
-   "output_sha256": "921f8b0ee235e49971d6e934f98cdb880cefe6130cc09cbbacf3269110d5788f"
+   "source_sha256": "7a626b0774a59381a2abea3f4395275efa54869e4ff70c400b0d532c5630962f",
+   "output_sha256": "b2f38900b2f134bf4ebc2e16b797e2295117906760026a44323b98f49a9a3d8b"
   }
  ],
  "drawings": [
   {
    "source": "harness/render_neurons.py",
    "output": "docs/cell_neurons.svg",
-   "source_sha256": "e5eb4b5599c8ec0d2a3a03a2a720134ed44631e4aa52aa22fe7f03acd9d86df6",
-   "output_sha256": "0f00ef068874a139b02fc40c95156d482476a4e37ddc6e99f148c938cb7fa715"
+   "source_sha256": "4df4b04a2ce957308b07ca0d1f5d4ca6cbe91ea831192d9304c3c6355eeb5dfe",
+   "output_sha256": "032a03819fee93250936e21b45746b47701cc25be19c82e8443e8fd3eef617fa"
   }
  ]
 }

@@ -47,6 +47,7 @@ class Clause:
         self.purpose = None; self.purpose_clause = None; self.control = None; self.relative = False
         self.obj_particle = None; self.infinitive = None; self.pre_clause = ""; self.howabout = None; self.exclaim = None; self.wh_cls = "t"
         self.embedded = None       # another Clause (that-clause / infinitive complement)
+        self.inner_of = None       # for an inner clause: what it is to its outer clause — "embedded" for a that-clause (set where it is created, so a trace can tell it from a control or purpose clause)
         self.compare = None        # ("as"|"than"|"noless", np) degree construction
         self.noless = False        # "no less ADJ than": the comparison reads に劣らず
         self.perf_had = False      # the perfect auxiliary was "had": a negative perfect then reads ていなかった, else ていない
@@ -588,7 +589,7 @@ class Parser:
             if self.peek() == "that" or (self.peek() and self.starts_np(self.peek()) and self.peek(1) and (self.has(self.peek(1), "verb") or self.has(self.peek(1), "aux_be") or self.has(self.peek(1), "modal") or self.has(self.peek(1), "aux_do"))):
                 so_that = self.peek() == "that" and c.degree.endswith("とても") and self.toks[self.i - 2] == "so"
                 if self.peek() == "that": self.i += 1
-                inner = Clause(); self.c = inner
+                inner = Clause(); inner.inner_of = "embedded"; self.c = inner
                 ja, cls = self.parse_np(role="subj"); inner.subj, inner.subj_cls, inner.subj_num = ja, cls, self.np_number
                 self.phase = "VP0"; self.predicate(); self.c = c
                 if so_that: c.so_that = inner                                   # so hard that S -> とても難しいので S
@@ -719,7 +720,7 @@ class Parser:
                        and self.peek(1) and (self.has(self.peek(1), "verb") and not self.has(self.peek(1), "noun") or self.has(self.peek(1), "aux_be") or self.has(self.peek(1), "aux_do") or self.has(self.peek(1), "modal") or self.has(self.peek(1), "aux_have")))
         if lemma in VC["that_comp"] and (self.peek() == "that" or bare_clause):               # a that-less clause: its subject is not an object pronoun (heard him sing) and its verb is not also a noun (heard a sound)
             if self.peek() == "that": self.i += 1
-            inner = Clause(); c.embedded = inner
+            inner = Clause(); inner.inner_of = "embedded"; c.embedded = inner
             self.c = inner
             ja, cls = self.parse_np(role="subj"); inner.subj, inner.subj_cls, inner.subj_num = ja, cls, self.np_number
             self.phase = "VP0"
@@ -846,7 +847,7 @@ class Parser:
         return body if body.endswith("か") else body + "か"
 
     def embedded_after(self, c):
-        inner = Clause(); c.embedded = inner; self.c = inner
+        inner = Clause(); inner.inner_of = "embedded"; c.embedded = inner; self.c = inner
         ja, cls = self.parse_np(role="subj"); inner.subj, inner.subj_cls, inner.subj_num = ja, cls, self.np_number
         self.phase = "VP0"; self.predicate_noend(); self.c = c
         return self.end()

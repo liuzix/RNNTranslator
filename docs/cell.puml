@@ -2,8 +2,8 @@
 ' The compiled cell as a recurrent network with two heads: a read head over the English (advanced by the shift unit) and a
 ' print head over the Japanese (advanced by the emit unit).  One state, one set of layers; reading rules consume a token
 ' and write slots, printing rules read slots and emit a token.  Below, one slot write and its mirror, one slot read.
-' The dashed box (the tag slots) is proposed, not built.  Rendered hermetically by `harness/render_diagram.py` with the PlantUML jar
-' pinned in docs/architecture.lock.json.
+' The tag slots hold the outer predicate while a that-clause is read in the same slots (parser_matrix.clause_flush_rules).
+' Rendered hermetically by `harness/render_diagram.py` with the PlantUML jar pinned in docs/architecture.lock.json.
 skinparam shadowing false
 skinparam defaultFontName sans-serif
 skinparam defaultFontSize 12
@@ -23,7 +23,7 @@ rectangle "**x(t)**  lexical input\nthe window under the read head" as X #F7D9D9
 rectangle "**s(t)**  state: a register file\nof one-hot blocks" as S #D8ECD4 {
   rectangle "ctrl\nreading positions, then\nprinting positions" as CTRL
   rectangle "slots: the frame\nnoun-phrase roles · verb · adv\nfront · time · want · flags" as SLOTS
-  rectangle "tag slots (proposed)\nthe outer predicate while\nan inner clause is open" as TAGS #FFFFFF;line.dashed
+  rectangle "tag slots · print mode\nthe outer predicate while\na that-clause is read" as TAGS
   rectangle "pend · shift · emit" as PEND
 }
 

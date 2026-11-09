@@ -2,7 +2,8 @@
 five layers, arrows are the ±1 weights — with one slot write (the obj noun block) traced in colour through
 L3 -> L4 -> L5 -> W6, its mirror, one slot read into the output y(t) (orange), and everything else as grey context.
 The picture is a drawing of the circuits that test_slot_write_circuit and test_decoder_mirrors_encoder pin, not a
-rendering of a compiled cell: its unit counts are illustrative.  The dashed grey tag slots are proposed, not built.
+rendering of a compiled cell: its unit counts are illustrative.  The tag slots hold the outer predicate while a that-clause
+is read in the same slots (parser_matrix.clause_flush_rules).
 
 The script needs nothing but Python and is deterministic, so it is pinned the way the PlantUML diagrams are:
 docs/architecture.lock.json records the sha256 of this file and of the SVG it wrote, and harness/check_diagram.py
@@ -95,7 +96,7 @@ def render():
     obj = block(X0, y, 4, filled=1, label="obj noun", color=C_KEEP, lw=1.6); y += 4 * P + 10
     verb = block(X0, y, 4, filled=3, label="verb"); y += 4 * P + 2
     vdots(X0, y); y += 24
-    block(X0, y, 3, label="tag slots", dashed=True, color="#777"); text(X0 - 22, y + 2 * P + 14, "(proposed)", 10, "end", "#777"); y += 3 * P + 18
+    block(X0, y, 3, filled=1, label="tag slots"); text(X0 - 22, y + 2 * P + 14, "(outer predicate)", 10, "end", "#777"); y += 3 * P + 18
     block(X0, y, 3, label="pend"); y += 3 * P + 10
     block(X0, y, 1, label="shift"); y += P
     neuron(X0, y, color=C_READ); text(X0 - 22, y + 4, "emit", 12, "end", "#444")
@@ -239,7 +240,7 @@ def render():
     text(lx, ly, "one slot write, and its mirror, one slot read", 13, weight="bold")
     neuron(lx + 8, ly + 24, fill=True); text(lx + 24, ly + 28, "unit = 1", 12)
     neuron(lx + 98, ly + 24); text(lx + 114, ly + 28, "unit = 0", 12)
-    neuron(lx + 188, ly + 24, dashed=True, color="#777"); text(lx + 204, ly + 28, "proposed (tag slots)", 12)
+    neuron(lx + 188, ly + 24, fill=True, color="#777"); text(lx + 204, ly + 28, "tag slot (outer predicate)", 12)
     text(lx + 290, ly + 28, "−1  threshold beside a unit", 12)
     entries = ((C_CTRL, 1.4, False, "control: one-hot → rule → next"), (C_WRITE, 1.4, False, "write: gate ∧ source → slot"),
                (C_KEEP, 1.4, False, "keep: old value unless gated"), (C_NEG, 1.4, False, "−1: the gate cuts"),

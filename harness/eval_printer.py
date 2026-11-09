@@ -4,9 +4,10 @@ predicates the rules test.
 Corpus: for each parsed sentence, the rules are stepped on the frame and their tokens joined; the item `printer <split>
 <citation>` is AGREE when the string is generate()'s, GAP when the rules refuse (a register the frame cannot hold, or no
 rule), MISFIRE when they print something else.  Sweep: frames are built from a product of the predicates the rules read
-(the kind of predicate, the flags, the modal, the complement; the arguments, the particles, the question words) and
-rendered by both; a frame generate() itself cannot print (it raises) is skipped; the rules may refuse a frame, but where
-they print they must print what generate() prints — the mismatch count is the item `printer.sweep` (MISMATCHES < MATCH).
+(the kind of predicate, the flags, the modal, the complement; the arguments, the particles, the question words; a
+that-clause under a reporting verb, and around a fixed inner clause) and rendered by both; a frame generate() itself
+cannot print (it raises) is skipped; the rules may refuse a frame, but where they print they must print what generate()
+prints — the mismatch count is the item `printer.sweep` (MISMATCHES < MATCH).
 """
 import sys, os, json, argparse, collections, itertools, time
 sys.path.insert(0, os.getcwd())
@@ -43,28 +44,38 @@ def verb_examples():
 def base_clause():
     c = Clause(); c.subj = "彼"; c.subj_cls = "h"; return c
 
-def predicate_frames():
-    """(label, Clause) for the predicate sweep: kinds x flags x modal, and kinds x fewer flags x want"""
+def predicate_kinds():
+    """the kinds of predicate the sweeps range over: one verb per conjugation class and the special lemmas, the adjective kinds,
+    a noun, a place, an adverb, a question word, there"""
     kinds = [("verb", v) for v in verb_examples()]
     kinds += [("adj", ("忙しい", "a")), ("adj", ("貴重", "na")), ("adj", ("疲れている", "fx")), ("adj", ("違う", "fx")), ("adj", ("裸の", "a")), ("adj", ("より良い", "a")),
               ("np", ("先生", "h")), ("pp", (("で", "に"), "家")), ("adv", "下に"), ("wh", ("何", "o")), ("there", None)]
+    return kinds
+
+WANTS = [None] + sorted(R.COMPLEMENTS) + ["tai", "wish", "better", "neednot", "mind_request", "request", "canthave"]
+
+def make_clause(kind, val, flags, modal, want, animate=True):
+    """one clause of the sweep: a predicate of `kind`, the flags set, the modal and the complement"""
+    c = base_clause()
+    if not animate: c.subj = "それ"; c.subj_cls = "t"
+    if kind == "verb": c.verb = val; c.obj = "本" if val[0] in ("want", "eat") else None
+    elif kind == "adj": c.copula = ("adj", val)
+    elif kind == "np": c.copula = ("np", val[0], val[1])
+    elif kind == "pp": c.copula = ("pp", val[0], val[1])
+    elif kind == "adv": c.copula = ("adv", val)
+    elif kind == "wh": c.copula = ("wh",); c.wh = val; c.question = True
+    elif kind == "there": c.there = True
+    for f in flags: setattr(c, f, True)
+    c.modal = modal; c.want = want
+    if want in ("promise", "try", "decide", "refuse", "agree", "pretend", "mean", "choose", "prefer") and "neg" in flags: c.neg_inner = True
+    return c
+
+def predicate_frames():
+    """(label, Clause) for the predicate sweep: kinds x flags x modal, and kinds x fewer flags x want"""
+    kinds = predicate_kinds()
     flags_all = ("past", "neg", "prog", "perf", "perf_had", "question", "imp", "please", "lets", "tag")
     flags_few = ("past", "neg", "question", "perf", "imp")
-    wants = [None] + sorted(R.COMPLEMENTS) + ["tai", "wish", "better", "neednot", "mind_request", "request", "canthave"]
-    def make(kind, val, flags, modal, want, animate):
-        c = base_clause()
-        if not animate: c.subj = "それ"; c.subj_cls = "t"
-        if kind == "verb": c.verb = val; c.obj = "本" if val[0] in ("want", "eat") else None
-        elif kind == "adj": c.copula = ("adj", val)
-        elif kind == "np": c.copula = ("np", val[0], val[1])
-        elif kind == "pp": c.copula = ("pp", val[0], val[1])
-        elif kind == "adv": c.copula = ("adv", val)
-        elif kind == "wh": c.copula = ("wh",); c.wh = val; c.question = True
-        elif kind == "there": c.there = True
-        for f in flags: setattr(c, f, True)
-        c.modal = modal; c.want = want
-        if want in ("promise", "try", "decide", "refuse", "agree", "pretend", "mean", "choose", "prefer") and "neg" in flags: c.neg_inner = True
-        return c
+    wants = WANTS; make = make_clause
     for kind, val in kinds:
         for animate in ((True, False) if kind in ("pp", "adv", "there") else (True,)):
             for n in range(len(flags_all) + 1):
@@ -132,9 +143,38 @@ def template_frames():
                                 if "tag" in extra: c.tag = True
                                 yield ("pp", len(pp), cmp, str(verb), str(cop), subj, there, extra), c
 
+def embedded_frames():
+    """a that-clause under a reporting verb: each predicate frame (kinds x the few flags x modal, and the verbs x want) as the
+    inner clause of `he said that S` — が on its subject, plain forms, と — and as the outer clause around `that he was tired`,
+    whose predicate waits in the tag slots while the inner clause prints; a negative subject or adverb on the outer tests the
+    negation the tags carry"""
+    def inner_fixed(): c = Clause(); c.subj = "彼"; c.subj_cls = "h"; c.copula = ("adj", ("疲れている", "fx")); c.past = True; return c
+    def reporting(): c = base_clause(); c.verb = ("say", "言う", "g"); c.past = True; return c
+    flags_few = ("past", "neg", "question", "perf", "prog", "tag")
+    for kind, val in predicate_kinds():
+        for bits in itertools.product((False, True), repeat=len(flags_few)):
+            flags = [f for f, b in zip(flags_few, bits) if b]
+            for modal in (None, "will", "can", "should", "must", "may"):
+                outer = reporting(); outer.embedded = make_clause(kind, val, flags, modal, None)
+                yield ("inner", kind, str(val), flags, modal, None), outer
+                outer = make_clause(kind, val, flags, modal, None); outer.embedded = inner_fixed()
+                yield ("outer", kind, str(val), flags, modal, None), outer
+        if kind != "verb": continue
+        for flags in ((), ("past",), ("neg",), ("past", "neg")):
+            for want in WANTS[1:]:
+                outer = reporting(); outer.embedded = make_clause(kind, val, flags, None, want)
+                yield ("inner", kind, str(val), flags, None, want), outer
+                outer = make_clause(kind, val, flags, None, want); outer.embedded = inner_fixed()
+                yield ("outer", kind, str(val), flags, None, want), outer
+    for subj, adv in ((("誰も", "h"), ""), (("彼", "h"), "決して"), (("彼", "h"), "いつも")):
+        for flags in ((), ("past",), ("question",)):
+            outer = reporting(); outer.subj, outer.subj_cls = subj; outer.adv = adv; outer.embedded = inner_fixed()
+            for f in flags: setattr(outer, f, True)
+            yield ("outer", "negpol", subj[0] + adv, flags, None, None), outer
+
 def sweep(pr):
     t0 = time.time(); cnt = collections.Counter(); examples = {}; per_group = collections.defaultdict(collections.Counter)
-    for label, c in itertools.chain(predicate_frames(), template_frames()):
+    for label, c in itertools.chain(predicate_frames(), template_frames(), embedded_frames()):
         group = label[0]
         try: got = "".join(pr.render(c))
         except G.Refuse as e: got = None; why = str(e)
