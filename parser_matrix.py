@@ -345,6 +345,7 @@ def register_actions(before, after, tok, allow_copy=True):
         if v in (None, False, "", 0): actions.append((slot, None, ("clear",))); continue
         src = ("const",)
         if slot == "verb" and "verb" in rs and v[0] == rs["verb"][0] and v[1] == rs["verb"][2] and v[2] == rs["verb"][3]: src = ("copy", "verb")
+        elif slot == "verb" and "adj" in rs and v == ("make+" + tok, R.adj_causative(*rs["adj"]), "i"): src = ("copy", "adj_caus")
         elif slot == "adv1" and "adv" in rs and v == rs["adv"] and before[slot] in (None, ""): src = ("copy", "adv")
         elif slot == "front" and "adv" in rs and v == rs["adv"] + "、" and before[slot] in (None, ""): src = ("copy", "adv_front")
         elif slot == "time" and "time" in rs and v == rs["time"]: src = ("copy", "time")
@@ -678,7 +679,7 @@ def apply_actions(frame, actions, toks, i):
     tok = toks[i] if i < len(toks) else None; rs = collections.defaultdict(list)
     for c, v in readings_of(tok): rs[c].append(v)
     for slot, v, src in actions:
-        if src[0] == "copy" and src[1] not in ("ncls", "nnum") and not rs[{"num_time": "num", "adj_pair": "adj", "adj_mono": "adj", "pron_poss": "pron", "adv_front": "adv"}.get(src[1], src[1])]:
+        if src[0] == "copy" and src[1] not in ("ncls", "nnum") and not rs[{"num_time": "num", "adj_pair": "adj", "adj_mono": "adj", "adj_caus": "adj", "pron_poss": "pron", "adv_front": "adv"}.get(src[1], src[1])]:
             raise ParseFail(f"TABLE: nothing to copy into {slot} from {src[1]} at {tok!r}", i)       # the machine's crash: the rule fired on a token without that reading
     old = dict(frame)                                   # moves and clears read the state before this step, as the matrix does
     for slot, v, src in actions:
@@ -712,6 +713,7 @@ def apply_actions(frame, actions, toks, i):
             elif cls == "adj": ja, kind = rs["adj"][-1]; frame[slot] = ja + ("な" if kind == "na" and not ja.endswith("な") else "")
             elif cls == "adj_pair": frame[slot] = rs["adj"][-1]
             elif cls == "adj_mono": ja, kind = rs["adj"][-1]; frame[slot] = ja + ("な" if kind == "na" and not ja.endswith("な") else "") + "もの"
+            elif cls == "adj_caus": ja, kind = rs["adj"][-1]; frame[slot] = ("make+" + tok, R.adj_causative(ja, kind), "i")
             elif cls == "adv": frame[slot] = rs["adv"][-1]
             elif cls == "adv_front": frame[slot] = rs["adv"][-1] + "、"
             elif cls == "time": frame[slot] = rs["time"][-1]
@@ -751,7 +753,7 @@ class Index:
     def __contains__(self, name): return name in self.pos
     def __getitem__(self, name): return self.pos[name]
 
-COPY_SOURCES = ("noun", "ncls", "pron", "pron_poss", "det", "num", "num_time", "adj", "adj_pair", "adj_mono", "adv", "adv_front", "time", "wh", "modal", "verb", "nnum", "loc")
+COPY_SOURCES = ("noun", "ncls", "pron", "pron_poss", "det", "num", "num_time", "adj", "adj_pair", "adj_mono", "adj_caus", "adv", "adv_front", "time", "wh", "modal", "verb", "nnum", "loc")
 
 def source_values(tok):
     """the copy-source readings of a token, as (source, value) pairs — what the lexical layer emits for window slot 0"""
@@ -764,6 +766,7 @@ def source_values(tok):
         elif c == "adj":
             out.append(("adj", v[0] + ("な" if v[1] == "na" and not v[0].endswith("な") else ""))); out.append(("adj_pair", v))
             out.append(("adj_mono", v[0] + ("な" if v[1] == "na" and not v[0].endswith("な") else "") + "もの"))
+            out.append(("adj_caus", ("make+" + tok, R.adj_causative(v[0], v[1]), "i")))
         elif c == "adv": out.append(("adv", v)); out.append(("adv_front", v + "、"))
         elif c == "loc": out.append(("loc", v))
         elif c == "time": out.append(("time", v))
@@ -775,7 +778,7 @@ def source_values(tok):
     last = {}; first = {}
     for s, v in out:
         last[s] = v; first.setdefault(s, v)
-    pick = {s: (last[s] if s in ("noun", "ncls", "adj", "adj_pair", "adj_mono", "adv", "adv_front", "loc", "time", "wh") else first[s]) for s in last}
+    pick = {s: (last[s] if s in ("noun", "ncls", "adj", "adj_pair", "adj_mono", "adj_caus", "adv", "adv_front", "loc", "time", "wh") else first[s]) for s in last}
     return pick
 
 def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None):

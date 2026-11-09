@@ -438,6 +438,18 @@
    "verdict": "right",
    "output": "あなたはそんなことを言うべきではない。",
    "reason": "'ought not to say such a thing' as そんなことを言うべきではない: correct."
+  },
+  {
+   "citation": "dev 444: the train was about to leave .",
+   "verdict": "right",
+   "output": "電車は出るところだった。",
+   "reason": "'was about to leave' as 出るところだった: correct (発車する would be the usual verb for a train)."
+  },
+  {
+   "citation": "dev 157: i will make you happy .",
+   "verdict": "right",
+   "output": "私はあなたを嬉しくさせる。",
+   "reason": "'make you happy' as あなたを嬉しくさせる: acceptable (幸せにする is the idiom)."
   }
  ]
 }

@@ -28,7 +28,7 @@ def derived(role):
                     [["w0.class=pron", f"w0.prole={r}", f"w1.class={c}"] for r in ("s", "so") for c in VERBAL]
     D["d.relok"] = [["reg.verb"], ["reg.cop_kind"]] + ([["reg.subj"]] if role != "subj" else [])
     D["d.end1"] = [["w1.class=END"], ["w1.class=end"], ["w1.class=prep"], ["w1.surf=,"]]
-    D["d.nominal1"] = [["w1.class=noun"], ["w1.class=adj"], ["w1.class=num"], ["w1.class=adv", "w2.class=adj"]]
+    D["d.nominal1"] = [["w1.class=noun"], ["w1.class=adj", "w2.class=noun"], ["w1.class=adj", "w2.class=adj"], ["w1.class=num"], ["w1.class=adv", "w2.class=adj", "w3.class=noun"]]
     D["d.startsnp1"] = [["w1.class=pron"], ["w1.class=det"], ["w1.class=noun"], ["w1.class=num"], ["w1.class=adj", "¬w1.class=verb", "¬w1.class=adv", "w2.class=noun", "¬w2.class=verb"]]
     no_closed = [f"¬w0.class={c}" for c in CLOSED]
     D["d.compound0"] = [["w0.class=noun", "¬w0.class=verb"] + no_closed] + [["w0.class=noun", "w0.class=verb", f"w1.class={c}"] + no_closed for c in ("aux_be", "aux_do", "aux_have", "modal")]

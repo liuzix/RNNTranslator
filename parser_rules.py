@@ -70,6 +70,7 @@ class Parser:
         self.phase = "PRE"
         self.np = None             # NP under construction: dict(det, poss, adj, num, noun, cls)
         self.np_role = None
+        self.obj_cls = "t"; self.obj_reflexive = False    # the class of the last object noun phrase and whether it was a reflexive pronoun
         self.choices = list(choices); self.forks = []     # (position, name) of every fork met, in order
 
     @property
@@ -110,7 +111,8 @@ class Parser:
         self.np_number = None
         tok = self.peek(); r = dict(self.readings(tok))
         nxt = dict(self.readings(self.peek(1))) if self.peek(1) else {}
-        next_is_nominal = "noun" in nxt or "adj" in nxt or "num" in nxt or ("adv" in nxt and self.peek(2) and "adj" in dict(self.readings(self.peek(2))))
+        nxt2 = dict(self.readings(self.peek(2))) if self.peek(2) else {}
+        next_is_nominal = "noun" in nxt or "num" in nxt or ("adj" in nxt and ("noun" in nxt2 or "adj" in nxt2)) or ("adv" in nxt and "adj" in nxt2 and self.peek(3) and self.has(self.peek(3), "noun"))   # her sad face, her very old car; not "made her sad"
         det = poss = num = adjs = ""
         if tok == "a lot" and self.peek(1) == "of": det = "たくさんの"; self.i += 2
         elif tok == "a" and self.peek(1) == "lot" and self.peek(2) == "of": det = "たくさんの"; self.i += 3
@@ -503,6 +505,9 @@ class Parser:
         if tok == "to" and self.peek(1) and self.verb_form(self.peek(1)) == "base":        # he is to arrive tomorrow
             self.i += 1; c.want = "be_to"
             return self.verb_phrase(expect_base=True, from_copula=True)
+        if tok == "about" and self.peek(1) == "to" and self.peek(2) and self.verb_form(self.peek(2)) == "base":   # i 'm about to tell you -> 話すところだ (suite G)
+            self.i += 2; c.want = "about_to"
+            return self.verb_phrase(expect_base=True, from_copula=True)
         if tok == "as" and self.peek(1) and self.has(self.peek(1), "adj") and self.peek(2) == "as" and self.peek(3) and self.starts_np(self.peek(3)):
             adj = dict(self.readings(self.peek(1)))["adj"]; self.i += 3
             ja, cls = self.parse_np(); c.compare = ("as", ja); c.copula = ("adj", adj); self.tail_pp_adv(); return
@@ -692,7 +697,10 @@ class Parser:
         if c.verb[0] in VC["ing_comp"] and self.peek() and self.verb_form(self.peek()) == "ing" and not self.starts_np(self.peek()):   # give up going abroad -> 行くことを諦めた (suite D); give up smoking keeps the noun 喫煙
             c.want = c.verb[0]
             return self.verb_phrase(expect_ing=True)
-        if lemma in VC["that_comp"] and (self.peek() == "that" or (self.peek() and self.starts_np(self.peek()) and lemma not in VC["that_only"] and self.peek(1) and (self.has(self.peek(1), "verb") or self.has(self.peek(1), "aux_be") or self.has(self.peek(1), "aux_do") or self.has(self.peek(1), "modal") or self.has(self.peek(1), "aux_have")))):
+        bare_clause = (self.peek() and self.starts_np(self.peek()) and lemma not in VC["that_only"] and not (self.has(self.peek(), "pron") and PRONOUNS[self.peek()][1] in ("o", "r", "op"))
+                       and not (lemma in VC["perception"] and self.peek(1) and self.verb_form(self.peek(1)) == "ing")
+                       and self.peek(1) and (self.has(self.peek(1), "verb") and not self.has(self.peek(1), "noun") or self.has(self.peek(1), "aux_be") or self.has(self.peek(1), "aux_do") or self.has(self.peek(1), "modal") or self.has(self.peek(1), "aux_have")))
+        if lemma in VC["that_comp"] and (self.peek() == "that" or bare_clause):               # a that-less clause: its subject is not an object pronoun (heard him sing) and its verb is not also a noun (heard a sound)
             if self.peek() == "that": self.i += 1
             inner = Clause(); c.embedded = inner
             self.c = inner
@@ -868,7 +876,7 @@ class Parser:
             ja, cls = self.parse_np()
             if c.verb and c.verb[0] in VC["ditrans"] and self.object_starts(self.peek()):   # show me her room: the first noun phrase is the indirect object, pinned by suite B
                 c.iobj = ja; ja, cls = self.parse_np()
-            c.obj = ja
+            c.obj = ja; self.obj_cls = cls; self.obj_reflexive = tok in PRONOUNS and PRONOUNS[tok][1] == "r"
             head = self.last_head
             lemma0 = c.verb[0] if c.verb else None
             if c.verb and c.verb[0] in VC["causative"] and self.peek() and self.verb_form(self.peek()) == "base" and (not self.has(self.peek(), "noun") or self.peek(1) and (self.starts_np(self.peek(1)) or self.has(self.peek(1), "prep") or self.has(self.peek(1), "adv"))):   # made me write
@@ -1000,6 +1008,8 @@ class Parser:
             if "adv" in r: c.adv += r["adv"]; self.i += 1; continue
             if "adj" in r and c.verb and c.verb[0] in VC["copular"]:
                 c.copula = ("adj", r["adj"]); self.i += 1; continue
+            if "adj" in r and c.verb and c.verb[0] == "make" and c.obj and not self.starts_np(tok) and r["adj"][1] in ("a", "na") and self.obj_cls in ("h", "a") and not self.obj_reflexive:   # made her (very) sad -> 悲しくさせた: a person made to feel so (suite G)
+                c.verb = ("make+" + tok, adj_causative(*r["adj"]), "i"); self.i += 1; continue
             if tok == "," : self.i += 1; continue
             self.fail("tail")
 

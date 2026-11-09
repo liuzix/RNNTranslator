@@ -429,6 +429,10 @@ def adj_pred(ja, k):
     return Pred("na", ja)
 
 VC = tables.build_verb_classes()            # tables/verb_classes.tbl: class name -> set of verbs
+def adj_causative(ja, kind):
+    """make NP ADJ -> the adjective as a causative verb: 悲しい -> 悲しくさせる, 幸せ -> 幸せにさせる (ichidan)"""
+    if kind == "a": return ja[:-1] + "くさせる"
+    return (ja[:-1] if ja.endswith("な") else ja) + "にさせる"
 def lemma_of(verb):
     """the English lemma a verb value is classified by: the light verb before the use-verb feedback (put down+address -> put down)"""
     return verb[0].split("+")[0]
