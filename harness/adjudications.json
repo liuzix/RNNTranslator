@@ -300,6 +300,48 @@
    "verdict": "wrong",
    "output": "あまりにたくさん食べないでください。",
    "reason": "'eat too much' is 食べすぎる; あまりにたくさん食べない is understood but not how the excess is said."
+  },
+  {
+   "citation": "dev 195: how many boys are there in this class ?",
+   "verdict": "wrong",
+   "output": "この授業に少年たちはいくついますか。",
+   "reason": "People are counted with 何人, not いくつ; 少年たち for 'boys' under a count is wrong; and 'class' here is the group (クラス), not the lesson."
+  },
+  {
+   "citation": "dev 195: how many boys are there in this class ?",
+   "verdict": "wrong",
+   "output": "このクラスに少年たちはいくついますか。",
+   "reason": "クラス is right now, but people are counted with 何人 (何人の男の子がいますか), not いくつ with 少年たち."
+  },
+  {
+   "citation": "dev 273: he wanted to absent himself from the class .",
+   "verdict": "wrong",
+   "output": "彼は授業から自分を欠席したかった。",
+   "reason": "'absent oneself from the class' is 授業を休む; 授業から自分を欠席する is a literal rendering with a wrong valency."
+  },
+  {
+   "citation": "dev 273: he wanted to absent himself from the class .",
+   "verdict": "wrong",
+   "output": "彼はクラスから自分を欠席したかった。",
+   "reason": "Still the literal 自分を欠席する; 'absent oneself from the class' is 授業を休む (here the lesson, the one reading of 'class' the lexicon no longer has)."
+  },
+  {
+   "citation": "test 132: jane is no less beautiful than her mother .",
+   "verdict": "right",
+   "output": "ジェーンは彼女の母に劣らず美しい。",
+   "reason": "'no less beautiful than her mother' as 母に劣らず美しい: correct."
+  },
+  {
+   "citation": "test 251: he fell behind in his english class .",
+   "verdict": "right",
+   "output": "彼は彼の英語の授業で遅れた。",
+   "reason": "'fell behind in his English class' as 英語の授業で遅れた: acceptable (the reference's 遅れをとった is the idiom)."
+  },
+  {
+   "citation": "test 251: he fell behind in his english class .",
+   "verdict": "right",
+   "output": "彼は彼の英語のクラスで遅れた。",
+   "reason": "英語のクラス for 'English class' is also current; acceptable."
   }
  ]
 }

@@ -484,7 +484,7 @@ def generate(c, polite=None, embedded=False):
             out.append(c.copula[2] + c.copula[1][1])
         if c.compare is not None:
             kind_c, np_c = c.compare
-            out.append(np_c + ("より" if kind_c == "than" else ("ほど" if c.neg else "と同じくらい")))
+            out.append(np_c + ("より" if kind_c == "than" else "に劣らず" if kind_c == "noless" else ("ほど" if c.neg else "と同じくらい")))
         if c.manner is not None:
             inner = c.manner
             body = generate(inner, polite=False, embedded=True)[:-1]

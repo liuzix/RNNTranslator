@@ -47,7 +47,8 @@ class Clause:
         self.purpose = None; self.purpose_clause = None; self.control = None; self.relative = False
         self.obj_particle = None; self.infinitive = None; self.pre_clause = ""; self.howabout = None; self.exclaim = None; self.wh_cls = "t"
         self.embedded = None       # another Clause (that-clause / infinitive complement)
-        self.compare = None        # ("as"|"than", np) degree construction
+        self.compare = None        # ("as"|"than"|"noless", np) degree construction
+        self.noless = False        # "no less ADJ than": the comparison reads に劣らず
         self.manner = None         # V-ing clause: stood looking at ... -> 〜ながら
         self.tag = False           # tag question: ..., isn't it ?
         self.sub = False           # a subordinate clause being parsed: stop at a comma or a conjunction
@@ -485,6 +486,10 @@ class Parser:
         while "time" in r and "adv" not in r: c.time += r["time"]; self.i += 1; tok = self.peek(); r = dict(self.readings(tok))
         while "adv" in r and (r["adv"] in ("とても", "本当に", "かなり", "も", "まだ", "もう", "いつも") or self.peek(1) and (self.has(self.peek(1), "adj") or self.starts_np(self.peek(1)) and "adj" not in r) and not self.has(self.peek(1), "noun")):
             c.degree = "すぎ" if tok == "too" else c.degree + r["adv"]; self.i += 1; tok = self.peek(); r = dict(self.readings(tok))
+        if tok == "the" and self.peek(1) and self.has(self.peek(1), "adj") and not (self.peek(2) and (self.has(self.peek(2), "noun") or self.has(self.peek(2), "adj"))):   # she is the happiest: a superlative without its noun (suite E)
+            self.i += 1; tok = self.peek(); r = dict(self.readings(tok))
+        if tok == "no" and self.peek(1) == "less" and self.peek(2) and self.has(self.peek(2), "adj") and self.peek(3) == "than":         # no less kind than NP -> NPに劣らず優しい (suite E)
+            c.noless = True; self.i += 2; tok = self.peek(); r = dict(self.readings(tok))      # the adjective and the than-phrase follow as usual
         if tok == "going" and self.peek(1) == "to" and self.peek(2) and self.has(self.peek(2), "verb"):
             self.i += 2; c.want = "intend"
             return self.verb_phrase(expect_base=True, from_copula=True)
@@ -527,7 +532,7 @@ class Parser:
                 self.i += 1
                 if self.has(self.peek(), "time"): ja = dict(self.readings(self.peek()))["time"]; self.i += 1
                 else: ja, cls = self.parse_np()
-                c.compare = ("than", ja); self.tail_pp_adv(); return
+                c.compare = ("noless" if c.noless else "than", ja); self.tail_pp_adv(); return
             if self.peek() == "enough" and self.peek(1) == "to" and self.peek(2) and self.has(self.peek(2), "verb"):
                 self.i += 2; inner = Clause(); saved = self.c; self.c = inner
                 self.verb_phrase(expect_base=True, from_copula=True); self.c = saved

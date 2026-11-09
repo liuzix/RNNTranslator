@@ -24,7 +24,7 @@ from parser_rules import Parser, Clause, ParseFail, Overflow, parse_bounded
 WINDOW = 4
 NP_ROLES = ("subj", "obj", "iobj", "pp1", "pp2", "pp3", "cop", "cmp")        # cmp: the noun phrase of a than / as comparison
 NP_SUB = ("det", "poss", "num", "adj1", "adj2", "noun", "cls")
-FLAGS = ("past", "neg", "prog", "perf", "question", "imp", "please", "lets", "there", "tag", "coord", "sub", "neg_inner")
+FLAGS = ("past", "neg", "prog", "perf", "question", "imp", "please", "lets", "there", "tag", "coord", "sub", "neg_inner", "noless")
 ENUMS = ("modal", "want", "degree", "obj_particle", "wh", "time", "adv1", "adv2", "front", "cop_kind", "cop_adj", "cop_adv", "cop_part",
          "pp1_part", "pp2_part", "pp3_part", "cmp_kind", "verb", "purpose", "causative")
 UNSUPPORTED_REGS = ("infinitive", "control", "embedded", "purpose_clause", "pre_clause", "manner", "so_that", "howabout",

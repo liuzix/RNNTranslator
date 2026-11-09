@@ -1,40 +1,40 @@
 {
 "detail": {
 "matrix": {
-"both_refuse": 276,
+"both_refuse": 273,
 "cell": {
 "build_seconds": 22,
-"input_units": 1688,
+"input_units": 1690,
 "layers": [
-964,
+969,
 119,
-2096,
-755,
-28305
+2102,
+759,
+28344
 ],
-"nnz": 207563,
-"rules": 1915,
+"nnz": 207859,
+"rules": 1920,
 "rules_by_kind": {
 "entry": 132,
-"exit": 177,
-"fail": 225,
+"exit": 178,
+"fail": 228,
 "module": 957,
-"outer": 424
+"outer": 425
 },
 "scope": {
-"in scope": 551,
+"in scope": 554,
 "out of scope": 158,
-"refused": 286
+"refused": 283
 },
-"state_units": 14507,
+"state_units": 14529,
 "unresolved": {}
 },
-"identical": 517,
+"identical": 520,
 "matrix_parses_refused": 0,
 "per_split": {
 "dev": {
-"bleu_matrix_shared": 34.266,
-"bleu_rules_shared": 34.29,
+"bleu_matrix_shared": 34.315,
+"bleu_rules_shared": 34.339,
 "both_refuse": 183,
 "examples": {
 "wrong_frame": [
@@ -48,23 +48,23 @@
 "wrong_frame": 1
 },
 "test": {
-"bleu_matrix_shared": 36.533,
-"bleu_rules_shared": 36.585,
-"both_refuse": 93,
+"bleu_matrix_shared": 36.387,
+"bleu_rules_shared": 36.438,
+"both_refuse": 90,
 "examples": {
 "wrong_frame": [
 "how many schools are there in your city ? | あなたの都市に学校はいくつありますか。 | あなたの都市に学校はいくついますか。"
 ]
 },
-"identical": 277,
+"identical": 280,
 "matrix_parses_refused": 0,
 "refused_parseable": 128,
-"shared": 278,
+"shared": 281,
 "wrong_frame": 1
 }
 },
 "refused_parseable": 200,
-"summary": "identical 517, wrong frame 2, matrix parses refused 0, refused parseable 200, both refuse 276; nnz 207563, rules 1915",
+"summary": "identical 520, wrong frame 2, matrix parses refused 0, refused parseable 200, both refuse 273; nnz 207859, rules 1920",
 "wrong_frame": 2
 },
 "negatives": {
@@ -89,8 +89,8 @@
 },
 "rules": {
 "dev": {
-"bleu_all": 19.311,
-"bleu_covered": 34.603,
+"bleu_all": 19.344,
+"bleu_covered": 34.638,
 "coverage": 0.631,
 "covered": 313,
 "failures": {
@@ -110,10 +110,10 @@
 "n": 496
 },
 "test": {
-"bleu_all": 29.579,
-"bleu_covered": 36.105,
-"coverage": 0.8136,
-"covered": 406,
+"bleu_all": 29.778,
+"bleu_covered": 36.019,
+"coverage": 0.8196,
+"covered": 409,
 "failures": {
 "PRE: imperative adjective": 1,
 "PRE: noun phrase": 28,
@@ -122,7 +122,7 @@
 "PRE: verb": 1,
 "PRE: wh question": 3,
 "VP0: copula predicate": 4,
-"VP0: noun phrase": 22,
+"VP0: noun phrase": 19,
 "VP0: possessive pronoun without noun": 1,
 "VP0: predicate": 3,
 "VP0: tail": 20,
@@ -161,8 +161,8 @@
 "E": {
 "cases": 3,
 "closed": false,
-"refused": 2,
-"right": 0,
+"refused": 0,
+"right": 2,
 "title": "Degree and superlative",
 "wrong": 1
 },
@@ -225,24 +225,24 @@
 },
 "closed": 2,
 "open": 9,
-"right": 7,
-"summary": "suites: 7/33 cases right, 2 of 11 classes closed (open: D, E, F, G, H, I, K, L, M)"
+"right": 9,
+"summary": "suites: 9/33 cases right, 2 of 11 classes closed (open: D, E, F, G, H, I, K, L, M)"
 }
 },
 "metrics": {
-"matrix.identical": 517,
+"matrix.identical": 520,
 "matrix.silent_misfires": 2,
 "negatives.accepted": 0,
 "negatives.controls_refused": 0,
 "negatives.matrix_accepted": 0,
 "np.mismatches": 0,
-"rules.dev.bleu_all": 19.311,
+"rules.dev.bleu_all": 19.344,
 "rules.dev.covered": 313,
-"rules.test.bleu_all": 29.579,
-"rules.test.covered": 406,
+"rules.test.bleu_all": 29.778,
+"rules.test.covered": 409,
 "suites.cases": 33,
 "suites.closed": 2,
-"suites.right": 7
+"suites.right": 9
 },
 "outputs": {
 "matrix": {
@@ -350,7 +350,7 @@
 "192: time have been bad these few years .": "",
 "193: i 'll never do this again .": "私はこれを決してまたする。",
 "194: he will be playing tennis tomorrow afternoon .": "",
-"195: how many boys are there in this class ?": "この授業に少年たちはいくついますか。",
+"195: how many boys are there in this class ?": "このクラスに少年たちはいくついますか。",
 "196: while i was walking down the street , i happened to see a traffic accident .": "",
 "197: i think your work is all right .": "",
 "198: i intended to have been a teacher .": "",
@@ -437,7 +437,7 @@
 "270: let him do as he likes .": "",
 "271: mother has not cooked dinner yet .": "母は夕食をまだ料理していなかった。",
 "272: i 'll make a model plane for you .": "私はあなたのために模型の飛行機を作る。",
-"273: he wanted to absent himself from the class .": "彼は授業から自分を欠席したかった。",
+"273: he wanted to absent himself from the class .": "彼はクラスから自分を欠席したかった。",
 "274: his house is across the street .": "彼の家は通りを渡ってある。",
 "275: it 's a pity that he should be ill in bed .": "",
 "276: i slept well last night .": "昨夜私は上手に眠った。",
@@ -780,7 +780,7 @@
 "12: it 's business .": "それは仕事だ。",
 "130: i 'm not tired at all .": "私は全く疲れていない。",
 "131: it makes no difference who i meet .": "",
-"132: jane is no less beautiful than her mother .": "",
+"132: jane is no less beautiful than her mother .": "ジェーンは彼女の母に劣らず美しい。",
 "133: what on earth is the matter ?": "",
 "134: i 'd like to go skiing with her .": "私は彼女とスキーに行きたかった。",
 "135: the mystery story is so hard that i don 't like it .": "",
@@ -912,7 +912,7 @@
 "249: he stopped smoking .": "彼は吸うのをやめた。",
 "24: he called out for help .": "彼は助けを大声で求めた。",
 "250: he engaged to pay the bill as soon as possible .": "",
-"251: he fell behind in his english class .": "彼は彼の英語の授業で遅れた。",
+"251: he fell behind in his english class .": "彼は彼の英語のクラスで遅れた。",
 "252: he came back to japan for the first time in eight years .": "彼は日本に最初の時間のために８年間で戻った。",
 "253: there is a beautiful walk along the river .": "川に沿って美しい散歩がある。",
 "254: let me buy you a drink .": "あなたに飲み物を買わせてください。",
@@ -1076,7 +1076,7 @@
 "398: i have no homework today .": "今日私は宿題を持っていない。",
 "399: this old coat has had it .": "この古いコートはそれを持った。",
 "39: tell me which you want .": "",
-"3: he is no less kind than his sister .": "",
+"3: he is no less kind than his sister .": "彼は彼の姉に劣らず優しい。",
 "400: there is little water in the bucket .": "バケツに小さい水がある。",
 "401: when he got into trouble , he turned to his parents for help .": "",
 "402: the sun went behind the clouds .": "太陽は雲の後ろに行った。",
@@ -1208,7 +1208,7 @@
 "65: you are the only one .": "",
 "66: i stick to the point .": "私は点に固執する。",
 "67: i 'll be here by monday .": "私は月曜日のそばにここにいる。",
-"68: she is the happiest in her class .": "",
+"68: she is the happiest in her class .": "彼女は彼女のクラスで一番幸せだ。",
 "69: how beautiful the rising sun is !": "",
 "6: she lives next door to us .": "彼女は私たちに次のドアを住んでいる。",
 "70: nothing is so precious as time .": "何も時間としてとても貴重ではない。",
@@ -1605,7 +1605,6 @@
 "10: will you give me your reasons for doing this ?": "PRE: tail",
 "124: i was astonished to hear what had happened .": "VP0: tail",
 "131: it makes no difference who i meet .": "VP0: tail",
-"132: jane is no less beautiful than her mother .": "VP0: noun phrase",
 "133: what on earth is the matter ?": "PRE: wh question",
 "137: here is a letter for you .": "PRE: noun phrase",
 "138: the meaning of the words is intelligible .": "PRE: noun phrase",
@@ -1661,7 +1660,6 @@
 "369: this is the worst of all .": "VP0: noun phrase",
 "374: she closed all the windows in the room .": "VP0: noun phrase",
 "384: if a thing is worth doing it is worth doing badly .": "VP0: tail",
-"3: he is no less kind than his sister .": "VP0: noun phrase",
 "408: don 't bother coming in this rain .": "PRE: tail",
 "413: i think it 's worth a try .": "VP0: tail",
 "415: always keep this dictionary handy .": "PRE: noun phrase",
@@ -1685,7 +1683,6 @@
 "498: what good books these are .": "PRE: wh question",
 "499: for all his efforts , he didn 't succeed .": "PRE: noun phrase",
 "65: you are the only one .": "VP0: noun phrase",
-"68: she is the happiest in her class .": "VP0: noun phrase",
 "69: how beautiful the rising sun is !": "PRE: noun phrase",
 "7: i 'm about to tell you the answer .": "VP0: noun phrase",
 "84: he is what we call the man of the hour .": "VP0: copula predicate",
@@ -1797,7 +1794,7 @@
 "192: time have been bad these few years .": "",
 "193: i 'll never do this again .": "私はこれを決してまたする。",
 "194: he will be playing tennis tomorrow afternoon .": "",
-"195: how many boys are there in this class ?": "この授業に少年たちはいくついますか。",
+"195: how many boys are there in this class ?": "このクラスに少年たちはいくついますか。",
 "196: while i was walking down the street , i happened to see a traffic accident .": "",
 "197: i think your work is all right .": "",
 "198: i intended to have been a teacher .": "",
@@ -1884,7 +1881,7 @@
 "270: let him do as he likes .": "",
 "271: mother has not cooked dinner yet .": "母は夕食をまだ料理していなかった。",
 "272: i 'll make a model plane for you .": "私はあなたのために模型の飛行機を作る。",
-"273: he wanted to absent himself from the class .": "彼は授業から自分を欠席したかった。",
+"273: he wanted to absent himself from the class .": "彼はクラスから自分を欠席したかった。",
 "274: his house is across the street .": "彼の家は通りを渡ってある。",
 "275: it 's a pity that he should be ill in bed .": "彼がベッドで病気なのは残念だ。",
 "276: i slept well last night .": "昨夜私は上手に眠った。",
@@ -2227,7 +2224,7 @@
 "12: it 's business .": "それは仕事だ。",
 "130: i 'm not tired at all .": "私は全く疲れていない。",
 "131: it makes no difference who i meet .": "",
-"132: jane is no less beautiful than her mother .": "",
+"132: jane is no less beautiful than her mother .": "ジェーンは彼女の母に劣らず美しい。",
 "133: what on earth is the matter ?": "",
 "134: i 'd like to go skiing with her .": "私は彼女とスキーに行きたかった。",
 "135: the mystery story is so hard that i don 't like it .": "推理小説はとても難しいので私はそれが好きではない。",
@@ -2359,7 +2356,7 @@
 "249: he stopped smoking .": "彼は吸うのをやめた。",
 "24: he called out for help .": "彼は助けを大声で求めた。",
 "250: he engaged to pay the bill as soon as possible .": "彼は請求書をできるだけ早く払うために約束した。",
-"251: he fell behind in his english class .": "彼は彼の英語の授業で遅れた。",
+"251: he fell behind in his english class .": "彼は彼の英語のクラスで遅れた。",
 "252: he came back to japan for the first time in eight years .": "彼は日本に最初の時間のために８年間で戻った。",
 "253: there is a beautiful walk along the river .": "川に沿って美しい散歩がある。",
 "254: let me buy you a drink .": "あなたに飲み物を買わせてください。",
@@ -2523,7 +2520,7 @@
 "398: i have no homework today .": "今日私は宿題を持っていない。",
 "399: this old coat has had it .": "この古いコートはそれを持った。",
 "39: tell me which you want .": "私にあなたがどれを欲しがるか話してください。",
-"3: he is no less kind than his sister .": "",
+"3: he is no less kind than his sister .": "彼は彼の姉に劣らず優しい。",
 "400: there is little water in the bucket .": "バケツに小さい水がある。",
 "401: when he got into trouble , he turned to his parents for help .": "彼が困ったことに得たとき彼は助けのために両親に頼った。",
 "402: the sun went behind the clouds .": "太陽は雲の後ろに行った。",
@@ -2655,7 +2652,7 @@
 "65: you are the only one .": "",
 "66: i stick to the point .": "私は点に固執する。",
 "67: i 'll be here by monday .": "私は月曜日のそばにここにいる。",
-"68: she is the happiest in her class .": "",
+"68: she is the happiest in her class .": "彼女は彼女のクラスで一番幸せだ。",
 "69: how beautiful the rising sun is !": "",
 "6: she lives next door to us .": "彼女は私たちに次のドアを住んでいる。",
 "70: nothing is so precious as time .": "何も時間としてとても貴重ではない。",
@@ -2779,18 +2776,18 @@
 "citation": "test 68",
 "class": "E",
 "expect": "彼女は彼女のクラスで一番幸せだ。",
-"level": "REFUSED",
-"output": "",
-"reason": "VP0: noun phrase",
+"level": "RIGHT",
+"output": "彼女は彼女のクラスで一番幸せだ。",
+"reason": null,
 "sentence": "she is the happiest in her class ."
 },
 {
 "citation": "test 3",
 "class": "E",
 "expect": "彼は彼の姉に劣らず優しい。",
-"level": "REFUSED",
-"output": "",
-"reason": "VP0: noun phrase",
+"level": "RIGHT",
+"output": "彼は彼の姉に劣らず優しい。",
+"reason": null,
 "sentence": "he is no less kind than his sister ."
 },
 {
@@ -2993,5 +2990,5 @@
 }
 ]
 },
-"taken": "2026-11-08 at c9df8a9 (staged)"
+"taken": "2026-11-08 at 0b1796a (staged)"
 }
