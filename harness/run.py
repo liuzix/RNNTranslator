@@ -304,13 +304,15 @@ def main():
     p = sub.add_parser("frontier", help="the items of the committed baseline not at the top of their chain, by blocker")
     p.add_argument("--list", action="store_true", help="list the items of every group"); p.add_argument("--group", help="list the items of the groups whose name contains this")
     sub.add_parser("readme", help="render README.md from docs/README.tmpl.md with the current facts")
-    sub.add_parser("render-diagram", help="render docs/*.puml with the pinned PlantUML jar (needs Java)")
+    sub.add_parser("render-diagram", help="render docs/*.puml with the pinned PlantUML jar (needs Java) and draw docs/cell_neurons.svg")
     a = ap.parse_args()
     if a.cmd == "fetch-corpus": fetch_corpus(a.src)
     elif a.cmd == "install-hooks": install_hooks()
     elif a.cmd == "frontier": show_frontier(a.list, a.group)
     elif a.cmd == "readme": subprocess.run([venv_python()[0], os.path.join(ROOT, "harness", "check_readme.py"), "--write"], check=True)
-    elif a.cmd == "render-diagram": subprocess.run([venv_python()[0], os.path.join(ROOT, "harness", "render_diagram.py")], check=True)
+    elif a.cmd == "render-diagram":
+        subprocess.run([venv_python()[0], os.path.join(ROOT, "harness", "render_diagram.py")], check=True)
+        subprocess.run([venv_python()[0], os.path.join(ROOT, "harness", "render_neurons.py")], check=True)
     else:
         results, src_root, tmp = run_all(a.staged, a.full, a.force, skip_baseline=(a.cmd == "baseline"), keep_tree=True)
         try:
