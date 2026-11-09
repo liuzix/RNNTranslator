@@ -273,7 +273,7 @@ def test_frontier_command(root):
 
 def test_dependencies_hash_pinned(root):
     text = open(os.path.join(root, "uv.lock"), encoding="utf-8").read()
-    pkgs = [b for b in text.split("[[package]]")[1:] if "source = { registry" in b]
+    pkgs = [b for b in text.split("[[package]]")[1:] if re.search(r"^source = \{ registry", b, re.M)]   # the block's own source line, not a dependency's
     assert pkgs, "no registry packages in uv.lock"
     for b in pkgs:
         assert re.search(r'hash = "sha256:[0-9a-f]{64}"', b), "a package without a sha256: " + b[:80]
