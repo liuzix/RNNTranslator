@@ -47,6 +47,7 @@ The compiled cell is a recurrent network: the state is a register file of one-ho
 │   ├── eval_np.py                    action: np_module against parse_np over all windows
 │   ├── eval_rules.py                 action: coverage and char-BLEU of the transducer
 │   ├── eval_suites.py                action: the acceptance suites, each case against its expectation
+│   ├── eval_torch.py                 action (not yet in the hook): the scipy and torch runners stepped side by side
 │   ├── facts.py                      the facts the README may cite
 │   ├── lattice.py                    the item order: chains, levels, comparison, frontier
 │   ├── negatives.json                the ungrammatical sentences, their controls, phenomena and sources
@@ -76,6 +77,7 @@ The compiled cell is a recurrent network: the state is a register file of one-ho
 ├── .ignore                           keeps search tools out of archive/
 ├── .python-version
 ├── CLAUDE.md                         the rules for working here: read first, pin every claim, keep everything reproducible
+├── cell_torch.py                     the compiled cell as a PyTorch module of sparse fixed buffers
 ├── LICENSE
 ├── README.md                         rendered from docs/README.tmpl.md — do not edit by hand
 ├── np_module.py                      parse_np translated by hand: derived predicates + rules, complete guards
