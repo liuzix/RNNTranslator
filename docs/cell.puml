@@ -1,0 +1,74 @@
+@startuml cell
+' The compiled cell as a recurrent network: a one-hot register file for the state, five ReLU layers per step, a 0/1
+' readout into the next state, and the recurrence; below it, one slot write drawn as the circuit the layers make of it.
+' Dashed boxes are proposed, not built.  Rendered hermetically by `harness/render_diagram.py` with the PlantUML jar
+' pinned in docs/architecture.lock.json.
+skinparam shadowing false
+skinparam defaultFontName sans-serif
+skinparam defaultFontSize 12
+skinparam ArrowColor #333333
+skinparam rectangle {
+  BorderColor #333333
+  BackgroundColor #FFFFFF
+  RoundCorner 8
+}
+left to right direction
+
+rectangle "**one slot write**: the same layers, seen from one block of s(t)" as WRITE #FFFBEA {
+  rectangle "L3  the rules that\nwrite this block" as RULE
+  rectangle "x(t)  the source\none-hot over its values" as SRC
+  rectangle "s(t)  the block\none-hot over its values" as OLD
+  rectangle "L4  block gate\nOR of those rules" as GATE
+  rectangle "L4  source gate\nOR of the rules copying\nthis source into this block" as GSRC
+  rectangle "L5  write units, one per value\nReLU(source gate + source − 1)\nthe gate fans out: a demux" as ANDU
+  rectangle "L5  keep units, one per value\nReLU(block − block gate)\nthe gate cuts the old value" as KEEP
+  rectangle "W6  next block = keep + write\n0/1 sums, one-hot again" as NEXTB
+  RULE --> GATE
+  RULE --> GSRC
+  GSRC --> ANDU
+  GATE -[#B33333]-> KEEP : −1
+  SRC --> ANDU
+  OLD --> KEEP
+  ANDU --> NEXTB
+  KEEP --> NEXTB
+}
+
+rectangle "**x(t)**  lexical input\none-hot per reading" as X #F7D9D9 {
+  rectangle "window predicates\nw0..w3: class, surface, form" as XP
+  rectangle "copy sources\nnoun · adj · verb · det · …" as XS
+}
+
+rectangle "**s(t)**  state: a register file\nof one-hot blocks" as S #D8ECD4 {
+  rectangle "ctrl\none unit per control point" as CTRL
+  rectangle "slots: the frame\nnoun-phrase roles · verb · adv\nfront · time · want · flags" as SLOTS
+  rectangle "tag slots (proposed)\nwho said · which marker" as TAGS #FFFFFF;line.dashed
+  rectangle "pend · shift" as PEND
+}
+
+rectangle "**one step**: five ReLU layers, weights ±1, integer thresholds" as STEP {
+  rectangle "L1  predicates\nOR over a block\nAND conjunctions" as L1
+  rectangle "L2  NOT\ncounts · USE pairs" as L2
+  rectangle "L3  rules\nAND(ctrl, literals)\nexactly one fires" as L3
+  rectangle "L4  next ctrl · gates\nwrite enable per\n(block, source)" as L4
+  rectangle "L5  keep · write\nmove · crash" as L5
+}
+
+rectangle "**s(t+1)**" as SN #FDE7C8
+rectangle "**y(t)**  output layer (proposed)\na frame leaves when its clause ends\nand its slots are cleared" as Y #FFFFFF;line.dashed
+rectangle "**semantic layer**\ngenerate(): frame → Japanese" as GEN #EEEEEE
+
+X --> L1
+S --> L1
+L1 --> L2
+L2 --> L3
+L3 --> L4
+L4 --> L5
+L5 --> SN : W6
+SN --> S : one step per word
+SN --> GEN : at DONE
+SN .[#777777].> Y
+Y .[#777777].> GEN
+
+' the inset's columns line up with the layers they zoom into
+L2 -[hidden]-> RULE
+@enduml

@@ -11,6 +11,12 @@
    "output": "docs/architecture.svg",
    "source_sha256": "c5769dc0c2dc53ddb07ff707b783a98a056f7657ac356ba0121b5e941963b192",
    "output_sha256": "a2a7340d406f029bb7dec3e5933ab0f37c6d79283856d2f77d69b4e10a408fd2"
+  },
+  {
+   "source": "docs/cell.puml",
+   "output": "docs/cell.svg",
+   "source_sha256": "5c439bc5ecbe63a95ccaada895f946c596f40afa21aba22c00a5c11446bfeb35",
+   "output_sha256": "6562c978f472ad71ec727648407b33a7c09ff0090280f0f53b00d55529a99faa"
   }
  ]
 }

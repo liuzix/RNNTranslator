@@ -6,7 +6,7 @@ results the README renders from harness/baseline.json.
 
     uv run python harness/test_claims.py [--root DIR]
 """
-import sys, os, re, json, ast, glob, tarfile, argparse, subprocess, tempfile, shutil
+import sys, os, re, json, ast, glob, tarfile, argparse, subprocess, tempfile, shutil, collections
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _cell = {}
@@ -36,7 +36,8 @@ def test_cell_weights_are_named_integers(root):
     import numpy as np
     for (L, W, b), (M, bias) in zip(comp["layers"], mp.mats):
         assert np.all(np.round(M.data) == M.data), "non-integer weight"
-        assert set(np.unique(M.data)) <= {-5.0, -2.0, -1.0, 1.0}, f"weights {set(np.unique(M.data))}"
+        assert set(np.unique(M.data)) <= {-5.0, -1.0, 1.0}, f"weights {set(np.unique(M.data))}"   # -5: a literal the cell cannot see silences its rule
+        assert all(float(v).is_integer() for v in b.values()), "a non-integer threshold"
         assert M.shape[0] == len(L.names), "an unnamed unit"
     assert all(isinstance(n, tuple) for n in comp["S"].names) and all(isinstance(n, tuple) for n in comp["X"].names)
 
@@ -74,6 +75,46 @@ def test_matrix_cell_shape(root):
         elif not (prev[0] == "RET" or out[0][0] == "NP0" or out[0] == PM.FAIL): kinds["outer"] += 1
     assert kinds["module"] > 0 and kinds["outer"] > 0
     assert ("shift",) in comp["S"]
+    assert {n[0] for n in comp["S"].names} == {"ctrl", "slot", "pend", "shift"}, "the state is not the four kinds of block"
+    assert all(n[0] in ("pred", "src", "prep0", "one") for n in comp["X"].names), "an input unit that is not a reading of the window"
+    assert all(w == 1.0 for _, _, w in comp["W6"]), "the readout is not 0/1 sums"
+
+def test_slot_write_circuit(root):
+    """one slot write as docs/cell.puml draws it: a block gate in L4 that is an OR of rule units; a source gate in L4; write
+    units in L5 = ReLU(source gate + source value - 1), one per value; keep units in L5 = ReLU(old value - block gate); and
+    W6 sums keep + write back into the same one-hot block of the next state"""
+    comp, mp = small_cell(root)
+    S, X = comp["S"], comp["X"]; layers = comp["layers"]
+    L3, L4, L5 = layers[2][0], layers[3][0], layers[4][0]
+    W4, b4 = layers[3][1], layers[3][2]; W5, b5 = layers[4][1], layers[4][2]
+    into4 = collections.defaultdict(list); into5 = collections.defaultdict(list)
+    for u, src, w in W4: into4[u].append((src, w))
+    for u, src, w in W5: into5[u].append((src, w))
+    # L4: every block gate and source gate is an OR of L3 rule units, weights +1, no bias
+    gates = [i for i, n in enumerate(L4.names) if n[0] in ("gate", "gcopy") and n[1] != "pend"]   # the pend gate is an AND with the window, drawn elsewhere
+    assert gates
+    for g in gates:
+        assert into4[g] and all(src[0] == "L3" and L3.names[src[1]][0] == "rule" and w == 1.0 for src, w in into4[g]) and b4.get(g, 0.0) == 0.0
+    # L5: write units = AND(source gate, source value); keep units = old value - block gate
+    writes = [(i, n) for i, n in enumerate(L5.names) if n[0] == "write" and n[1] != "pend"]
+    keeps = [(i, n) for i, n in enumerate(L5.names) if n[0] == "keep" and n[1] != "pend"]
+    assert writes and keeps
+    for i, (_, slot, s, v) in writes:
+        assert b5.get(i) == -1.0 and sorted(into5[i], key=str) == sorted([(("L4", L4[("gcopy", slot, s)]), 1.0), (("X", X[("src", s, v)]), 1.0)], key=str), f"write {slot} {s} {v}: {into5[i]}"
+    gated = 0
+    for i, (_, slot, v) in keeps:
+        ins = dict((src, w) for src, w in into5[i])
+        assert ins.pop(("S", S[("slot", slot, v)])) == 1.0 and b5.get(i, 0.0) == 0.0
+        if ("gate", slot) in L4: assert ins.pop(("L4", L4[("gate", slot)])) == -1.0; gated += 1
+        assert all(w == -1.0 and src[0] == "L4" for src, w in ins.items()), f"keep {slot} {v}: {ins}"   # the USE gates also cut what the lookup rewrites
+    assert gated > 0
+    # W6: keep and write of the same (slot, value) both add +1 into that unit of the next state, and nothing else does
+    into6 = collections.defaultdict(list)
+    for tgt, src, w in comp["W6"]: into6[tgt].append((src, w))
+    for i, (_, slot, s, v) in writes: assert (("L5", i), 1.0) in into6[S[("slot", slot, v)]]
+    for i, (_, slot, v) in keeps: assert (("L5", i), 1.0) in into6[S[("slot", slot, v)]]
+    for tgt, srcs in into6.items():
+        if S.names[tgt][0] == "slot": assert all(w == 1.0 and src[0] == "L5" and L5.names[src[1]][0] in ("keep", "write", "writec", "writem", "writeu") for src, w in srcs)
 
 def test_layers_roundtrip(root):
     toks = R.merge_multiword("a lot of people came .".split())
