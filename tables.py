@@ -111,11 +111,11 @@ def build_pairs(name, ncols=2):
     return out
 
 def build_connectives():
-    subord, coord, hearsay = {}, {}, {}
+    subord, coord, hearsay, softener = {}, {}, {}, {}
     for f, n in rows("connectives"):
         kind, en, ja = f[:3]
-        {"subord": subord, "coord": coord, "hearsay": hearsay}[kind][en] = ja
-    return subord, coord, hearsay
+        {"subord": subord, "coord": coord, "hearsay": hearsay, "softener": softener}[kind][en] = ja
+    return subord, coord, hearsay, softener
 
 def build_godan():
     return {f[0]: tuple(f[1:6]) for f, n in rows("godan")}

@@ -38,7 +38,7 @@ class Clause:
         self.obj = None; self.obj_poss = ""; self.obj_adj = ""; self.obj_det = ""
         self.iobj = None
         self.pp = []               # list of (prep_entry, np string)
-        self.time = ""; self.adv = ""
+        self.time = ""; self.adv = ""; self.front = ""      # front: sentence adverbs before the subject (in fact , -> 実は、), the softener of a request
         self.verb = None           # (lemma, ja, conj)
         self.past = False; self.neg = False; self.modal = None; self.prog = False; self.perf = False
         self.copula = None         # ("adj", (ja, kind)) | ("np", string, cls) | ("pp", prep, np)
@@ -230,6 +230,10 @@ class Parser:
                 if self.peek() == ",": self.i += 1
                 continue
             if "time" in r: c.time += r["time"]; self.i += 1; continue
+            if "adv" in r and self.peek(1) == "," and not any(k in r for k in ("verb", "aux_be", "noun", "adj", "prep", "pron", "det")):   # in fact , S / of course , S (suite C)
+                c.front += r["adv"] + "、"; self.i += 2; continue
+            if tok in SOFTENER and self.peek(1) and self.has(self.peek(1), "verb") and self.verb_form(self.peek(1)) == "base" and not self.starts_np(self.peek(1)):   # just wait (suite C)
+                c.front += SOFTENER[tok]; self.i += 1; continue
             if "please" in r: c.please = True; self.i += 1; continue
             if "aux_be" in r and self.peek(1) == "there":                                 # is there NP ?
                 c.past = r["aux_be"] == "past"; self.i += 2; c.there = True; c.question = True
@@ -560,7 +564,9 @@ class Parser:
             self.np_role = "pp_time" if tok in ("before", "after", "at", "until", "till", "around", "by") else None
             ja, cls = self.parse_np(); self.np_role = None
             c.copula = ("pp", p, ja); self.tail_pp_adv(); return
-        if "adv" in r:                                                       # is here / is out
+        if "loc" in r:                                                       # is here: the place with the existence particle
+            c.copula = ("pp", PREPS["at"], r["loc"]); self.i += 1; self.tail_pp_adv(); return
+        if "adv" in r:                                                       # is out
             c.copula = ("adv", r["adv"]); self.i += 1; self.tail_pp_adv(); return
         if "end" in r and allow_empty:
             return
@@ -905,6 +911,8 @@ class Parser:
                 c.pre_clause += self.sub_clause(tok); continue
             if tok == "," and self.peek(1) and self.has(self.peek(1), "conj"): self.i += 1; continue
             if "time" in r: c.time += r["time"]; self.i += 1; continue
+            if tok == "in" and self.peek(1) and "num" in dict(self.readings(self.peek(1))) and self.peek(2) in DURATION and self.peek(2) not in ("times", "time"):   # in 50 minutes -> ５０分で
+                c.adv += dict(self.readings(self.peek(1)))["num"] + DURATION[self.peek(2)] + "で"; self.i += 3; continue
             if "prep" in r and self.peek(1) and self.has(self.peek(1), "time") and not self.starts_np(self.peek(1)):
                 p = r["prep"]; self.i += 1; tja = dict(self.readings(self.peek()))["time"]; self.i += 1
                 p = {"until": ("まで", "まで"), "till": ("まで", "まで"), "by": ("までに", "までに"), "since": ("から", "から"), "from": ("から", "から"), "before": ("の前に", "の前に"), "after": ("の後で", "の後で")}.get(tok, p)
@@ -913,6 +921,11 @@ class Parser:
                 p = r["prep"]; self.i += 1
                 self.np_role = "pp_time" if tok in ("before", "after", "at", "until", "till", "around", "by") else None
                 ja, cls = self.parse_np(); self.np_role = None
+                head = self.last_head
+                if tok == "to" and head in USE and c.verb and c.verb[0] in USE[head] and not c.want:     # came to a decision -> 決定に達した: the noun carries the verb (suite C)
+                    uja, uconj, upart, stative = USE[head][c.verb[0]]
+                    c.verb = (c.verb[0] + "+" + head, uja, uconj); p = (upart, upart)
+                    if stative: c.prog = True
                 if cls == "t" and ja.endswith("時"):
                     p = {"at": ("に", "に"), "before": ("前に", "前に"), "after": ("後に", "後に"), "around": ("ごろに", "ごろに"), "by": ("までに", "までに")}.get(tok, p)
                 if tok == "with" and self.peek() and "pp" in self.verb_forms(self.peek()) and (self.peek(1) is None or self.has(self.peek(1), "end") or self.peek(1) == ","):   # with his eyes closed
@@ -957,6 +970,7 @@ class Parser:
                 if self.peek(2) and self.has(self.peek(2), "pron") and not self.starts_np(self.peek(3)): c.tag = True; self.i += 3; continue
             if "adj" in r and self.peek(1) == "and" and self.peek(2) == tok and c.verb and c.verb[0] in VC["change"]:   # longer and longer
                 ja, k = r["adj"]; c.adv += "ますます"; c.copula = ("adj", (ja[2:] if ja.startswith("より") else ja, k)); self.i += 3; continue
+            if "loc" in r: c.pp.append((PREPS["at"], r["loc"])); self.i += 1; continue      # wait there -> そこで, go there -> そこに: as a PP at that place
             if "adv" in r: c.adv += r["adv"]; self.i += 1; continue
             if "adj" in r and c.verb and c.verb[0] in VC["copular"]:
                 c.copula = ("adj", r["adj"]); self.i += 1; continue

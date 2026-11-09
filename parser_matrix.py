@@ -22,13 +22,13 @@ import rules_ja as R
 from parser_rules import Parser, Clause, ParseFail, Overflow, parse_bounded
 
 WINDOW = 4
-NP_ROLES = ("subj", "obj", "iobj", "pp1", "pp2", "pp3", "cop")
+NP_ROLES = ("subj", "obj", "iobj", "pp1", "pp2", "pp3", "cop", "cmp")        # cmp: the noun phrase of a than / as comparison
 NP_SUB = ("det", "poss", "num", "adj1", "adj2", "noun", "cls")
 FLAGS = ("past", "neg", "prog", "perf", "question", "imp", "please", "lets", "there", "tag", "coord", "sub", "neg_inner")
-ENUMS = ("modal", "want", "degree", "obj_particle", "wh", "time", "adv1", "adv2", "cop_kind", "cop_adj", "cop_adv", "cop_part",
-         "pp1_part", "pp2_part", "pp3_part", "verb", "purpose", "causative")
+ENUMS = ("modal", "want", "degree", "obj_particle", "wh", "time", "adv1", "adv2", "front", "cop_kind", "cop_adj", "cop_adv", "cop_part",
+         "pp1_part", "pp2_part", "pp3_part", "cmp_kind", "verb", "purpose", "causative")
 UNSUPPORTED_REGS = ("infinitive", "control", "embedded", "purpose_clause", "pre_clause", "manner", "so_that", "howabout",
-                    "exclaim", "fixed_out", "compare", "relative", "suffix")
+                    "exclaim", "fixed_out", "relative", "suffix")
 OPEN = {"noun", "verb", "adj", "adv", "time", "num"}
 import re as _re
 IDENTITY_WORDS = {w for w in _re.findall(r'"([a-z][a-z\' ]*)"', open(__file__.replace("parser_matrix.py", "parser_rules.py"), encoding="utf-8").read())}   # words the parser tests by identity
@@ -76,6 +76,8 @@ def table_hits(toks, i, verb):
             if (verb[0], keyed) in R.IDIOM_TAIL: hits.append(("tail", k))
         if t0 is not None and (verb[0], t0) in R.PARTICLE_AFTER: hits.append(("pafter",))
         if t0 in R.USE and verb[0] in R.USE[t0]: hits.append(("use",))
+    if t0 in R.SOFTENER: hits.append(("softener",))
+    if i + 1 < len(toks) and (t0, toks[i + 1]) in R.ADJ_PREP: hits.append(("adjprep",))
     return tuple(sorted(set(hits)))
 
 # ----------------------------------------------------------------------------------------------- frame as slots
@@ -90,7 +92,7 @@ def snapshot(c):
     s["wh"] = c.wh; s["time"] = c.time or None; s["purpose"] = c.purpose; s["causative"] = c.causative
     s["verb"] = c.verb
     advs = [a for a in (c.adv,) if a]   # adv is an accumulated string; split on known adverb boundaries is impossible, so it is one slot value
-    s["adv1"] = c.adv or None; s["adv2"] = None
+    s["adv1"] = c.adv or None; s["adv2"] = None; s["front"] = c.front or None
     s["subj"] = c.subj; s["subj_cls"] = c.subj_cls if c.subj else None; s["subj_num"] = c.subj_num if c.subj else None
     s["obj"] = c.obj; s["iobj"] = c.iobj
     for k in range(3):
@@ -101,6 +103,7 @@ def snapshot(c):
     s["cop_kind"] = kind; s["cop_adj"] = c.copula[1] if kind == "adj" else None; s["cop_adv"] = c.copula[1] if kind == "adv" else None
     s["cop_part"] = c.copula[1] if kind == "pp" else None
     s["cop"] = c.copula[1] if kind == "np" else (c.copula[2] if kind == "pp" else None)
+    s["cmp_kind"] = c.compare[0] if c.compare else None; s["cmp"] = c.compare[1] if c.compare else None
     if kind not in (None, "adj", "np", "pp", "adv", "wh"): raise OutOfScope(f"copula kind {kind}")
     return s
 
@@ -184,7 +187,7 @@ def trace(toks, choices=()):
     return events, final, np_spans, p
 
 # ----------------------------------------------------------------------------------------------- predicates and induction
-ENUM_REGS = ("modal", "want", "cop_kind", "degree", "obj_particle", "wh", "purpose", "causative", "subj_cls", "time", "adv1", "ret")
+ENUM_REGS = ("modal", "want", "cop_kind", "degree", "obj_particle", "wh", "purpose", "causative", "subj_cls", "time", "adv1", "front", "cmp_kind", "ret")
 # subject-verb agreement as one predicate over the subject's number and the current token (parser_rules.agrees, mirrored):
 # true exactly when no verb reading of the token fits the subject.  Compiled as AND units over the slot and the window
 # and read by the FAIL rules that agreement_fail_rows adds at every finite-verb consumption.
@@ -225,6 +228,7 @@ def fold_use(post, role, head_ja, verb):
     expected = {("verb", new_verb, ("const",))}
     optional = set()
     if upart == "-": expected |= {(f"{role}.{sub}", None, ("clear",)) for sub in NP_SUBS}; optional = {("obj_particle", None, ("clear",))}
+    elif role.startswith("pp"): expected.add((f"{role}_part", (upart, upart), ("const",)))      # came to a decision: the particle of that PP
     else: expected.add(("obj_particle", upart, ("const",)))
     if stative: expected.add(("prog", True, ("const",)))
     have = set(post)
@@ -255,8 +259,9 @@ def predicates(toks, i, before, win_idx, reg_rd, pend_prep, heads=None):
         if rname == "subj":
             if before.get("subj") is not None: P.add("reg.subj")
             if before.get("subj") == "それ": P.add("subj.sore")
-        elif rname in ("obj", "iobj", "cop"):
-            if before.get(rname) is not None: P.add(f"reg.{rname}")
+        elif rname in ("obj", "iobj", "cop", "cmp", "compare"):
+            key = "cmp" if rname == "compare" else rname
+            if before.get(key) is not None: P.add(f"reg.{key}")
         elif rname == "pp":
             n = len([k for k in ("pp1", "pp2", "pp3") if before.get(k)]); P.add(f"pp.count={n}")
         elif rname == "copula":
@@ -268,12 +273,12 @@ def predicates(toks, i, before, win_idx, reg_rd, pend_prep, heads=None):
                 if " " in vb[0]: P.add("verb.phrasal")
                 if "+" in vb[0]: P.add("verb.use")
                 for cls, s in R.VC.items():
-                    if vb[0] in s: P.add(f"verb.vc={cls}")
+                    if R.lemma_of(vb) in s: P.add(f"verb.vc={cls}")
         elif rname in FLAGS:
             if before.get(rname): P.add(f"flag.{rname}")
         elif rname in ENUM_REGS or rname == "adv":
             key = {"adv": "adv1"}.get(rname, rname); v = before.get(key)
-            if v not in (None, "", False): P.add(f"reg.{rname}={'set' if rname in ('time', 'adv', 'adv1') else v}")
+            if v not in (None, "", False): P.add(f"reg.{rname}={'set' if rname in ('time', 'adv', 'adv1', 'front') else v}")
     if pend_prep: P.add(f"pend_prep={pend_prep}")
     if before.get("subj_num") and "subj_num" in reg_rd:
         full = predicates(toks, i, before, {i}, set(), None) | {f"slot.subj.number={before['subj_num']}"}
@@ -281,7 +286,7 @@ def predicates(toks, i, before, win_idx, reg_rd, pend_prep, heads=None):
     return P
 
 FAIL = ("FAIL",)
-ALL_REGS = {"subj", "obj", "iobj", "cop", "pp", "copula", "verb", "adv", "time", "subj_num"} | set(FLAGS) | set(ENUM_REGS)
+ALL_REGS = {"subj", "obj", "iobj", "cop", "cmp", "pp", "copula", "verb", "adv", "time", "subj_num"} | set(FLAGS) | set(ENUM_REGS)
 _last_parser = [None]
 
 # ----------------------------------------------------------------------------------------------- the hybrid: parse_np as a hand-translated module
@@ -341,6 +346,7 @@ def register_actions(before, after, tok, allow_copy=True):
         src = ("const",)
         if slot == "verb" and "verb" in rs and v[0] == rs["verb"][0] and v[1] == rs["verb"][2] and v[2] == rs["verb"][3]: src = ("copy", "verb")
         elif slot == "adv1" and "adv" in rs and v == rs["adv"] and before[slot] in (None, ""): src = ("copy", "adv")
+        elif slot == "front" and "adv" in rs and v == rs["adv"] + "、" and before[slot] in (None, ""): src = ("copy", "adv_front")
         elif slot == "time" and "time" in rs and v == rs["time"]: src = ("copy", "time")
         elif slot == "wh" and "wh" in rs and v == rs["wh"]: src = ("copy", "wh")
         elif slot == "cop_adj" and "adj" in rs and v == rs["adj"]: src = ("copy", "adj_pair")
@@ -362,6 +368,7 @@ def np_register_actions(before, after, tok, skip_roles):
         if src_role:
             actions += [(f"{r}.{sub}", None, ("move", f"{src_role}.{sub}")) for sub in NP_SUBS]; continue
         if "time" in rs and v == rs["time"]: src = ("copy", "time")
+        elif "loc" in rs and v == rs["loc"]: src = ("copy", "loc")
         elif "noun" in rs and v == rs["noun"][0]: src = ("copy", "noun")
         elif "pron" in rs and v == rs["pron"][0]: src = ("copy", "pron")
         else: src = ("const",)
@@ -376,13 +383,21 @@ def hybrid_rows(toks):
     noun phrase becomes a hand-over to np_module: an entry row (k=0 into ("NP0", role), the return site written to `ret`,
     the role's slots cleared or moved) and an exit row (from ("RET", role): the post-NP effects, into the caller's continuation).
     Returns (rows, roles used); raises ParseFail / OutOfScope when the sentence is outside the cell's scope."""
-    import np_module as NPM
     events, final, np_spans, p = trace(toks)
     if isinstance(final, OutOfScope): raise final
     for e in events:
         if isinstance(e["snap"], OutOfScope): raise e["snap"]
         if e["snap"] is None: raise OutOfScope("inner clause")
     snaps = [e["snap"] for e in events] + [final]
+    rows, roles, prev, pend = transition_rows(toks, events, snaps, np_spans, final)
+    P_end = frozenset(predicates(toks, len(toks), final, set(range(len(toks), len(toks) + WINDOW)), ALL_REGS, pend))
+    rows.append((prev, P_end, frozenset(), (("DONE",), 0, ())))
+    return rows, roles
+
+def transition_rows(toks, events, snaps, np_spans, final):
+    """the rows of the consumption events given (a whole parse, or the prefix of one up to the point where it stops being
+    representable or is refused): -> (rows, roles used, the control state after the last event, the pending preposition)"""
+    import np_module as NPM
     info = np_span_info(events, snaps, np_spans, final)
     in_span = {k: n for n, (first, last, *_) in enumerate(info) for k in range(first, last + 1)}
     rows = []; roles = set(); prev = ("START",); pend = None
@@ -442,9 +457,7 @@ def hybrid_rows(toks):
         for j in range(e["i"], e["i"] + e["k"]):
             if "prep" in dict(readings_of(toks[j])): pend = toks[j]
         ei += 1
-    P_end = frozenset(predicates(toks, len(toks), final, set(range(len(toks), len(toks) + WINDOW)), ALL_REGS, pend))
-    rows.append((prev, P_end, frozenset(), (("DONE",), 0, ())))
-    return rows, roles
+    return rows, roles, prev, pend
 
 def agreement_fail_rows(prev, P_all, P_read, tok, reg_reads):
     """the agreement check materialised: where the rule parser evaluated subject-verb agreement (it read subj_num, which
@@ -452,20 +465,6 @@ def agreement_fail_rows(prev, P_all, P_read, tok, reg_reads):
     The corpus holds no violation, so without this row the induced guard could never learn the refusal."""
     if "subj_num" not in reg_reads or "agree.bad" in P_all: return []
     return [(prev, frozenset(set(P_all) | {"agree.bad"}), frozenset(set(P_read) | {"agree.bad"}), (FAIL, 0, ()))]
-
-def hybrid_state_after(events, snaps, np_spans, k):
-    """the hybrid machine's control state after consumption event k: the event's control point, or, for the last event of a
-    noun phrase, the caller's post-NP state ("NPRET", site, role); None if k is in the middle of a noun phrase or its role is unknown"""
-    e = events[k]
-    if not any(n == "parse_np" for n, _ in e["chain"]): return e["cp"]
-    outer = [(i0, i1) for (i0, i1, ja, cls, main) in np_spans if main and i0 <= e["i"] < i1]
-    if not outer: return None
-    i0, i1 = max(outer, key=lambda s: s[1] - s[0]); ja = [x[2] for x in np_spans if (x[0], x[1]) == (i0, i1)][0]
-    if e["i"] + e["k"] < i1: return None
-    if k + 1 >= len(snaps) or not isinstance(snaps[k + 1], dict) or not isinstance(snaps[k], dict): return None
-    role = next((r for r in NP_ROLES if snaps[k + 1].get(r) == ja and snaps[k].get(r) != ja), None)
-    if role is None: return None
-    return ("NPRET", site_id(np_site(e["chain"])), role)
 
 def np_entry_event(events, np_spans, k):
     """if event k is inside a main-frame noun phrase, the index of that phrase's first event; else k"""
@@ -477,43 +476,43 @@ def np_entry_event(events, np_spans, k):
     hits = [j for j, x in enumerate(events) if x["i"] <= i0 < x["i"] + x["k"]]
     return hits[0] if hits else None
 
-def fail_row_at(toks, events, snaps, np_spans, cut, pend_at=None):
-    """a FAIL row replacing consumption event `cut` (moved to the entry of its noun phrase if it is inside one)"""
-    cut = np_entry_event(events, np_spans, cut)
-    if cut is None: return []
-    e = events[cut]
-    if not isinstance(e["snap"], dict): return []
-    if cut == 0: prev = ("START",)
-    else:
-        prev = hybrid_state_after(events, snaps, np_spans, cut - 1)
-        if prev is None: return []
-    pend = None
-    for j in range(e["i"]):
-        if "prep" in dict(readings_of(toks[j])): pend = toks[j]
-    nxt_e = events[cut + 1] if cut + 1 < len(events) else {"win_reads": set(), "reg_reads": set()}
-    P_all = predicates(toks, e["i"], e["snap"], set(range(e["i"], e["i"] + WINDOW)), ALL_REGS, pend)
-    P_read = predicates(toks, e["i"], e["snap"], set(e["win_reads"]) | set(nxt_e["win_reads"]), set(e["reg_reads"]) | set(nxt_e["reg_reads"]), pend)
-    return [(prev, frozenset(P_all), frozenset(P_read), (FAIL, 0, ()))]
+def prefix_rows(toks, events, np_spans, cut, final_snap):
+    """the transition rows of events[:cut] (a parse that stops being representable, or is refused, at event cut), with the
+    noun phrases completed before the cut; -> (rows, roles, the control state after event cut-1, the pending preposition).
+    Raises OutOfScope when a noun phrase of the prefix cannot be handed over."""
+    if cut == 0: return [], set(), ("START",), None
+    consumed = events[cut - 1]["i"] + events[cut - 1]["k"]
+    spans = [sp for sp in np_spans if sp[1] <= consumed]
+    snaps = [x["snap"] for x in events[:cut]] + [final_snap]
+    return transition_rows(toks, events[:cut], snaps, spans, final_snap)
 
 def hybrid_fail_rows(toks):
-    """FAIL rows for the hybrid: refusals outside parse_np (inside it, the module refuses by itself) and the points where the
-    parse stops being representable (an inner clause, a register the cell has no block for)"""
+    """rows for a sentence the hybrid cannot parse to the end: the transitions the rule parser took before the point where
+    it refused or the parse stopped being representable (an inner clause, a register the cell has no block for) — they are
+    its transitions like any other — and a FAIL row at that point (outside parse_np: inside it the module refuses by itself)"""
     try:
         events, final, spans, p = trace(toks)
     except ParseFail as e:
         p = _last_parser[0]
         err, fs, win_rd, reg_rd, i = p.fail_info
         if isinstance(fs, OutOfScope) or not p.events_ok: return []
-        if "parse_np" in p.fail_stack: return []
         events, spans = p.events, p.np_spans
-        snaps = [x["snap"] for x in events] + [fs]
-        if not events: prev = ("START",)
-        else:
-            prev = hybrid_state_after(events, snaps, spans, len(events) - 1)
-            if prev is None: return []
+        cut = len(events)                                   # events inside the unfinished noun phrase are the module's, not ours
+        for k, e in enumerate(events):
+            if any(n == "parse_np" for n, _ in e["chain"]) and not any(main and i0 <= e["i"] < i1 for (i0, i1, ja, cls, main) in spans): cut = k; break
+        if p.forks:                                         # this is the default reading; from its first fork on, the path is the choice's, not the window's
+            fpos = p.forks[0][0]
+            cut = min(cut, next((k for k, e in enumerate(events) if e["i"] + e["k"] > fpos), cut))
+            cut = np_entry_event(events, spans, cut) if cut < len(events) else cut
+            if cut is None: return []
+        final_snap = events[cut]["snap"] if cut < len(events) else fs
+        if not isinstance(final_snap, dict): return []
+        try: rows, roles, prev, pend = prefix_rows(toks, events, spans, cut, final_snap)
+        except OutOfScope: return []
+        if cut < len(events) or "parse_np" in p.fail_stack: return rows
         P_all = predicates(toks, i, fs, set(range(i, i + WINDOW)), ALL_REGS, p.pend_at_end)
         P_read = predicates(toks, i, fs, win_rd, reg_rd, p.pend_at_end)
-        return [(prev, frozenset(P_all), frozenset(P_read), (FAIL, 0, ()))]
+        return rows + [(prev, frozenset(P_all), frozenset(P_read), (FAIL, 0, ()))]
     snaps = [x["snap"] for x in events] + [final]
     cut = None
     for ei, e in enumerate(events):
@@ -524,7 +523,15 @@ def hybrid_fail_rows(toks):
         try: np_span_info(events, snaps, spans, final); return []
         except OutOfScope: return []
     if cut < 0: return []
-    return fail_row_at(toks, events, snaps, spans, cut)
+    cut = np_entry_event(events, spans, cut)              # a cut inside a noun phrase moves to the phrase's entry
+    if cut is None or not isinstance(events[cut]["snap"], dict): return []
+    try: rows, roles, prev, pend = prefix_rows(toks, events, spans, cut, events[cut]["snap"])
+    except OutOfScope: return []
+    e = events[cut]
+    nxt_e = events[cut + 1] if cut + 1 < len(events) else {"win_reads": set(), "reg_reads": set()}
+    P_all = predicates(toks, e["i"], e["snap"], set(range(e["i"], e["i"] + WINDOW)), ALL_REGS, pend)
+    P_read = predicates(toks, e["i"], e["snap"], set(e["win_reads"]) | set(nxt_e["win_reads"]), set(e["reg_reads"]) | set(nxt_e["reg_reads"]), pend)
+    return rows + [(prev, frozenset(P_all), frozenset(P_read), (FAIL, 0, ()))]
 
 def module_rules(roles):
     """np_module's rules and derived predicates for the roles in use, in the compiler's rule format"""
@@ -594,18 +601,24 @@ def build_hybrid(sentences, verbose=False):
     return comp
 
 def induce(rows):
-    """per previous control point, a decision tree over predicates whose leaves are outcomes; returns {prev: tree}"""
+    """per previous control point, a decision tree over predicates whose leaves are outcomes; returns {prev: tree}.
+    A leaf also carries the guard the rule parser itself applied: the class predicates of the token in slot 0 that every row
+    reaching the leaf read as true (an `end` transition keeps w0.class=end even when no training row ever had another token
+    there), so that an induced rule never consumes a kind of token the parser was not seen to consume."""
     by_prev = collections.defaultdict(list); read_by_prev = collections.defaultdict(set)
-    for prev, P_all, P_read, outcome in rows: by_prev[prev].append((P_all, outcome)); read_by_prev[prev] |= P_read
+    for prev, P_all, P_read, outcome in rows: by_prev[prev].append((P_all, P_read, outcome)); read_by_prev[prev] |= P_read
+    def guard(items):
+        common = set.intersection(*(set(R_) for _, R_, _ in items)) if items else set()
+        return tuple(sorted(q for q in common if q.startswith("w0.class=")))
     def build(items, used, cands_all):
-        outcomes = set(o for _, o in items)
-        if len(outcomes) == 1: return ("leaf", next(iter(outcomes)))
+        outcomes = set(o for _, _, o in items)
+        if len(outcomes) == 1: return ("leaf", next(iter(outcomes)), guard(items))
         cands = sorted(cands_all - used)
         best = None
         for q in cands:
-            yes = [(P, o) for P, o in items if q in P]; no = [(P, o) for P, o in items if q not in P]
+            yes = [it for it in items if q in it[0]]; no = [it for it in items if q not in it[0]]
             if not yes or not no: continue
-            score = (len(set(o for _, o in yes)) + len(set(o for _, o in no)), abs(len(yes) - len(no)))
+            score = (len(set(o for _, _, o in yes)) + len(set(o for _, _, o in no)), abs(len(yes) - len(no)))
             if best is None or score < best[0]: best = (score, q, yes, no)
         if best is None: return ("conflict", sorted(outcomes, key=str), len(items))
         _, q, yes, no = best
@@ -614,7 +627,7 @@ def induce(rows):
     for prev, items in by_prev.items():
         t = build(items, frozenset(), read_by_prev[prev])
         if has_conflict(t):                                    # the read predicates do not separate: fall back to everything true here
-            t = build(items, frozenset(), set().union(*(P for P, _ in items)))
+            t = build(items, frozenset(), set().union(*(P for P, _, _ in items)))
         trees[prev] = t
     return trees
 
@@ -624,8 +637,10 @@ def has_conflict(tree):
     return has_conflict(tree[2]) or has_conflict(tree[3])
 
 def tree_rules(tree, path=()):
-    """flatten a tree into (literals, outcome) rules; literals are (predicate, truth)"""
-    if tree[0] == "leaf": return [(path, tree[1])]
+    """flatten a tree into (literals, outcome) rules; literals are (predicate, truth), the leaf's guard appended"""
+    if tree[0] == "leaf":
+        seen = {q for q, t in path}
+        return [(path + tuple((q, True) for q in tree[2] if q not in seen), tree[1])]
     if tree[0] == "conflict": return [(path, ("CONFLICT", tree[1], tree[2]))]
     _, q, yes, no = tree
     return tree_rules(yes, path + ((q, True),)) + tree_rules(no, path + ((q, False),))
@@ -633,7 +648,7 @@ def tree_rules(tree, path=()):
 def frame_to_snapshot(frame):
     """the slot dict as the snapshot() view (so predicates read it the same way)"""
     s = {f: bool(frame.get(f)) for f in FLAGS}
-    for r in ("modal", "want", "degree", "obj_particle", "wh", "time", "purpose", "causative", "verb", "adv1", "adv2", "cop_kind", "cop_adj", "cop_adv", "cop_part", "pp1_part", "pp2_part", "pp3_part", "ret"):
+    for r in ("modal", "want", "degree", "obj_particle", "wh", "time", "purpose", "causative", "verb", "adv1", "adv2", "front", "cop_kind", "cop_adj", "cop_adv", "cop_part", "pp1_part", "pp2_part", "pp3_part", "cmp_kind", "ret"):
         s[r] = frame.get(r)
     for role in NP_ROLES:
         s[role] = np_string(frame, role)
@@ -663,7 +678,7 @@ def apply_actions(frame, actions, toks, i):
     tok = toks[i] if i < len(toks) else None; rs = collections.defaultdict(list)
     for c, v in readings_of(tok): rs[c].append(v)
     for slot, v, src in actions:
-        if src[0] == "copy" and src[1] not in ("ncls", "nnum") and not rs[{"num_time": "num", "adj_pair": "adj", "pron_poss": "pron"}.get(src[1], src[1])]:
+        if src[0] == "copy" and src[1] not in ("ncls", "nnum") and not rs[{"num_time": "num", "adj_pair": "adj", "pron_poss": "pron", "adv_front": "adv"}.get(src[1], src[1])]:
             raise ParseFail(f"TABLE: nothing to copy into {slot} from {src[1]} at {tok!r}", i)       # the machine's crash: the rule fired on a token without that reading
     old = dict(frame)                                   # moves and clears read the state before this step, as the matrix does
     for slot, v, src in actions:
@@ -676,6 +691,7 @@ def apply_actions(frame, actions, toks, i):
             if upart == "-":
                 frame.pop("obj_particle", None)
                 for sub in NP_SUBS: frame.pop(f"{slot}.{sub}", None)
+            elif slot.startswith("pp"): frame[f"{slot}_part"] = (upart, upart)
             else: frame["obj_particle"] = upart
             if stative: frame["prog"] = True
             continue
@@ -696,7 +712,9 @@ def apply_actions(frame, actions, toks, i):
             elif cls == "adj": ja, kind = rs["adj"][-1]; frame[slot] = ja + ("な" if kind == "na" and not ja.endswith("な") else "")
             elif cls == "adj_pair": frame[slot] = rs["adj"][-1]
             elif cls == "adv": frame[slot] = rs["adv"][-1]
+            elif cls == "adv_front": frame[slot] = rs["adv"][-1] + "、"
             elif cls == "time": frame[slot] = rs["time"][-1]
+            elif cls == "loc": frame[slot] = rs["loc"][-1]
             elif cls == "wh": frame[slot] = rs["wh"][-1]
             elif cls == "modal": frame[slot] = rs["modal"][-1][0]
             elif cls == "nnum": frame[slot] = R.number_of(tok) or "none"
@@ -707,11 +725,12 @@ def frame_to_clause(frame):
     c = Clause()
     for f in FLAGS: setattr(c, f, bool(frame.get(f)))
     for r in ("modal", "want", "obj_particle", "wh", "purpose", "causative", "verb"): setattr(c, r, frame.get(r))
-    c.degree = frame.get("degree") or ""; c.time = frame.get("time") or ""; c.adv = frame.get("adv1") or ""
+    c.degree = frame.get("degree") or ""; c.time = frame.get("time") or ""; c.adv = frame.get("adv1") or ""; c.front = frame.get("front") or ""
     c.subj = np_string(frame, "subj"); c.subj_cls = frame.get("subj.cls") or "h"
     c.subj_num = frame.get("subj.number") if frame.get("subj.number") != "none" else None
     c.obj = np_string(frame, "obj"); c.iobj = np_string(frame, "iobj")
     c.pp = [(frame[f"pp{k}_part"], np_string(frame, f"pp{k}")) for k in (1, 2, 3) if frame.get(f"pp{k}.noun") is not None]
+    c.compare = (frame["cmp_kind"], np_string(frame, "cmp")) if frame.get("cmp_kind") and frame.get("cmp.noun") is not None else None
     kind = frame.get("cop_kind")
     if kind == "adj": c.copula = ("adj", frame.get("cop_adj"))
     elif kind == "np": c.copula = ("np", np_string(frame, "cop"), frame.get("cop.cls") or "t")
@@ -731,7 +750,7 @@ class Index:
     def __contains__(self, name): return name in self.pos
     def __getitem__(self, name): return self.pos[name]
 
-COPY_SOURCES = ("noun", "ncls", "pron", "pron_poss", "det", "num", "num_time", "adj", "adj_pair", "adv", "time", "wh", "modal", "verb", "nnum")
+COPY_SOURCES = ("noun", "ncls", "pron", "pron_poss", "det", "num", "num_time", "adj", "adj_pair", "adv", "adv_front", "time", "wh", "modal", "verb", "nnum", "loc")
 
 def source_values(tok):
     """the copy-source readings of a token, as (source, value) pairs — what the lexical layer emits for window slot 0"""
@@ -742,7 +761,8 @@ def source_values(tok):
         elif c == "det": out.append(("det", v))
         elif c == "num": out.append(("num", v)); out.append(("num_time", v + "時"))
         elif c == "adj": out.append(("adj", v[0] + ("な" if v[1] == "na" and not v[0].endswith("な") else ""))); out.append(("adj_pair", v))
-        elif c == "adv": out.append(("adv", v))
+        elif c == "adv": out.append(("adv", v)); out.append(("adv_front", v + "、"))
+        elif c == "loc": out.append(("loc", v))
         elif c == "time": out.append(("time", v))
         elif c == "wh": out.append(("wh", v))
         elif c == "modal": out.append(("modal", v[0]))
@@ -752,7 +772,7 @@ def source_values(tok):
     last = {}; first = {}
     for s, v in out:
         last[s] = v; first.setdefault(s, v)
-    pick = {s: (last[s] if s in ("noun", "ncls", "adj", "adj_pair", "adv", "time", "wh") else first[s]) for s in last}
+    pick = {s: (last[s] if s in ("noun", "ncls", "adj", "adj_pair", "adv", "adv_front", "loc", "time", "wh") else first[s]) for s in last}
     return pick
 
 def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None):
@@ -794,7 +814,7 @@ def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None):
         for (ja, lemma), (new_verb, upart, stative) in USE_TABLE.items():
             if ja not in nouns or lemma not in lemmas: continue
             slot_vocab["verb"].add(new_verb)
-            if upart != "-": slot_vocab["obj_particle"].add(upart)
+            if upart != "-": slot_vocab[f"{role}_part" if role.startswith("pp") else "obj_particle"].add((upart, upart) if role.startswith("pp") else upart)
             if stative: slot_vocab["prog"].add(True)
     # ---- state index: control, slots, pend_prep, shift
     S = Index()
@@ -859,14 +879,14 @@ def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None):
         for v in slot_vocab.get(e, []):
             or_unit(("pred", f"reg.{e}={v}"), [S[("slot", e, v)]])
     if slot_vocab.get("cop_kind"): or_unit(("pred", "reg.cop_kind"), slot_units("cop_kind"))
-    for e in ("time", "adv1"):
+    for e in ("time", "adv1", "front"):
         if slot_vocab.get(e): or_unit(("pred", f"reg.{e}=set"), slot_units(e))
     if slot_vocab.get("adv1"): or_unit(("pred", "reg.adv=set"), slot_units("adv1"))
     vunits = slot_units("verb")
     if vunits:
         or_unit(("pred", "verb.set"), vunits); or_unit(("pred", "reg.verb"), vunits)
         for cls, s in R.VC.items():
-            idx = [S[("slot", "verb", v)] for v in slot_vocab["verb"] if v[0] in s]
+            idx = [S[("slot", "verb", v)] for v in slot_vocab["verb"] if R.lemma_of(v) in s]
             if idx: or_unit(("pred", f"verb.vc={cls}"), idx)
         for conj in set(v[2] for v in slot_vocab["verb"]):
             or_unit(("pred", f"verb.conj={conj}"), [S[("slot", "verb", v)] for v in slot_vocab["verb"] if v[2] == conj])
@@ -985,7 +1005,7 @@ def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None):
             elif src[0] == "const":
                 const_w[(slot, v)].append(ri)
             elif src[0] == "use":                                            # the lookup rewrites the verb and the particle for every pair
-                for target in ("verb", "obj_particle"):
+                for target in ("verb", f"{slot}_part" if slot.startswith("pp") else "obj_particle"):
                     gt = gate_slot.setdefault(target, L4.add(("gate", target))); W4.append((gt, ("L3", L3[("rule", ri)]), 1.0))
     # the USE lookup gates: any feedback rule fired (guse); AND a stative pair is active (gusestat: prog <- True);
     # AND a "-" pair is active (gusedash: the role's noun phrase is dropped, take a rest -> 休む)
@@ -1037,7 +1057,9 @@ def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None):
         for u, ja, vv in pair_units.get(role, []):
             new_verb, upart, stative = USE_TABLE[(ja, vv[0])]
             by_target[("verb", new_verb)].append(u)
-            if upart != "-": by_target[("obj_particle", upart)].append(u)
+            if upart == "-": continue
+            if role.startswith("pp"): by_target[(f"{role}_part", (upart, upart))].append(u)
+            else: by_target[("obj_particle", upart)].append(u)
         for (slot, v), units in sorted(by_target.items(), key=str):
             if ("slot", slot, v) not in S: continue
             wu = L5.add(("writeu", slot, v, role)); W5.append((wu, ("L4", g), 1.0)); b5[wu] = -1.0

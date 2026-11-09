@@ -3,6 +3,7 @@
 #           たら/なければ/後で change the clause's tense or polarity (see subord_form)
 #   coord:  clause coordination; empty = te-form chain
 #   hearsay: sentence-final ", i hear" tails
+#   softener: a word before an imperative that softens the request (just wait -> ちょっと待って); rendered at the front
 
 subord  | whether | かどうかにかかわらず
 subord  | when | とき
@@ -45,3 +46,4 @@ hearsay | guess | と思う
 hearsay | believe | と信じている
 hearsay | hope | と願う
 hearsay | know | と知っている
+softener | just | ちょっと

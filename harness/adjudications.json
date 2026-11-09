@@ -114,6 +114,168 @@
    "verdict": "wrong",
    "output": "あなたは自分でそれを持ってきた。",
    "reason": "The conjugation is now right (持ってきた) but the idiom 'bring it on oneself' (自分で招いた) is still read literally."
+  },
+  {
+   "citation": "dev 55: is this your first visit here ?",
+   "verdict": "wrong",
+   "output": "これはここにあなたの最初の訪問ですか。",
+   "reason": "'your first visit here' is ここへの初めての訪問 (the destination of the visit); ここに…訪問 attaches the place to the copula, and これは for 'is this' is unnatural (the reference drops it)."
+  },
+  {
+   "citation": "dev 55: is this your first visit here ?",
+   "verdict": "wrong",
+   "output": "これはここであなたの最初の訪問ですか。",
+   "reason": "Same reading with で: the visit's destination is not a place where the visit happens; ここへの初めての訪問 is needed."
+  },
+  {
+   "citation": "dev 96: i have lived here for a long time .",
+   "verdict": "wrong",
+   "output": "私は長い時間のためにここに住んだ。",
+   "reason": "'for a long time' is the duration 長い間, not the purpose 長い時間のために; and 'have lived' is 住んでいる, not 住んだ."
+  },
+  {
+   "citation": "dev 96: i have lived here for a long time .",
+   "verdict": "wrong",
+   "output": "私はここに長い時間のために住んだ。",
+   "reason": "The place particle is right (ここに住む) but 'for a long time' is still 長い時間のために and the perfect is still 住んだ."
+  },
+  {
+   "citation": "dev 474: please wait here .",
+   "verdict": "wrong",
+   "output": "ここに待ってください。",
+   "reason": "待つ takes で for the place of waiting (ここで待つ); ここに待つ is ungrammatical."
+  },
+  {
+   "citation": "dev 474: please wait here .",
+   "verdict": "right",
+   "output": "ここで待ってください。",
+   "reason": "ここで待ってください: the place of waiting with で, the polite request. Matches the reference up to its 〜ていて."
+  },
+  {
+   "citation": "test 23: i often go swimming in the river .",
+   "verdict": "right",
+   "output": "私は川で水泳によく行く。",
+   "reason": "川で (the place of the swimming) with 泳ぎに行く is acceptable; 水泳に行く is stiff but correct."
+  },
+  {
+   "citation": "test 23: i often go swimming in the river .",
+   "verdict": "right",
+   "output": "私は川に水泳によく行く。",
+   "reason": "川に (the destination of the going, the reference's 川へ) is equally acceptable."
+  },
+  {
+   "citation": "test 50: put down your name and address here .",
+   "verdict": "right",
+   "output": "あなたの名前と住所をここに書いてください。",
+   "reason": "'put down' as 書く with ここに, the request in 〜てください. Correct."
+  },
+  {
+   "citation": "test 50: put down your name and address here .",
+   "verdict": "right",
+   "output": "ここにあなたの名前と住所を書いてください。",
+   "reason": "The same with the place first; both orders are natural."
+  },
+  {
+   "citation": "test 67: i 'll be here by monday .",
+   "verdict": "wrong",
+   "output": "私は月曜日でここにいる。",
+   "reason": "'by Monday' is the deadline 月曜日までに; 月曜日で is wrong."
+  },
+  {
+   "citation": "test 67: i 'll be here by monday .",
+   "verdict": "wrong",
+   "output": "私は月曜日のそばにここにいる。",
+   "reason": "'by Monday' is the deadline 月曜日までに; のそばに is the spatial 'beside'."
+  },
+  {
+   "citation": "test 185: let 's meet here again tomorrow .",
+   "verdict": "wrong",
+   "output": "明日ここにまた会いましょう。",
+   "reason": "会う takes で for the place of meeting (ここで会う); ここに会う is ungrammatical."
+  },
+  {
+   "citation": "test 185: let 's meet here again tomorrow .",
+   "verdict": "right",
+   "output": "明日ここでまた会いましょう。",
+   "reason": "ここで会う with 明日 and また: correct, the reference's order differs only."
+  },
+  {
+   "citation": "test 213: we 'll fly there in 50 minutes .",
+   "verdict": "right",
+   "output": "私たちは５０分でそこに飛ぶ。",
+   "reason": "そこに飛ぶ with ５０分で for 'in 50 minutes': literal but correct Japanese (the reference paraphrases with 着く)."
+  },
+  {
+   "citation": "test 213: we 'll fly there in 50 minutes .",
+   "verdict": "right",
+   "output": "私たちはそこに５０分で飛ぶ。",
+   "reason": "The same with the place first; both orders are natural."
+  },
+  {
+   "citation": "test 216: we should be there by noon .",
+   "verdict": "wrong",
+   "output": "私たちは正午でそこにいる。",
+   "reason": "'by noon' is the deadline 正午までに; 正午で is wrong, and 'should' is lost."
+  },
+  {
+   "citation": "test 216: we should be there by noon .",
+   "verdict": "wrong",
+   "output": "私たちは正午のそばにそこにいる。",
+   "reason": "'by noon' is the deadline 正午までに; のそばに is the spatial 'beside', and 'should' is lost."
+  },
+  {
+   "citation": "test 244: the road divides here into two .",
+   "verdict": "wrong",
+   "output": "道路は２にここに分かれる。",
+   "reason": "分かれる takes で for the place where the road divides; ここに is wrong and the order 二つにここに is garbled."
+  },
+  {
+   "citation": "test 244: the road divides here into two .",
+   "verdict": "right",
+   "output": "道路はここで２に分かれる。",
+   "reason": "ここで分かれる is right; ２に for 'into two' lacks the counter (二つに) but is understood."
+  },
+  {
+   "citation": "test 252: he came back to japan for the first time in eight years .",
+   "verdict": "wrong",
+   "output": "彼は日本に最初の時間のために８年で戻った。",
+   "reason": "'for the first time in eight years' is the idiom ８年ぶりに; 最初の時間のために is a literal misreading."
+  },
+  {
+   "citation": "test 252: he came back to japan for the first time in eight years .",
+   "verdict": "wrong",
+   "output": "彼は日本に最初の時間のために８年間で戻った。",
+   "reason": "The same misreading of 'for the first time in eight years' (８年ぶりに), now with ８年間で."
+  },
+  {
+   "citation": "test 258: what time do you leave here ?",
+   "verdict": "wrong",
+   "output": "あなたは何時にここに出ますか。",
+   "reason": "'leave here' is ここを出る (the place left takes を); ここに出る is wrong."
+  },
+  {
+   "citation": "test 258: what time do you leave here ?",
+   "verdict": "wrong",
+   "output": "あなたは何時にここで出ますか。",
+   "reason": "'leave here' is ここを出る; ここで出る is wrong."
+  },
+  {
+   "citation": "test 300: his father eats there twice a week .",
+   "verdict": "wrong",
+   "output": "彼の父はそこに週に二回食べる。",
+   "reason": "食べる takes で for the place of eating (そこで食べる); そこに食べる is ungrammatical."
+  },
+  {
+   "citation": "test 300: his father eats there twice a week .",
+   "verdict": "right",
+   "output": "彼の父はそこで週に二回食べる。",
+   "reason": "そこで食べる with 週に二回: correct, the reference's order differs only."
+  },
+  {
+   "citation": "test 120: of course , i will go there with you .",
+   "verdict": "right",
+   "output": "もちろん、私はそこにあなたと行く。",
+   "reason": "もちろん、 for 'of course ,', そこに行く, あなたと: correct (the reference adds つもりです)."
   }
  ]
 }

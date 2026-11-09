@@ -1,6 +1,7 @@
 # use.tbl — the noun carries the verb: light verb + noun -> the Japanese verb the noun selects
 #   noun | light verbs (comma-separated English lemmas) | japanese verb | class | particle on the noun | stative?
 #   particle "-" drops the noun (take a rest -> 休む); a 6th field (any text) marks the result as stative (-> ている)
+#   the noun may arrive as the object (make a decision) or as the complement of "to" (come to a decision -> 決定に達する)
 
 bath|take,have|入る|g|に
 shower|take,have|浴びる|i|を
@@ -50,6 +51,7 @@ fun|have|楽しむ|g|を
 mistake|make|する|s|を
 mistakes|make|する|s|を
 decision|make|する|s|を
+decision|come|達する|s|に
 speech|make,give|する|s|を
 promise|make|する|s|を
 noise|make|立てる|i|を

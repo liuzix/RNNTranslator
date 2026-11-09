@@ -211,7 +211,7 @@ MODALS = tables.build_pairs("modals")          # tables/modals.tbl
 NUMBERS = tables.build_pairs("numbers")        # tables/numbers.tbl
 MULTIWORD = sorted([w for w in list(LEX) + list(PREPS) + list(DETS) if " " in w], key=len, reverse=True)
 
-SUBORD, COORD, HEARSAY = tables.build_connectives()   # tables/connectives.tbl
+SUBORD, COORD, HEARSAY, SOFTENER = tables.build_connectives()   # tables/connectives.tbl
 
 def subord_form(inner, conj):
     """a parsed subordinate clause -> Japanese clause + connective, Japanese-first order"""
@@ -294,6 +294,7 @@ def classify(tok):
         if e[0] == "n": out.append(("noun", (e[1], e[2])))
         elif e[0] in ("a", "na", "fx"): out.append(("adj", (e[1], e[0])))
         elif e[0] == "adv": out.append(("adv", e[1]))
+        elif e[0] == "loc": out.append(("loc", e[1]))
         elif e[0] == "t": out.append(("time", e[1]))
         elif e[0] == "int": out.append(("int", e[1]))
         elif e[0] == "conj": out.append(("conj", tok))
@@ -426,6 +427,9 @@ def adj_pred(ja, k):
     return Pred("na", ja)
 
 VC = tables.build_verb_classes()            # tables/verb_classes.tbl: class name -> set of verbs
+def lemma_of(verb):
+    """the English lemma a verb value is classified by: the light verb before the use-verb feedback (put down+address -> put down)"""
+    return verb[0].split("+")[0]
 STATIVE = VC["stative"]
 GA_VERBS = VC["ga"]
 COMPLEMENTS = tables.build_complements()     # tables/complements.tbl: verb -> (template, class)
@@ -448,6 +452,7 @@ def generate(c, polite=None, embedded=False):
         return c.howabout + "はどうですか。"
     if c.exclaim is not None:
         return (c.subj + "は" if c.subj else "") + "なんと" + c.exclaim + "なのだろう。"
+    if c.front: out.append(c.front)
     if c.pre_clause: out.append(c.pre_clause)
     if c.time: out.append(c.time)
     subj_particle = "が" if (embedded and not c.coord) or (c.wh and c.wh[1] == "s") or c.there else "は"
@@ -469,12 +474,12 @@ def generate(c, polite=None, embedded=False):
             elif c.subj.endswith(("誰も", "何も")): out.append(c.subj)
             else: out.append(c.subj + ("は" if wh_cop and not embedded else subj_particle))
         if c.wh and c.wh[1] in ("t", "pp") and not wh_cop: out.append(c.wh[0] + ("に" if c.wh[0] == "何時" else ""))
-        if c.wh and c.wh[1] == "loc" and not wh_cop: out.append("どこ" + ("に" if c.copula or c.verb and c.verb[0] in VC["ni_where"] else "で"))
+        if c.wh and c.wh[1] == "loc" and not wh_cop: out.append("どこ" + ("に" if c.copula or c.verb and lemma_of(c.verb) in VC["ni_where"] else "で"))
         if c.wh and c.wh[1] == "adv" and not c.copula: out.append(c.wh[0] if c.wh[0] != "どう" else "どうやって")
         if c.wh and c.wh[1] == "count": out.append("いくつの" + c.wh[0] + "を")
         exist = c.copula is not None and c.copula[0] == "pp"
         for p, np in c.pp:
-            out.append(np + p[1 if exist or (c.verb and c.verb[0] in VC["ni_location"]) else 0])
+            out.append(np + p[1 if exist or (c.verb and lemma_of(c.verb) in VC["ni_location"]) else 0])
         if c.copula is not None and c.copula[0] == "pp":
             out.append(c.copula[2] + c.copula[1][1])
         if c.compare is not None:

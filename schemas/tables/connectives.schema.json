@@ -9,7 +9,8 @@
    "enum": [
     "subord",
     "coord",
-    "hearsay"
+    "hearsay",
+    "softener"
    ]
   },
   "english": {

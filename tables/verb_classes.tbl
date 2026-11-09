@@ -48,6 +48,7 @@ feel | that_comp,that_only,perception,copular
 find | perception
 find out | wh_comp
 finish | to_comp,ing_comp
+fly | motion,ni_location
 force | control
 forget | to_comp,that_comp,that_only,wh_comp
 get | control,copular,change,ni_location
@@ -94,6 +95,7 @@ prefer | to_comp,not_to
 pretend | to_comp,not_to
 promise | to_comp,not_to
 put | ni_location
+put down | ni_location
 refuse | to_comp
 remember | to_comp,that_comp,that_only,wh_comp
 return | motion,ni_location
@@ -128,4 +130,4 @@ wear | stative
 wish | to_comp,that_comp
 wonder | wh_comp,if_comp
 work | comitative,stative
-write | dative
+write | dative,ni_location

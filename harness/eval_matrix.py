@@ -55,9 +55,11 @@ def main():
         for k in ("identical", "wrong_frame", "matrix_parses_refused", "refused_parseable", "both_refuse"): tot[k] += res["per_split"][s][k]
     res.update(tot)
     res["cell"] = {"state_units": mp.nS, "input_units": mp.nX, "nnz": int(mp.nnz()), "layers": [len(L) for L, _, _ in comp["layers"]], "rules": len(comp["rules"]),
-                   "rules_by_kind": dict(kinds), "build_seconds": round(build_s), "scope": dict(comp.get("scope", {}))}
+                   "rules_by_kind": dict(kinds), "build_seconds": round(build_s), "scope": dict(comp.get("scope", {})),
+                   "unresolved": {q: n for q, n in sorted(comp.get("unresolved", {}).items())}}     # positive literals the cell cannot see: those rules can never fire
     res["summary"] = (f"identical {res['identical']}, wrong frame {res['wrong_frame']}, matrix parses refused {res['matrix_parses_refused']}, "
-                      f"refused parseable {res['refused_parseable']}, both refuse {res['both_refuse']}; nnz {res['cell']['nnz']}, rules {res['cell']['rules']}")
+                      f"refused parseable {res['refused_parseable']}, both refuse {res['both_refuse']}; nnz {res['cell']['nnz']}, rules {res['cell']['rules']}"
+                      + (f"; UNRESOLVED literals {sum(res['cell']['unresolved'].values())}: {', '.join(res['cell']['unresolved'])}" if res["cell"]["unresolved"] else ""))
     json.dump(res, open(a.out, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     print(res["summary"])
 

@@ -23,6 +23,8 @@ every day|adv|毎日
 any more|adv|もう
 ever since|adv|それ以来
 just now|adv|たった今
+in fact|adv|実は
+at last|adv|ついに
 any longer|adv|もう
 next|a|次の
 than usual|adv|いつもより
@@ -650,9 +652,9 @@ easily|adv|簡単に
 carefully|adv|注意深く
 together|adv|一緒に
 alone|adv|一人で
-abroad|adv|海外に
-here|adv|ここに
-there|adv|そこに
+abroad|loc|海外
+here|loc|ここ
+there|loc|そこ
 away|adv|離れて
 back|adv|戻って
 up|adv|上に
@@ -922,7 +924,7 @@ several|a|いくつかの
 few|a|少しの
 filled|fx|いっぱいだ
 sorry|na|残念
-somewhere|adv|どこかに
+somewhere|loc|どこか
 nearly|adv|ほとんど
 clearly|adv|明らかに
 indeed|adv|本当に
