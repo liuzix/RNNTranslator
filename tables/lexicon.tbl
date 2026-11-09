@@ -73,6 +73,7 @@ read|v|読む|g|read|read
 write|v|書く|g|wrote|written
 eat|v|食べる|i|ate|eaten
 drink|v|飲む|g|drank|drunk
+drink|n|飲み物|t
 buy|v|買う|g|bought|bought
 sell|v|売る|g|sold|sold
 pay|v|払う|g|paid|paid

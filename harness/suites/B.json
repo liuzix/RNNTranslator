@@ -6,8 +6,9 @@
  "cases": [
   {
    "sentence": "she showed me her room .",
-   "expect": "彼女は私に彼女の部屋を見せた。",
-   "citation": "test 155"
+   "expect": "彼女は私に部屋を見せた。",
+   "citation": "test 155",
+   "note": "the possessive coreferent with the subject is dropped, as the reference does"
   },
   {
    "sentence": "my uncle bought me this book .",

@@ -1,4 +1,5 @@
 # determiners.tbl — determiner | japanese (empty = dropped)
+#   a multiword determiner (a cup of) is merged by the lexical layer like any multiword token
 
 the | 
 a | 
@@ -25,3 +26,6 @@ both | 両方の
 much | たくさんの
 plenty | たくさんの
 whole | 全体の
+a cup of | 一杯の
+a glass of | 一杯の
+a piece of | 一つの

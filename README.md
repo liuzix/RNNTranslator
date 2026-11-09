@@ -99,15 +99,15 @@ The `rules` action measures coverage and char-BLEU of the transducer on dev and 
 
 The state of the project is a product of small chains, one per item, and a change is an improvement exactly when no item moves down. A corpus sentence is WRONG, REFUSED or RIGHT, where RIGHT is the reference or an adjudicated acceptable output and an input adjudicated ungrammatical has refusal as its top; an output nobody has judged is UNKNOWN, below RIGHT but incomparable with the rest, so that a change away from it demands a verdict in `harness/adjudications.json`. The matrix parser on a sentence is MISFIRE, GAP or AGREE against the rule parser, a negative is ACCEPTED or REFUSED, a control is REFUSED or ACCEPTED, and the exhaustive NP check is MISMATCHES or MATCH. Coverage and quality are views of this state, not gates. The frontier is the set of items below the top of their chain, grouped by what blocks them, and `uv run python harness/run.py frontier` prints it from the committed baseline.
 
-Today the 2,045 items stand at: sentences RIGHT 22, UNKNOWN 687, REFUSED 286, WRONG 0; matrix AGREE 765, GAP 198, MISFIRE 32; negatives REFUSED 18 of 18 and controls ACCEPTED 18; 33 adjudications so far. The frontier holds 1,206 items in 19 groups.
+Today the 2,045 items stand at: sentences RIGHT 29, UNKNOWN 680, REFUSED 280, WRONG 6; matrix AGREE 777, GAP 194, MISFIRE 24; negatives REFUSED 18 of 18 and controls ACCEPTED 18; 43 adjudications so far. The frontier holds 1,187 items in 20 groups.
 
 ## Acceptance suites
 
-Each residual class of the second-round review has an acceptance suite under `harness/suites/`: sentences with the exact Japanese the transducer must produce, every case an item of the lattice, and the class is closed when every case is RIGHT. The suites hold 33 cases in 11 classes, 0 right, 0 classes closed.
+Each residual class of the second-round review has an acceptance suite under `harness/suites/`: sentences with the exact Japanese the transducer must produce, every case an item of the lattice, and the class is closed when every case is RIGHT. The suites hold 33 cases in 11 classes, 3 right, 1 classes closed.
 
 | class | what it covers | right / cases | status |
 | --- | --- | --- | --- |
-| B | Ditransitives beyond give | 0 / 3 | open |
+| B | Ditransitives beyond give | 3 / 3 | closed |
 | C | Fronted adjuncts and sentence adverbs | 0 / 3 | open |
 | D | Gerunds | 0 / 3 | open |
 | E | Degree and superlative | 0 / 3 | open |
@@ -121,7 +121,7 @@ Each residual class of the second-round review has an acceptance suite under `ha
 
 ## Where it stands
 
-The rule transducer translates 398 of 499 test sentences (80%) and 310 of 496 dev sentences (62%), with char-BLEU 35.9 and 34.5 inside coverage. On the 995 dev and test sentences, the two parser implementations parse 497 identically; the matrix misfires silently on 32 (13 wrong frames and 19 parses of sentences the rules refuse) and refuses 198 sentences the rules parse. The compiled cell has 1651 rules (345 extracted, 99 entry, 169 exit, 213 refusal, 825 from the noun-phrase module), 12,591 state units, 1,551 input units and 172,743 nonzeros. `np_module` agrees with `parse_np` on all 31,328 windows of at most 2 tokens over 88 token classes. Its two adjective slots refuse an adverb followed by two adjectives, where `parse_np` concatenates. The rule parser refuses all 18 negatives and accepts all 18 controls; the matrix refuses 15 of the negatives and accepts 12 of the controls, the rest falling to its extracted clause-level rules. Hypothesis: the remaining misfires come from the extracted clause-level rules, so the next modules to translate by hand are the PP machine, `predicate` and `copula_predicate`.
+The rule transducer translates 401 of 499 test sentences (80%) and 313 of 496 dev sentences (63%), with char-BLEU 35.9 and 34.6 inside coverage. On the 995 dev and test sentences, the two parser implementations parse 507 identically; the matrix misfires silently on 24 (13 wrong frames and 11 parses of sentences the rules refuse) and refuses 194 sentences the rules parse. The compiled cell has 1641 rules (346 extracted, 101 entry, 154 exit, 213 refusal, 827 from the noun-phrase module), 12,755 state units, 1,551 input units and 177,121 nonzeros. `np_module` agrees with `parse_np` on all 31,328 windows of at most 2 tokens over 88 token classes. Its two adjective slots refuse an adverb followed by two adjectives, where `parse_np` concatenates. The rule parser refuses all 18 negatives and accepts all 18 controls; the matrix refuses 15 of the negatives and accepts 12 of the controls, the rest falling to its extracted clause-level rules. Hypothesis: the remaining misfires come from the extracted clause-level rules, so the next modules to translate by hand are the PP machine, `predicate` and `copula_predicate`.
 
 ## License
 
@@ -154,9 +154,9 @@ Every sentence above is quoted here with what pins it: a test in `harness/test_c
 - "The `matrix` action compiles the hybrid cell on dev and test and cross-tabulates it against the rule parser.": Pinned by `matrix`
 - "The `np` action checks `np_module` against `parse_np` over every window of at most 2 tokens, or 3 with `--full`.": Pinned by `np`
 - "The `negatives` action runs the 18 ungrammatical sentences of `harness/negatives.json`, taken or adapted from the syntax literature, asserts that the rule parser refuses every one and accepts every grammatical control, and counts what the matrix does with them.": Pinned by `negatives`
-- "The rule transducer translates 398 of 499 test sentences (80%) and 310 of 496 dev sentences (62%), with char-BLEU 35.9 and 34.5 inside coverage.": Pinned by `rules`
-- "On the 995 dev and test sentences, the two parser implementations parse 497 identically; the matrix misfires silently on 32 (13 wrong frames and 19 parses of sentences the rules refuse) and refuses 198 sentences the rules parse.": Pinned by `matrix`
-- "The compiled cell has 1651 rules (345 extracted, 99 entry, 169 exit, 213 refusal, 825 from the noun-phrase module), 12,591 state units, 1,551 input units and 172,743 nonzeros.": Pinned by `matrix`
+- "The rule transducer translates 401 of 499 test sentences (80%) and 313 of 496 dev sentences (63%), with char-BLEU 35.9 and 34.6 inside coverage.": Pinned by `rules`
+- "On the 995 dev and test sentences, the two parser implementations parse 507 identically; the matrix misfires silently on 24 (13 wrong frames and 11 parses of sentences the rules refuse) and refuses 194 sentences the rules parse.": Pinned by `matrix`
+- "The compiled cell has 1641 rules (346 extracted, 101 entry, 154 exit, 213 refusal, 827 from the noun-phrase module), 12,755 state units, 1,551 input units and 177,121 nonzeros.": Pinned by `matrix`
 - "`np_module` agrees with `parse_np` on all 31,328 windows of at most 2 tokens over 88 token classes.": Pinned by `np`
 - "Its two adjective slots refuse an adverb followed by two adjectives, where `parse_np` concatenates.": Pinned by `test_np_two_adjective_slots`
 - "The rule parser refuses all 18 negatives and accepts all 18 controls; the matrix refuses 15 of the negatives and accepts 12 of the controls, the rest falling to its extracted clause-level rules.": Pinned by `negatives`
@@ -166,8 +166,8 @@ Every sentence above is quoted here with what pins it: a test in `harness/test_c
 - "The matrix parser on a sentence is MISFIRE, GAP or AGREE against the rule parser, a negative is ACCEPTED or REFUSED, a control is REFUSED or ACCEPTED, and the exhaustive NP check is MISMATCHES or MATCH.": Pinned by `test_lattice_order`
 - "Coverage and quality are views of this state, not gates.": Pinned by `test_precommit_hook_runs_check`
 - "The frontier is the set of items below the top of their chain, grouped by what blocks them, and `uv run python harness/run.py frontier` prints it from the committed baseline.": Pinned by `test_frontier_command`
-- "Today the 2,045 items stand at: sentences RIGHT 22, UNKNOWN 687, REFUSED 286, WRONG 0; matrix AGREE 765, GAP 198, MISFIRE 32; negatives REFUSED 18 of 18 and controls ACCEPTED 18; 33 adjudications so far.": Pinned by `rules`
-- "The frontier holds 1,206 items in 19 groups.": Pinned by `rules`
+- "Today the 2,045 items stand at: sentences RIGHT 29, UNKNOWN 680, REFUSED 280, WRONG 6; matrix AGREE 777, GAP 194, MISFIRE 24; negatives REFUSED 18 of 18 and controls ACCEPTED 18; 43 adjudications so far.": Pinned by `rules`
+- "The frontier holds 1,187 items in 20 groups.": Pinned by `rules`
 - "Each residual class of the second-round review has an acceptance suite under `harness/suites/`: sentences with the exact Japanese the transducer must produce, every case an item of the lattice, and the class is closed when every case is RIGHT.": Pinned by `test_suites_are_items`
-- "The suites hold 33 cases in 11 classes, 0 right, 0 classes closed.": Pinned by `suites`
+- "The suites hold 33 cases in 11 classes, 3 right, 1 classes closed.": Pinned by `suites`
 - "The code is MIT-licensed, and the corpus is the Tanaka Corpus via small_parallel_enja under its own terms.": Pinned by `test_license_is_mit`

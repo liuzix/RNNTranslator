@@ -332,6 +332,13 @@ class Parser:
         self.phase = "VP0"
         return self.predicate()
 
+    def object_starts(self, tok):
+        """does tok begin an object noun phrase of the verb? (not a PP, not an adverb unless it modifies a noun, not a bare
+        adjective after a copular verb)"""
+        if tok is None: return False
+        c = self.c; r = dict(self.readings(tok))
+        return self.starts_np(tok) and "prep" not in r and ("adv" not in r or self.peek(1) and self.has(self.peek(1), "noun") and not (self.peek(2) and self.starts_np(self.peek(2)))) and not ("adj" in r and "noun" not in r and "det" not in r and c.verb and c.verb[0] in VC["copular"])
+
     def starts_np(self, tok):
         r = dict(self.readings(tok))
         if "pron" in r or "det" in r or "noun" in r or "num" in r: return True
@@ -690,8 +697,6 @@ class Parser:
             if lemma == "wonder": c.verb = ("wonder", "と思う", "fixed"); c.obj_particle = ""
             self.tail_pp_adv()
             return self.end() if not from_copula else None
-        if lemma == "give" and self.peek() and self.starts_np(self.peek()) and self.peek(1) and self.starts_np(self.peek(1)):
-            ja, cls = self.parse_np(); c.iobj = ja
         self.tail()
         if from_copula:
             return
@@ -829,8 +834,11 @@ class Parser:
             inner = Clause(); saved = self.c; self.c = inner
             self.verb_phrase(expect_ing=True, from_copula=True); self.c = saved
             c.manner = inner; self.tail_pp_adv(); return
-        if self.starts_np(tok) and "prep" not in r and ("adv" not in r or self.peek(1) and self.has(self.peek(1), "noun") and not (self.peek(2) and self.starts_np(self.peek(2)))) and not ("adj" in r and "noun" not in r and "det" not in r and c.verb and c.verb[0] in VC["copular"]):
-            ja, cls = self.parse_np(); c.obj = ja
+        if self.object_starts(tok):
+            ja, cls = self.parse_np()
+            if c.verb and c.verb[0] in VC["ditrans"] and self.object_starts(self.peek()):   # show me her room: the first noun phrase is the indirect object, pinned by suite B
+                c.iobj = ja; ja, cls = self.parse_np()
+            c.obj = ja
             head = self.last_head
             lemma0 = c.verb[0] if c.verb else None
             if c.verb and c.verb[0] in VC["causative"] and self.peek() and self.verb_form(self.peek()) == "base" and (not self.has(self.peek(), "noun") or self.peek(1) and (self.starts_np(self.peek(1)) or self.has(self.peek(1), "prep") or self.has(self.peek(1), "adv"))):   # made me write

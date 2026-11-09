@@ -1,6 +1,6 @@
 {
  "$schema": "../schemas/adjudications.schema.json",
- "description": "Human verdicts on the rule transducer's outputs, the judge the lattice needs where the single reference cannot decide (harness/lattice.py). `right` / `wrong` judge one specific output of one corpus sentence; `input_ungrammatical` marks a corpus line whose English is not standard, so that refusing it is the top of its chain. The hook demands a verdict whenever an unjudged output changes or disappears; the verdict is about the old output, and it is permanent.",
+ "description": "Human verdicts on the rule transducer's outputs, the judge the lattice needs where the single reference cannot decide (harness/lattice.py). `right` / `wrong` judge one specific output of one corpus sentence; `input_ungrammatical` marks a corpus line whose English is not standard, so that refusing it is the top of its chain. The hook demands a verdict whenever an unjudged output changes or disappears; each unjudged output shown (old, new or both) gets a verdict, and a verdict is permanent.",
  "sentences": [
   {
    "citation": "test 160: no one is coming .",
@@ -12,6 +12,108 @@
    "citation": "test 457: it is probable that he forget about it .",
    "verdict": "input_ungrammatical",
    "reason": "'he forget' lacks third-person agreement; the standard sentence is 'he will forget' or 'he forgets'. A refusal is the right answer for this line."
+  },
+  {
+   "citation": "dev 130: bring me a cup of coffee , will you ?",
+   "verdict": "right",
+   "output": "私に一杯のコーヒーを持ってきてくださいね。",
+   "reason": "Imperative with the tag 'will you?' rendered as 〜てくださいね; 一杯のコーヒー for 'a cup of coffee'; 持ってきて is the te-form of 持ってくる. Acceptable Japanese for the request."
+  },
+  {
+   "citation": "dev 131: please show me your bag .",
+   "verdict": "right",
+   "output": "私にあなたのかばんを見せてください。",
+   "reason": "The double-object frame: 私に (indirect object) … かばんを見せてください. Correct."
+  },
+  {
+   "citation": "dev 460: i paid him the money .",
+   "verdict": "right",
+   "output": "私は彼にお金を払った。",
+   "reason": "'paid him the money' as 彼にお金を払った: the double-object frame with the right particles and the past of 払う. Correct."
+  },
+  {
+   "citation": "dev 141: he brought me back in his car .",
+   "verdict": "wrong",
+   "output": "彼は彼の車で私を戻って持ってくた。",
+   "reason": "'brought me back' is 'took me home' (送ってくれた / 連れて帰った); 戻って持ってくた is a broken te-form (持ってくる inflects 持ってきて) glued to a literal 'carry back'."
+  },
+  {
+   "citation": "dev 141: he brought me back in his car .",
+   "verdict": "wrong",
+   "output": "彼は彼の車で私を戻って持ってきた。",
+   "reason": "The conjugation is now right (持ってきた) but the reading is still literal: 'brought me back' is 'took me home', not 戻って持ってきた."
+  },
+  {
+   "citation": "dev 209: i can 't bring myself to eat anything .",
+   "verdict": "wrong",
+   "output": "私は何かを食べるために自分が持ってくられない。",
+   "reason": "'bring oneself to V' is the idiom 'cannot make oneself V' (〜する気になれない); the output carries 持ってくる literally and a broken potential 持ってくられない."
+  },
+  {
+   "citation": "dev 209: i can 't bring myself to eat anything .",
+   "verdict": "wrong",
+   "output": "私は何かを食べるために自分が持ってこられない。",
+   "reason": "The potential is now 持ってこられない, but 'bring oneself to V' is still read literally; the idiom is 〜する気になれない."
+  },
+  {
+   "citation": "dev 337: he gave me a piece of advice .",
+   "verdict": "wrong",
+   "output": "彼は私に忠告の一片をあげた。",
+   "reason": "'a piece of advice' is a measure phrase, not 忠告の一片 ('a fragment of the advice'), and 'give advice' is 忠告をする, not あげる."
+  },
+  {
+   "citation": "dev 337: he gave me a piece of advice .",
+   "verdict": "right",
+   "output": "彼は私に一つの忠告をした。",
+   "reason": "'a piece of advice' as 一つの忠告 and 'give advice' as 忠告をする (the use-verb of 忠告), with 私に for the indirect object. The reference 忠告を１つしてくれた differs only in the benefactive."
+  },
+  {
+   "citation": "dev 445: i want to have a cup of coffee .",
+   "verdict": "wrong",
+   "output": "私はコーヒーのカップを持ちたい。",
+   "reason": "コーヒーのカップ is 'a coffee cup', not 'a cup of coffee', and 'have (a drink)' is 飲む, not 持つ."
+  },
+  {
+   "citation": "dev 445: i want to have a cup of coffee .",
+   "verdict": "wrong",
+   "output": "私は一杯のコーヒーを持ちたい。",
+   "reason": "The measure phrase is right (一杯のコーヒー) but 'have a cup of coffee' is 飲む; 持ちたい means 'want to hold'."
+  },
+  {
+   "citation": "test 196: i 'd like to have a glass of wine .",
+   "verdict": "wrong",
+   "output": "私はワインのグラスを持ちたかった。",
+   "reason": "ワインのグラス is 'a wine glass', 'have a glass of wine' is 飲む not 持つ, and 'would like' is a present wish, not the past 〜たかった."
+  },
+  {
+   "citation": "test 196: i 'd like to have a glass of wine .",
+   "verdict": "wrong",
+   "output": "私は一杯のワインを持ちたかった。",
+   "reason": "一杯のワイン is right, but 'have (a drink)' is 飲む, and 'would like to' is not the past 〜たかった."
+  },
+  {
+   "citation": "test 414: he is giving an address .",
+   "verdict": "wrong",
+   "output": "彼は住所にあげている。",
+   "reason": "'giving an address' is 'making a speech' (演説をしている); 住所 is a postal address and に is the wrong particle for an object."
+  },
+  {
+   "citation": "test 414: he is giving an address .",
+   "verdict": "wrong",
+   "output": "彼は住所をあげている。",
+   "reason": "The particle is now を, but 'an address' here is a speech (演説), not 住所."
+  },
+  {
+   "citation": "test 438: you brought it on yourself .",
+   "verdict": "wrong",
+   "output": "あなたは自分でそれを持ってくた。",
+   "reason": "'bring it on oneself' is the idiom 自業自得 / 自分で招いた; the output is a literal 'carried it by yourself' with a broken te-form (持ってくた)."
+  },
+  {
+   "citation": "test 438: you brought it on yourself .",
+   "verdict": "wrong",
+   "output": "あなたは自分でそれを持ってきた。",
+   "reason": "The conjugation is now right (持ってきた) but the idiom 'bring it on oneself' (自分で招いた) is still read literally."
   }
  ]
 }

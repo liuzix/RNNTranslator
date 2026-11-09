@@ -31,15 +31,18 @@ class Pred:
         if k == "v1": return self.stem
         if k == "v5": return self.stem[:-1] + GODAN_ROWS[self.stem[-1]][0]
         if k == "suru": return self.stem[:-2] + "し"
-        if k == "kuru": return self.stem[:-1]          # 来
+        if k == "kuru": return self.kuru_stem("こ")
         raise ValueError
     def masu_stem(self):
         k = self.kind
         if k == "v1": return self.stem
         if k == "v5": return self.stem[:-1] + GODAN_ROWS[self.stem[-1]][1]
         if k == "suru": return self.stem[:-2] + "し"
-        if k == "kuru": return self.stem[:-1]
+        if k == "kuru": return self.kuru_stem("き")
         raise ValueError
+    def kuru_stem(self, kana):
+        """来る keeps 来 in every stem; a compound written in kana (持ってくる) inflects こ / き — pinned by test_kuru_compounds"""
+        return self.stem[:-1] if self.stem.endswith("来る") else self.stem[:-2] + kana
     def te(self):
         k = self.kind
         if k == "forms": return self.stem[0][0][:-1] + "って"
@@ -48,7 +51,7 @@ class Pred:
             if self.stem.endswith("行く"): return self.stem[:-1] + "って"
             return self.stem[:-1] + GODAN_ROWS[self.stem[-1]][4]
         if k == "suru": return self.stem[:-2] + "して"
-        if k == "kuru": return self.stem[:-1] + "て"
+        if k == "kuru": return self.kuru_stem("き") + "て"
         if k == "ia": return self.stem + "くて"
         if k == "na": return self.stem + "で"
         raise ValueError
@@ -62,11 +65,11 @@ class Pred:
         if k == "v1": return Pred("v1", self.stem + "られ")
         if k == "v5": return Pred("v1", self.stem[:-1] + GODAN_ROWS[self.stem[-1]][2])
         if k == "suru": return Pred("v1", self.stem[:-2] + "でき")
-        if k == "kuru": return Pred("v1", self.stem[:-1] + "られ")
+        if k == "kuru": return Pred("v1", self.kuru_stem("こ") + "られ")
         raise ValueError
     def tai(self):          return Pred("ia", self.masu_stem() + "た")
     def causative(self):
-        caus = {"v1": self.stem + "させ", "v5": self.nai_stem() + "せ", "suru": self.stem[:-2] + "させ", "kuru": self.stem[:-1] + "させ"}.get(self.kind)
+        caus = {"v1": self.stem + "させ", "v5": self.nai_stem() + "せ", "suru": self.stem[:-2] + "させ", "kuru": self.kuru_stem("こ") + "させ" if self.kind == "kuru" else None}.get(self.kind)
         return Pred("v1", caus, dic=caus + "る") if caus else self
     def progressive(self):  return Pred("v1", self.te() + "い")
     def should(self):       return Pred("na", self.dic + "べき")
@@ -78,7 +81,7 @@ class Pred:
         if k == "v1": return self.stem + "よう"
         if k == "v5": return self.stem[:-1] + GODAN_ROWS[self.stem[-1]][3] + "う"
         if k == "suru": return self.stem[:-2] + "しよう"
-        if k == "kuru": return self.stem[:-1] + "よう"
+        if k == "kuru": return self.kuru_stem("こ") + "よう"
         raise ValueError
 
     # --- finite forms ---
@@ -206,7 +209,7 @@ ADJ_PREP = tables.build_adjectives()        # tables/adjectives.tbl
 WH = tables.build_pairs("wh", 3)                # tables/wh.tbl
 MODALS = tables.build_pairs("modals")          # tables/modals.tbl
 NUMBERS = tables.build_pairs("numbers")        # tables/numbers.tbl
-MULTIWORD = sorted([w for w in list(LEX) + [p for p in PREPS if " " in p] if " " in w], key=len, reverse=True)
+MULTIWORD = sorted([w for w in list(LEX) + list(PREPS) + list(DETS) if " " in w], key=len, reverse=True)
 
 SUBORD, COORD, HEARSAY = tables.build_connectives()   # tables/connectives.tbl
 
@@ -377,7 +380,7 @@ def predicate_form(c, polite):
     if c.lets:                    return p.volitional(polite=True) if p.kind in ("v1", "v5", "suru", "kuru") else p.finite(False, False, True)
     if c.imp:
         if c.causative and p.kind in ("v1", "v5", "suru", "kuru"):
-            caus = {"v1": p.stem + "させ", "v5": p.nai_stem() + "せ", "suru": p.stem[:-2] + "させ", "kuru": p.stem[:-1] + "させ"}[p.kind]
+            caus = {"v1": p.stem + "させ", "v5": p.nai_stem() + "せ", "suru": p.stem[:-2] + "させ", "kuru": p.kuru_stem("こ") + "させ" if p.kind == "kuru" else None}[p.kind]
             return caus + "てください"
         if c.neg: return p.nai_stem() + "ないでください"
         return p.te() + "ください"

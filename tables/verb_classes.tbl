@@ -12,6 +12,7 @@
 #   copular      V + adjective (get angry)
 #   change       V + ADJ and ADJ (getting longer and longer -> ますます)
 #   dative       to-NP is the indirect object (give NP to NP)
+#   ditrans      V NP NP: the first noun phrase is the indirect object に, the second the object を (show me her room)
 #   motion       purpose infinitive takes に, not ために (went to see)
 #   posture      V + V-ing is manner, ながら (stood looking)
 #   comitative   with-NP is と even for a thing (play with a ball)
@@ -19,7 +20,6 @@
 #   ni_where     where -> どこに (where do you live)
 #   stative      plain form reads as ている (have -> 持っている)
 #   ga           the object takes が (like -> が好き)
-
 advise | control
 afford | to_comp
 agree | to_comp,comitative
@@ -30,7 +30,8 @@ be | comitative,ni_location,ni_where
 become | copular,change
 begin | to_comp,ing_comp
 believe | that_comp
-bring | dative
+bring | dative,ditrans
+buy | ditrans
 care | wh_comp,if_comp
 choose | to_comp,not_to
 come | motion,posture,comitative,ni_location,ni_where
@@ -50,7 +51,7 @@ finish | to_comp,ing_comp
 force | control
 forget | to_comp,that_comp,that_only,wh_comp
 get | control,copular,change,ni_location
-give | dative
+give | dative,ditrans
 go | motion,posture,comitative,ni_location,ni_where
 grow | copular,change
 guess | that_comp,wh_comp
@@ -68,7 +69,7 @@ keep | to_comp,ing_comp
 know | that_comp,that_only,wh_comp,if_comp,stative
 learn | to_comp,wh_comp
 leave | motion
-lend | dative
+lend | dative,ditrans
 let | causative
 lie | posture
 like | to_comp,ing_comp,control,ga
@@ -85,7 +86,7 @@ notice | perception
 offer | to_comp
 order | control
 ought | to_comp
-pay | dative
+pay | dative,ditrans
 plan | to_comp
 play | comitative
 practice | ing_comp
@@ -100,8 +101,8 @@ run | motion,posture
 say | that_comp,wh_comp,dative
 see | wh_comp,if_comp,perception
 seem | to_comp,copular
-send | dative
-show | wh_comp,dative
+send | dative,ditrans
+show | wh_comp,dative,ditrans
 sit | posture,ni_location
 smell | perception
 speak | comitative
@@ -112,7 +113,7 @@ stay | motion,comitative,ni_location,ni_where
 stop | to_comp,ing_comp,motion
 suppose | that_comp
 talk | comitative
-teach | control,dative
+teach | control,dative,ditrans
 tell | not_to,that_comp,that_only,wh_comp,control,dative
 tend | to_comp
 think | that_comp,wh_comp

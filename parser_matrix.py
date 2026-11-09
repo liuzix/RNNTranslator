@@ -203,6 +203,34 @@ def use_pred(verb, head_ja):
     """the semantic feedback edge: the head noun carries a use-verb for the frame's verb (take a rest -> 休む)"""
     return bool(verb) and any(verb[0] in R.USE.get(en, {}) for en in NOUN_EN.get(head_ja, ()))
 
+def build_use_table():
+    """(head noun in Japanese, verb lemma) -> (the verb after the feedback, particle on the noun, stative): tables/use.tbl read
+    through the lexicon, so that the feedback is one lookup unit per pair in the cell instead of a constant in every rule
+    that happens to fire on it.  Two English nouns with the same Japanese and different feedback would collide; the first in
+    sorted order wins and the other pairs stay constants in their rules (hybrid_rows folds only an exact match)."""
+    table = {}
+    for en in sorted(R.USE):
+        for lemma, (uja, uconj, upart, stative) in R.USE[en].items():
+            for ja in sorted({v[0] for c, v in R.classify(en) if c == "noun"}):
+                table.setdefault((ja, lemma), ((lemma + "+" + en, uja, uconj), upart, stative))
+    return table
+USE_TABLE = build_use_table()
+
+def fold_use(post, role, head_ja, verb):
+    """the post-NP effects of the USE feedback (verb <- the pair's verb, the particle, the drop of the noun for "-", prog when
+    stative), when they are exactly what USE_TABLE prescribes for this head and verb, folded into one action (role, None, ("use",))"""
+    hit = USE_TABLE.get((head_ja, verb[0])) if head_ja and verb else None
+    if hit is None: return post
+    new_verb, upart, stative = hit
+    expected = {("verb", new_verb, ("const",))}
+    optional = set()
+    if upart == "-": expected |= {(f"{role}.{sub}", None, ("clear",)) for sub in NP_SUBS}; optional = {("obj_particle", None, ("clear",))}
+    else: expected.add(("obj_particle", upart, ("const",)))
+    if stative: expected.add(("prog", True, ("const",)))
+    have = set(post)
+    if not expected <= have: return post
+    return [a for a in post if a not in expected and a not in optional] + [(role, None, ("use",))]
+
 def predicates(toks, i, before, win_idx, reg_rd, pend_prep, heads=None):
     """binary predicates available to guard the transition at token i: only over what the parser read"""
     P = set()
@@ -391,6 +419,7 @@ def hybrid_rows(toks):
             post = register_actions(snaps[last], snaps[last + 1], None, allow_copy=False)
             post += np_register_actions(snap_ret, snaps[last + 1], toks[i1] if i1 < len(toks) else None, {role})
             if dropped: post += [(f"{role}.{sub}", None, ("clear",)) for sub in NP_SUBS]
+            post = fold_use(post, role, heads.get(role), snaps[first].get("verb"))
             post.append(("ret", None, ("clear",)))
             for j in range(e1["i"], i1):
                 if "prep" in dict(readings_of(toks[j])): pend = toks[j]
@@ -638,6 +667,18 @@ def apply_actions(frame, actions, toks, i):
             raise ParseFail(f"TABLE: nothing to copy into {slot} from {src[1]} at {tok!r}", i)       # the machine's crash: the rule fired on a token without that reading
     old = dict(frame)                                   # moves and clears read the state before this step, as the matrix does
     for slot, v, src in actions:
+        if src[0] == "use":                                 # the feedback lookup: slot is the role whose head noun carries the verb
+            head = old.get(f"{slot}.noun2") or old.get(f"{slot}.noun"); verb = old.get("verb")
+            hit = USE_TABLE.get((head, verb[0])) if head and verb else None
+            if hit is None: raise ParseFail(f"TABLE: no use pair for {head!r} and {verb and verb[0]!r} at {tok!r}", i)
+            new_verb, upart, stative = hit
+            frame["verb"] = new_verb
+            if upart == "-":
+                frame.pop("obj_particle", None)
+                for sub in NP_SUBS: frame.pop(f"{slot}.{sub}", None)
+            else: frame["obj_particle"] = upart
+            if stative: frame["prog"] = True
+            continue
         if src[0] == "clear": frame.pop(slot, None)
         elif src[0] == "const": frame[slot] = v
         elif src[0] in ("move", "move_time"):              # the gate clears the slot; the write lands only if the source slot is filled
@@ -742,6 +783,19 @@ def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None):
             if src[0] in MOVE_FN: move_pairs.add((slot, src[1], src[0]))
     for _ in range(3):
         for slot, src_slot, fn in list(move_pairs): slot_vocab[slot] |= {MOVE_FN[fn](v) for v in slot_vocab[src_slot]}
+    # the USE lookup: every value a pair of this cell can write (verb after the feedback, particle, prog)
+    use_rules = collections.defaultdict(list)                                   # role -> the rules that apply the feedback on it
+    for ri, (prev, lits, (cp, k, actions)) in enumerate(rules):
+        for slot, v, src in actions:
+            if src[0] == "use": use_rules[slot].append(ri)
+    for role in use_rules:
+        nouns = set(slot_vocab.get(f"{role}.noun", [])) | set(slot_vocab.get(f"{role}.noun2", []))
+        lemmas = {vv[0] for vv in slot_vocab.get("verb", [])}
+        for (ja, lemma), (new_verb, upart, stative) in USE_TABLE.items():
+            if ja not in nouns or lemma not in lemmas: continue
+            slot_vocab["verb"].add(new_verb)
+            if upart != "-": slot_vocab["obj_particle"].add(upart)
+            if stative: slot_vocab["prog"].add(True)
     # ---- state index: control, slots, pend_prep, shift
     S = Index()
     ctrl_states = {("START",), ("DONE",), FAIL} | set(trees) | set(out[0] for _, _, out in rules) | set(prev for prev, _, _ in rules)
@@ -853,17 +907,18 @@ def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None):
     use_pairs = collections.defaultdict(list)
     pairs = {(ja, vv) for en, d in R.USE.items() for lemma in d for ja in {v[0] for c, v in R.classify(en) if c == "noun"}
              for vv in slot_vocab.get("verb", []) if vv[0] == lemma}
-    use_roles = {q[4:] for _, lits, _ in rules for q, t in lits if q.startswith("use.")}
+    use_roles = {q[4:] for _, lits, _ in rules for q, t in lits if q.startswith("use.")} | set(use_rules)
+    pair_units = collections.defaultdict(list)                                  # role -> (unit, ja, vv) for the lookup writes
     for role in sorted(use_roles):
         if not slot_vocab.get(f"{role}.noun") or not vunits: continue
         for ja, vv in sorted(pairs, key=str):
             if ("slot", f"{role}.noun2", ja) in S:
                 u = L1.add(("usepair", role, "noun2", ja, vv)); W1.append((u, ("S", S[("slot", "verb", vv)]), 1.0)); W1.append((u, ("S", S[("slot", f"{role}.noun2", ja)]), 1.0)); b1[u] = -1.0
-                use_pairs[role].append(u)
+                use_pairs[role].append(u); pair_units[role].append((u, ja, vv))
             if ("slot", f"{role}.noun", ja) in S:
                 u = L1.add(("usepair", role, "noun", ja, vv)); W1.append((u, ("S", S[("slot", "verb", vv)]), 1.0)); W1.append((u, ("S", S[("slot", f"{role}.noun", ja)]), 1.0)); b1[u] = -1.0
                 if ("slot", f"{role}.compound", True) in S: W1.append((u, ("S", S[("slot", f"{role}.compound", True)]), -1.0))   # the head is noun2 then
-                use_pairs[role].append(u)
+                use_pairs[role].append(u); pair_units[role].append((u, ja, vv))
     # ---- layer 2: pp.count, NOT-derived (1 - sum of the conjunctions), use.<role> (OR of pairs)
     L2 = Index(); W2 = []; b2 = {}
     u = L2.add(("pred", "pp.count=0")); b2[u] = 1.0
@@ -929,6 +984,22 @@ def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None):
                 gm = gate_move.setdefault((slot, src[1], src[0]), L4.add(("gmove", slot, src[1], src[0]))); W4.append((gm, ("L3", L3[("rule", ri)]), 1.0))
             elif src[0] == "const":
                 const_w[(slot, v)].append(ri)
+            elif src[0] == "use":                                            # the lookup rewrites the verb and the particle for every pair
+                for target in ("verb", "obj_particle"):
+                    gt = gate_slot.setdefault(target, L4.add(("gate", target))); W4.append((gt, ("L3", L3[("rule", ri)]), 1.0))
+    # the USE lookup gates: any feedback rule fired (guse); AND a stative pair is active (gusestat: prog <- True);
+    # AND a "-" pair is active (gusedash: the role's noun phrase is dropped, take a rest -> 休む)
+    guse = {}; gusestat = {}; gusedash = {}
+    for role, ris in use_rules.items():
+        g = L4.add(("guse", role)); guse[role] = g
+        for ri in ris: W4.append((g, ("L3", L3[("rule", ri)]), 1.0))
+        stat = [u for u, ja, vv in pair_units.get(role, []) if USE_TABLE[(ja, vv[0])][2]]
+        dash = [u for u, ja, vv in pair_units.get(role, []) if USE_TABLE[(ja, vv[0])][1] == "-"]
+        for name, units, store in (("gusestat", stat, gusestat), ("gusedash", dash, gusedash)):
+            if not units: continue
+            gu = L4.add((name, role)); b4[gu] = -1.0; store[role] = gu
+            for ri in ris: W4.append((gu, ("L3", L3[("rule", ri)]), 1.0))
+            for u in units: W4.append((gu, ("L1", u), 1.0))
     # pend_prep gate: a preposition in slot 0 AND this step consumes it (any rule with k >= 1, or a skip step)
     gp = L4.add(("gate", "pend")); b4[gp] = -1.0
     for w in preps: W4.append((gp, ("X", X[("prep0", w)]), 1.0))
@@ -943,6 +1014,9 @@ def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None):
             si = S[("slot", slot, v)]
             kp = L5.add(("keep", slot, v)); W5.append((kp, ("S", si), 1.0))
             if g is not None: W5.append((kp, ("L4", g), -1.0))
+            if slot == "prog":
+                for gu in gusestat.values(): W5.append((kp, ("L4", gu), -1.0))
+            if "." in slot and slot.split(".")[0] in gusedash: W5.append((kp, ("L4", gusedash[slot.split(".")[0]]), -1.0))
             for (sl, s) in copy_pairs:
                 if sl == slot and v in src_vocab.get(s, []) and ("src", s, v) in X:
                     wu = L5.add(("write", slot, s, v)); W5.append((wu, ("L4", gate_copy[(sl, s)]), 1.0)); W5.append((wu, ("X", X[("src", s, v)]), 1.0)); b5[wu] = -1.0
@@ -957,6 +1031,21 @@ def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None):
     for w in preps:
         kp = L5.add(("keep", "pend", w)); W5.append((kp, ("S", S[("pend", w)]), 1.0)); W5.append((kp, ("L4", gp), -1.0))
         wu = L5.add(("write", "pend", w)); W5.append((wu, ("X", X[("prep0", w)]), 1.0)); W5.append((wu, ("L4", gp), 1.0)); b5[wu] = -1.0
+    # the USE lookup writes: AND(the gate, the pair unit), one unit per target value; prog through gusestat; no pair -> FAIL
+    for role, g in guse.items():
+        by_target = collections.defaultdict(list)
+        for u, ja, vv in pair_units.get(role, []):
+            new_verb, upart, stative = USE_TABLE[(ja, vv[0])]
+            by_target[("verb", new_verb)].append(u)
+            if upart != "-": by_target[("obj_particle", upart)].append(u)
+        for (slot, v), units in sorted(by_target.items(), key=str):
+            if ("slot", slot, v) not in S: continue
+            wu = L5.add(("writeu", slot, v, role)); W5.append((wu, ("L4", g), 1.0)); b5[wu] = -1.0
+            for u in units: W5.append((wu, ("L1", u), 1.0))
+        if role in gusestat and ("slot", "prog", True) in S:
+            wu = L5.add(("writeu", "prog", True, role)); W5.append((wu, ("L4", gusestat[role]), 1.0))
+        cu = L5.add(("nouse", role)); W5.append((cu, ("L4", g), 1.0))
+        for u, ja, vv in pair_units.get(role, []): W5.append((cu, ("L1", u), -1.0))
     # the crash: a copy gate with no reading of its source in slot 0 -> FAIL (the rule fired on a token it was not written for)
     for (slot, s), gc in gate_copy.items():
         srcs = [X[("src", s, v)] for v in src_vocab.get(s, []) if ("src", s, v) in X]
@@ -972,7 +1061,8 @@ def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None):
         if name[0] in ("keep", "write", "writec", "writem"):
             key = ("pend", name[2]) if name[1] == "pend" else ("slot", name[1], name[-1])
             W6.append((S[key], ("L5", i), 1.0))
-        if name[0] == "nosrc": W6.append((S[("ctrl", FAIL)], ("L5", i), 1.0))
+        if name[0] == "writeu": W6.append((S[("slot", name[1], name[2])], ("L5", i), 1.0))
+        if name[0] in ("nosrc", "nouse"): W6.append((S[("ctrl", FAIL)], ("L5", i), 1.0))
     layers = [(L1, W1, b1), (L2, W2, b2), (L3, W3, b3), (L4, W4, b4), (L5, W5, b5)]
     return {"S": S, "X": X, "layers": layers, "W6": W6, "rules": rules, "slot_vocab": slot_vocab, "src_vocab": src_vocab,
             "unresolved": unresolved, "derived": derived, "dead_conj": dead_conj}
