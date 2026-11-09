@@ -3,22 +3,22 @@
 "matrix": {
 "both_refuse": 263,
 "cell": {
-"build_seconds": 27,
-"input_units": 2044,
+"build_seconds": 26,
+"input_units": 2030,
 "layers": [
-994,
+995,
 135,
-2172,
-790,
-31260
+2165,
+791,
+31263
 ],
-"nnz": 222373,
-"rules": 1981,
+"nnz": 229430,
+"rules": 1974,
 "rules_by_kind": {
 "entry": 132,
 "exit": 180,
 "fail": 235,
-"module": 1003,
+"module": 996,
 "outer": 431
 },
 "scope": {
@@ -26,56 +26,48 @@
 "out of scope": 158,
 "refused": 273
 },
-"state_units": 16004,
+"state_units": 16005,
 "unresolved": {}
 },
-"identical": 530,
+"identical": 531,
 "matrix_parses_refused": 0,
 "per_split": {
 "dev": {
-"bleu_matrix_shared": 34.316,
-"bleu_rules_shared": 34.34,
+"bleu_matrix_shared": 34.493,
+"bleu_rules_shared": 34.493,
 "both_refuse": 180,
-"examples": {
-"wrong_frame": [
-"what food don 't you like ? | あなたはどんな食べ物を好きではありませんか。 | あなたは何時に好きではありませんか。"
-]
-},
+"examples": {},
 "identical": 243,
 "matrix_parses_refused": 0,
-"refused_parseable": 72,
-"shared": 244,
-"wrong_frame": 1
+"refused_parseable": 73,
+"shared": 243,
+"wrong_frame": 0
 },
 "test": {
-"bleu_matrix_shared": 36.581,
-"bleu_rules_shared": 36.631,
+"bleu_matrix_shared": 36.754,
+"bleu_rules_shared": 36.754,
 "both_refuse": 83,
-"examples": {
-"wrong_frame": [
-"how many schools are there in your city ? | あなたの都市に学校はいくつありますか。 | あなたの都市に学校はいくついますか。"
-]
-},
-"identical": 287,
+"examples": {},
+"identical": 288,
 "matrix_parses_refused": 0,
 "refused_parseable": 128,
 "shared": 288,
-"wrong_frame": 1
+"wrong_frame": 0
 }
 },
-"refused_parseable": 200,
-"summary": "identical 530, wrong frame 2, matrix parses refused 0, refused parseable 200, both refuse 263; nnz 222373, rules 1981",
-"wrong_frame": 2
+"refused_parseable": 201,
+"summary": "identical 531, wrong frame 0, matrix parses refused 0, refused parseable 201, both refuse 263; nnz 229430, rules 1974",
+"wrong_frame": 0
 },
 "negatives": {
 "accepted": 0,
-"controls_refused_by_matrix": 4,
+"controls_refused_by_matrix": 5,
 "controls_refused_by_rules": 0,
 "count": 18,
 "matrix_accepted": 0,
 "problems": [],
-"seconds": 25,
-"summary": "negatives: rules refuse 18/18 and accept 18/18 controls; matrix refuses 18/18 and accepts 14/18 controls"
+"seconds": 27,
+"summary": "negatives: rules refuse 18/18 and accept 18/18 controls; matrix refuses 18/18 and accepts 13/18 controls"
 },
 "np": {
 "alphabet": 89,
@@ -84,13 +76,13 @@
 "max_len": 2,
 "mismatch_kinds": 0,
 "mismatches": 0,
-"seconds": 6,
+"seconds": 5,
 "summary": "np_module vs parse_np: 32040 cases (len<=2, 89 tokens), 0 mismatches"
 },
 "rules": {
 "dev": {
-"bleu_all": 19.666,
-"bleu_covered": 34.635,
+"bleu_all": 19.659,
+"bleu_covered": 34.669,
 "coverage": 0.6371,
 "covered": 316,
 "failures": {
@@ -110,8 +102,8 @@
 "n": 496
 },
 "test": {
-"bleu_all": 30.561,
-"bleu_covered": 36.093,
+"bleu_all": 30.591,
+"bleu_covered": 36.182,
 "coverage": 0.8337,
 "covered": 416,
 "failures": {
@@ -218,31 +210,31 @@
 "cases": 3,
 "closed": false,
 "refused": 0,
-"right": 0,
+"right": 2,
 "title": "Register and dropped words",
-"wrong": 3
+"wrong": 1
 }
 },
 "closed": 4,
 "open": 7,
-"right": 20,
-"summary": "suites: 20/33 cases right, 4 of 11 classes closed (open: D, E, G, H, I, L, M)"
+"right": 22,
+"summary": "suites: 22/33 cases right, 4 of 11 classes closed (open: D, E, G, H, I, L, M)"
 }
 },
 "metrics": {
-"matrix.identical": 530,
-"matrix.silent_misfires": 2,
+"matrix.identical": 531,
+"matrix.silent_misfires": 0,
 "negatives.accepted": 0,
 "negatives.controls_refused": 0,
 "negatives.matrix_accepted": 0,
 "np.mismatches": 0,
-"rules.dev.bleu_all": 19.666,
+"rules.dev.bleu_all": 19.659,
 "rules.dev.covered": 316,
-"rules.test.bleu_all": 30.561,
+"rules.test.bleu_all": 30.591,
 "rules.test.covered": 416,
 "suites.cases": 33,
 "suites.closed": 4,
-"suites.right": 20
+"suites.right": 22
 },
 "outputs": {
 "matrix": {
@@ -262,7 +254,7 @@
 "111: he went to paris , where he first met her .": "",
 "112: he compensated me for the accident with money .": "彼は事故のためにお金で私を補償した。",
 "113: the doctor advised me to give up smoking .": "",
-"114: they haven 't come back home yet .": "彼らは家にまだ戻っていなかった。",
+"114: they haven 't come back home yet .": "彼らは家にまだ戻っていない。",
 "115: his love grew cold .": "",
 "116: i don 't smoke .": "私は吸わない。",
 "117: it was many hours before he came to .": "",
@@ -435,7 +427,7 @@
 "269: i have just eaten lunch .": "私は昼食をちょうど食べた。",
 "26: the matter has not been settled yet .": "",
 "270: let him do as he likes .": "",
-"271: mother has not cooked dinner yet .": "母は夕食をまだ料理していなかった。",
+"271: mother has not cooked dinner yet .": "母は夕食をまだ料理していない。",
 "272: i 'll make a model plane for you .": "私はあなたのために模型の飛行機を作る。",
 "273: he wanted to absent himself from the class .": "彼はクラスから自分を欠席したかった。",
 "274: his house is across the street .": "彼の家は通りを渡ってある。",
@@ -524,7 +516,7 @@
 "34: i am tired from a long walk .": "私は長い散歩から疲れている。",
 "350: he jumped about the room .": "彼は部屋について飛んだ。",
 "351: she made cookies for the children .": "彼女は子供たちのためにクッキーを作った。",
-"352: what food don 't you like ?": "あなたは何時に好きではありませんか。",
+"352: what food don 't you like ?": "",
 "353: the snow lasted for two days .": "雪は２日のために続いた。",
 "354: the news broke her heart .": "ニュースは彼女の心を傷つけた。",
 "355: we are looking forward to our uncle 's visit .": "",
@@ -999,7 +991,7 @@
 "327: can you fix him up for the night ?": "あなたは夜のために彼が用意できますか。",
 "328: but his name is slightly familiar to me .": "",
 "329: mr smith and i have been acquainted with each other for a long time .": "",
-"32: nobody has seen him ever since .": "誰も彼をそれ以来見ていなかった。",
+"32: nobody has seen him ever since .": "誰も彼をそれ以来見ていない。",
 "330: he has seen much of the world .": "彼は世界のたくさん見た。",
 "331: i wish i could speak english .": "",
 "332: you should have replied to his letter .": "あなたは彼の手紙に返事をするべきだった。",
@@ -1076,7 +1068,7 @@
 "398: i have no homework today .": "今日私は宿題を持っていない。",
 "399: this old coat has had it .": "この古いコートはそれを持った。",
 "39: tell me which you want .": "",
-"3: he is no less kind than his sister .": "彼は彼の姉に劣らず優しい。",
+"3: he is no less kind than his sister .": "彼は姉に劣らず優しい。",
 "400: there is little water in the bucket .": "バケツに小さい水がある。",
 "401: when he got into trouble , he turned to his parents for help .": "",
 "402: the sun went behind the clouds .": "太陽は雲の後ろに行った。",
@@ -1194,7 +1186,7 @@
 "52: i 'm still waiting for my order .": "私は順序をまだ待っている。",
 "53: there are a great many books in this library .": "この図書館にたくさんの本がある。",
 "54: you should avail yourself of every opportunity .": "あなたは毎機会の自分を利用するべきだ。",
-"55: how many schools are there in your city ?": "あなたの都市に学校はいくついますか。",
+"55: how many schools are there in your city ?": "あなたの都市に学校はいくつありますか。",
 "56: i don 't like sad movies .": "私は悲しい映画が好きではない。",
 "57: she was very angry with me when i forgot the appointment .": "",
 "58: people of your age often have this problem .": "",
@@ -1202,7 +1194,7 @@
 "5: break a leg .": "足を壊してください。",
 "60: she stood looking at a boat on the river .": "",
 "61: whether he comes or not , i 'll go .": "",
-"62: i don 't get up as early as my mother .": "私は私の母ほど早く起きない。",
+"62: i don 't get up as early as my mother .": "私は母ほど早く起きない。",
 "63: any flower will do , so long as it is red .": "",
 "64: don 't forget to add me in .": "私を加えるのを忘れないでください。",
 "65: you are the only one .": "",
@@ -1294,7 +1286,7 @@
 },
 {
 "control": "the train arrived .",
-"control.matrix": "電車は着いた。",
+"control.matrix": null,
 "control.rules": "電車は着いた。",
 "phenomenon": "an unaccusative verb has no passive",
 "sentence": "the train was arrived .",
@@ -1696,7 +1688,7 @@
 "111: he went to paris , where he first met her .": "",
 "112: he compensated me for the accident with money .": "彼は事故のためにお金で私を補償した。",
 "113: the doctor advised me to give up smoking .": "医者は私に喫煙を諦めるように忠告した。",
-"114: they haven 't come back home yet .": "彼らは家にまだ戻っていなかった。",
+"114: they haven 't come back home yet .": "彼らは家にまだ戻っていない。",
 "115: his love grew cold .": "",
 "116: i don 't smoke .": "私は吸わない。",
 "117: it was many hours before he came to .": "",
@@ -1869,7 +1861,7 @@
 "269: i have just eaten lunch .": "私は昼食をちょうど食べた。",
 "26: the matter has not been settled yet .": "",
 "270: let him do as he likes .": "",
-"271: mother has not cooked dinner yet .": "母は夕食をまだ料理していなかった。",
+"271: mother has not cooked dinner yet .": "母は夕食をまだ料理していない。",
 "272: i 'll make a model plane for you .": "私はあなたのために模型の飛行機を作る。",
 "273: he wanted to absent himself from the class .": "彼はクラスから自分を欠席したかった。",
 "274: his house is across the street .": "彼の家は通りを渡ってある。",
@@ -2356,7 +2348,7 @@
 "258: what time do you leave here ?": "あなたは何時にここで出ますか。",
 "259: mary became a typist .": "メアリーはタイピストをなった。",
 "25: he rescued the child from the fire .": "彼は火事から子供を救った。",
-"260: my father boasts of the fact that he has never had a traffic accident .": "私の父は彼が交通の事故に決して遭っていなかったという事実を自慢する。",
+"260: my father boasts of the fact that he has never had a traffic accident .": "私の父は彼が交通の事故に決して遭っていないという事実を自慢する。",
 "261: he acquainted me with the change of the plan .": "彼は計画の変更で私を知らせた。",
 "262: sit down with me .": "私と座ってください。",
 "263: please send the letter by express .": "速達で手紙を送ってください。",
@@ -2433,7 +2425,7 @@
 "327: can you fix him up for the night ?": "あなたは夜のために彼が用意できますか。",
 "328: but his name is slightly familiar to me .": "",
 "329: mr smith and i have been acquainted with each other for a long time .": "スミスさんと私はお互いと長い時間のために知り合いだ。",
-"32: nobody has seen him ever since .": "誰も彼をそれ以来見ていなかった。",
+"32: nobody has seen him ever since .": "誰も彼をそれ以来見ていない。",
 "330: he has seen much of the world .": "彼は世界のたくさん見た。",
 "331: i wish i could speak english .": "私は私が英語が話せたと願う。",
 "332: you should have replied to his letter .": "あなたは彼の手紙に返事をするべきだった。",
@@ -2510,7 +2502,7 @@
 "398: i have no homework today .": "今日私は宿題を持っていない。",
 "399: this old coat has had it .": "この古いコートはそれを持った。",
 "39: tell me which you want .": "私にあなたがどれを欲しがるか話してください。",
-"3: he is no less kind than his sister .": "彼は彼の姉に劣らず優しい。",
+"3: he is no less kind than his sister .": "彼は姉に劣らず優しい。",
 "400: there is little water in the bucket .": "バケツに小さい水がある。",
 "401: when he got into trouble , he turned to his parents for help .": "彼が困ったことに得たとき彼は助けのために両親に頼った。",
 "402: the sun went behind the clouds .": "太陽は雲の後ろに行った。",
@@ -2636,7 +2628,7 @@
 "5: break a leg .": "足を壊してください。",
 "60: she stood looking at a boat on the river .": "彼女は川でボートを見ながら立った。",
 "61: whether he comes or not , i 'll go .": "彼が来るかどうかにかかわらず私は行く。",
-"62: i don 't get up as early as my mother .": "私は私の母ほど早く起きない。",
+"62: i don 't get up as early as my mother .": "私は母ほど早く起きない。",
 "63: any flower will do , so long as it is red .": "それが赤い限り花はする。",
 "64: don 't forget to add me in .": "私を加えるのを忘れないでください。",
 "65: you are the only one .": "",
@@ -2774,9 +2766,9 @@
 {
 "citation": "test 3",
 "class": "E",
-"expect": "彼は彼の姉に劣らず優しい。",
+"expect": "彼は姉に劣らず優しい。",
 "level": "RIGHT",
-"output": "彼は彼の姉に劣らず優しい。",
+"output": "彼は姉に劣らず優しい。",
 "reason": null,
 "sentence": "he is no less kind than his sister ."
 },
@@ -2955,8 +2947,8 @@
 "citation": "test 62",
 "class": "M",
 "expect": "私は母ほど早く起きない。",
-"level": "WRONG",
-"output": "私は私の母ほど早く起きない。",
+"level": "RIGHT",
+"output": "私は母ほど早く起きない。",
 "reason": null,
 "sentence": "i don 't get up as early as my mother ."
 },
@@ -2964,8 +2956,8 @@
 "citation": "test 32",
 "class": "M",
 "expect": "誰も彼をそれ以来見ていない。",
-"level": "WRONG",
-"output": "誰も彼をそれ以来見ていなかった。",
+"level": "RIGHT",
+"output": "誰も彼をそれ以来見ていない。",
 "reason": null,
 "sentence": "nobody has seen him ever since ."
 },
@@ -2980,5 +2972,5 @@
 }
 ]
 },
-"taken": "2026-11-08 at 6353203 (staged)"
+"taken": "2026-11-08 at e52a8e5 (staged)"
 }

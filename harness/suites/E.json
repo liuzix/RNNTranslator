@@ -11,8 +11,9 @@
   },
   {
    "sentence": "he is no less kind than his sister .",
-   "expect": "彼は彼の姉に劣らず優しい。",
-   "citation": "test 3"
+   "expect": "彼は姉に劣らず優しい。",
+   "citation": "test 3",
+   "note": "the possessive coreferent with the subject is dropped in the comparison phrase as it is for the object (suite B, test 155)"
   },
   {
    "sentence": "there are more girls than boys in our school .",

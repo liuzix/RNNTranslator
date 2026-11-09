@@ -49,6 +49,7 @@ class Clause:
         self.embedded = None       # another Clause (that-clause / infinitive complement)
         self.compare = None        # ("as"|"than"|"noless", np) degree construction
         self.noless = False        # "no less ADJ than": the comparison reads に劣らず
+        self.perf_had = False      # the perfect auxiliary was "had": a negative perfect then reads ていなかった, else ていない
         self.manner = None         # V-ing clause: stood looking at ... -> 〜ながら
         self.tag = False           # tag question: ..., isn't it ?
         self.sub = False           # a subordinate clause being parsed: stop at a comma or a conjunction
@@ -408,7 +409,7 @@ class Parser:
                 return self.verb_phrase(expect_base=True)
             return self.verb_phrase(expect_base=True)
         if "aux_have" in r:
-            c.past = r["aux_have"] == "past"; c.perf = True; self.i += 1
+            c.past = r["aux_have"] == "past"; c.perf = True; c.perf_had = r["aux_have"] == "past"; self.i += 1
             ja, cls = self.parse_np(role="subj"); c.subj, c.subj_cls, c.subj_num = ja, cls, self.np_number
             return self.verb_phrase(expect_pp=True)
         if "aux_be" in r:
@@ -467,14 +468,14 @@ class Parser:
                 self.copula_predicate(); return self.end()
             return self.verb_phrase(expect_base=True)
         if ("aux_have" in r or tok == "'ve") and self.peek(1) and (self.has(self.peek(1), "not") and self.peek(2) and self.has(self.peek(2), "verb") or "pp" in self.verb_forms(self.peek(1))) and self.peek(1) != "to":
-            c.past = True; c.perf = True; self.i += 1
+            c.past = True; c.perf = True; c.perf_had = tok == "had"; self.i += 1
             if self.has(self.peek(), "not"): self.i += 1; c.neg = True
             return self.verb_phrase(expect_pp=True)
         if ("aux_have" in r or tok == "'ve") and self.peek(1) and self.has(self.peek(1), "adv") and not self.has(self.peek(1), "verb"):   # have just now finished
             j = 1
             while self.peek(j) and self.has(self.peek(j), "adv") and not self.has(self.peek(j), "verb"): j += 1
             if "pp" in self.verb_forms(self.peek(j)):
-                c.past = True; c.perf = True; self.i += 1
+                c.past = True; c.perf = True; c.perf_had = tok == "had"; self.i += 1
                 while self.peek() and self.has(self.peek(), "adv") and not self.has(self.peek(), "verb"):
                     c.adv += dict(self.readings(self.peek()))["adv"]; self.i += 1
                 return self.verb_phrase(expect_pp=True)

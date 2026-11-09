@@ -373,7 +373,7 @@ def predicate_form(c, polite):
     elif lemma == "need" and not c.want: p = Pred("na", "必要")
     elif lemma == "hate" and not c.want: p = Pred("na", "嫌い")
     elif lemma == "understand" and not c.want: p = Pred("v5", "分かる")
-    if c.perf and c.neg: c.prog = True                         # haven't come yet -> まだ来ていない
+    if c.perf and c.neg: c.prog = True; c.past = c.perf_had    # haven't come yet -> まだ来ていない; hadn't come -> 来ていなかった
     if c.prog and not c.want and p.kind in ("v1", "v5", "suru", "kuru"):     p = p.progressive()
     if c.modal == "can":          p = p.potential() if p.kind in ("v1", "v5", "suru", "kuru") else p
     elif c.modal == "must":       return p_must(p, c, polite)
@@ -462,6 +462,8 @@ def generate(c, polite=None, embedded=False):
     if c.exclaim is not None:
         return (c.subj + "は" if c.subj else "") + "なんと" + c.exclaim + "なのだろう。"
     if c.adv and "決して" in c.adv: c.neg = True                                              # never: the adverb carries the negation (決して〜ない)
+    if c.compare and c.subj and c.subj in ("私", "彼", "彼女", "私たち", "彼ら", "あなた") and c.compare[1].startswith(c.subj + "の") and len(c.compare[1]) > len(c.subj) + 1:
+        c.compare = (c.compare[0], c.compare[1][len(c.subj) + 1:])              # as early as my mother -> 母ほど: the possessive coreferent with the subject is dropped, as for the object
     if c.front: out.append(c.front)
     if c.pre_clause: out.append(c.pre_clause)
     if c.time: out.append(c.time)

@@ -456,6 +456,36 @@
    "verdict": "right",
    "output": "一体何が問題ですか。",
    "reason": "'what on earth is the matter' as 一体何が問題ですか: correct."
+  },
+  {
+   "citation": "dev 114: they haven 't come back home yet .",
+   "verdict": "wrong",
+   "output": "彼らは家にまだ戻っていなかった。",
+   "reason": "A present perfect negative (haven't come back yet) is まだ戻っていない; the past ていなかった is wrong."
+  },
+  {
+   "citation": "dev 114: they haven 't come back home yet .",
+   "verdict": "right",
+   "output": "彼らは家にまだ戻っていない。",
+   "reason": "まだ戻っていない for 'haven't come back yet': correct."
+  },
+  {
+   "citation": "dev 271: mother has not cooked dinner yet .",
+   "verdict": "wrong",
+   "output": "母は夕食をまだ料理していなかった。",
+   "reason": "A present perfect negative is まだ〜していない; the past ていなかった is wrong."
+  },
+  {
+   "citation": "dev 271: mother has not cooked dinner yet .",
+   "verdict": "right",
+   "output": "母は夕食をまだ料理していない。",
+   "reason": "まだ料理していない for 'has not cooked yet': correct (作っていない is the usual verb)."
+  },
+  {
+   "citation": "test 260: my father boasts of the fact that he has never had a traffic accident .",
+   "verdict": "wrong",
+   "output": "私の父は彼が交通の事故に決して遭っていないという事実を自慢する。",
+   "reason": "The tense is right now, but 'traffic accident' is the compound 交通事故 (not 交通の事故) and 'has never had' is the experiential 一度も遭ったことがない."
   }
  ]
 }

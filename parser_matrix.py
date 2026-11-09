@@ -24,7 +24,7 @@ from parser_rules import Parser, Clause, ParseFail, Overflow, parse_bounded
 WINDOW = 4
 NP_ROLES = ("subj", "obj", "iobj", "pp1", "pp2", "pp3", "cop", "cmp")        # cmp: the noun phrase of a than / as comparison
 NP_SUB = ("det", "poss", "num", "adj1", "adj2", "noun", "cls")
-FLAGS = ("past", "neg", "prog", "perf", "question", "imp", "please", "lets", "there", "tag", "coord", "sub", "neg_inner", "noless")
+FLAGS = ("past", "neg", "prog", "perf", "question", "imp", "please", "lets", "there", "tag", "coord", "sub", "neg_inner", "noless", "perf_had")
 ENUMS = ("modal", "want", "degree", "obj_particle", "wh", "time", "adv1", "adv2", "front", "cop_kind", "cop_adj", "cop_adv", "cop_part",
          "pp1_part", "pp2_part", "pp3_part", "cmp_kind", "verb", "purpose", "causative")
 UNSUPPORTED_REGS = ("infinitive", "control", "embedded", "purpose_clause", "pre_clause", "manner", "so_that", "howabout",
@@ -373,7 +373,7 @@ def np_register_actions(before, after, tok, skip_roles):
         elif "noun" in rs and v == rs["noun"][0]: src = ("copy", "noun")
         elif "pron" in rs and v == rs["pron"][0]: src = ("copy", "pron")
         else: src = ("const",)
-        actions.append((f"{r}.noun", v, src)); actions.append((f"{r}.cls", "t" if r != "subj" else "h", ("const",)))
+        actions.append((f"{r}.noun", v, src)); actions.append((f"{r}.cls", (after.get("subj_cls") or "h") if r == "subj" else "t", ("const",)))   # the class the parser recorded
     return actions
 
 def norm_actions(actions):
@@ -601,16 +601,18 @@ def build_hybrid(sentences, verbose=False):
     comp["scope"] = scope; comp["rows"] = rows
     return comp
 
+GUARD_PREFIXES = ("w0.class=", "verb.", "flag.", "reg.", "hit=", "pp.count", "use.", "np.")   # the leaf guard: classes and registers, not surfaces or the later window slots
 def induce(rows):
     """per previous control point, a decision tree over predicates whose leaves are outcomes; returns {prev: tree}.
-    A leaf also carries the guard the rule parser itself applied: the class predicates of the token in slot 0 that every row
-    reaching the leaf read as true (an `end` transition keeps w0.class=end even when no training row ever had another token
-    there), so that an induced rule never consumes a kind of token the parser was not seen to consume."""
+    A leaf also carries the guard the rule parser itself applied: the class and register predicates (GUARD_PREFIXES) that
+    every row reaching the leaf read as true (an `end` transition keeps w0.class=end even when no training row ever had
+    another token there; an ing_comp transition keeps verb.vc=ing_comp), so that an induced rule never fires on a kind of
+    token or state the parser was not seen to fire on; surfaces and the later window slots are left to the tree."""
     by_prev = collections.defaultdict(list); read_by_prev = collections.defaultdict(set)
     for prev, P_all, P_read, outcome in rows: by_prev[prev].append((P_all, P_read, outcome)); read_by_prev[prev] |= P_read
     def guard(items):
         common = set.intersection(*(set(R_) for _, R_, _ in items)) if items else set()
-        return tuple(sorted(q for q in common if q.startswith("w0.class=")))
+        return tuple(sorted(q for q in common if q.startswith(GUARD_PREFIXES)))
     def build(items, used, cands_all):
         outcomes = set(o for _, _, o in items)
         if len(outcomes) == 1: return ("leaf", next(iter(outcomes)), guard(items))
