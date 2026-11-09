@@ -56,7 +56,8 @@ def module(seq, ctx, role, rules, D):
     if out[0] == "RET":
         _, i, slots, flags = out
         number = slots.get(f"{role}.number") if role == "subj" else None
-        return ("OK", i, M.np_string(slots, role), slots.get(f"{role}.cls"), bool(flags.get("neg")), None if number == "none" else number)
+        cls = slots.get(f"{role}.cls")
+        return ("OK", i, M.np_string(slots, role), cls, bool(flags.get("neg")), None if number == "none" else number)
     return ("FAIL", out[1])
 
 OOS_REASONS = {"relative clause", "of-phrase", "coordination", "possessive noun phrase", "the fact that", "three nouns", "three adjectives"}
@@ -74,7 +75,7 @@ def main():
     alpha = alphabet(); t0 = time.time(); total = 0; bad = collections.Counter(); examples = {}
     for ctxname, ctx in CTX.items():
         role = "subj" if ctxname == "subj" else ("cop" if ctxname == "cop" else "obj")
-        rules, D = M.rules_for(role), M.derived(role)
+        rules = {role: M.rules_for(role), M.of_role(role): M.rules_for(M.of_role(role))}; D = {role: M.derived(role), M.of_role(role): M.derived(M.of_role(role))}
         for L in range(1, a.max_len + 1):
             for seq in itertools.product(alpha, repeat=L):
                 total += 1

@@ -3,7 +3,9 @@
 The module reads the 4-token window and a few frame registers, writes the sub-slots of one noun-phrase role
 (det, poss, num, adj1, adj2, noun, noun2, cls, mono, compound; number for a subject) and exits by RET or FAIL:<reason>.  Every branch of
 parser_rules.Parser.parse_np is here, including its refusals; what the matrix cannot hold yet (an inner clause,
-an of-phrase, a coordination, a possessive noun phrase) exits with FAIL and says why.
+a coordination, a possessive noun phrase) exits with FAIL and says why.  An of-phrase (the top of the mountain -> 山の頂上)
+is the module run once more, on the role "<role>of", whose sub-slots print before the head with の; a second of-phrase
+inside it is refused.
 
 Two kinds of definitions:
   DERIVED  named predicates defined as a disjunction of conjunctions of base literals (compiled as AND units then an OR unit)
@@ -45,7 +47,12 @@ def derived(role):
 def R(state, lits, nxt, k=1, acts=()):
     return (state, tuple(lits), (nxt, k, tuple(acts)))
 
+def of_role(role): return role + "of"
+def is_of_role(role): return role.endswith("of")
+def outer_role(role): return role[:-2]
+
 def rules_for(role):
+    """the rules of one role; a role ending in "of" is the of-phrase of the role before it (no of-phrase of its own)"""
     s = lambda sub: f"{role}.{sub}"
     det_copy = (s("det"), None, ("copy", "det")); poss_copy = (s("poss"), None, ("copy", "pron_poss"))
     number = [(s("number"), None, ("copy", "nnum"))] if role == "subj" else []          # the head's number, for agreement (subjects only)
@@ -131,10 +138,11 @@ def rules_for(role):
               R("NP6", ["¬w0.surf='s"], "NP7", 0)]
     # NP7 — the fact that S, of-phrase, coordination, return
     fact = ["slot." + s("noun") + "=事実", "w0.surf=that", "d.startsnp1"]
+    of_phrase = ("FAIL:nested of-phrase", 0) if is_of_role(role) else (("NP0", of_role(role)), 1)     # the inner noun phrase: the module once more
     rules += [R("NP7", fact + ["¬d.extraposed"], "FAIL:the fact that", 0),
               R("NP7", fact + ["d.extraposed"], "RET", 0),
-              R("NP7", ["¬slot." + s("noun") + "=事実", "w0.surf=of", "¬w1.class=END", "¬w1.surf=course"], "FAIL:of-phrase", 0),
-              R("NP7", ["slot." + s("noun") + "=事実", "¬w0.surf=that", "w0.surf=of", "¬w1.class=END", "¬w1.surf=course"], "FAIL:of-phrase", 0),
+              R("NP7", ["¬slot." + s("noun") + "=事実", "w0.surf=of", "¬w1.class=END", "¬w1.surf=course"], *of_phrase),
+              R("NP7", ["slot." + s("noun") + "=事実", "¬w0.surf=that", "w0.surf=of", "¬w1.class=END", "¬w1.surf=course"], *of_phrase),
               R("NP7", ["w0.surf=and", "d.startsnp1", "¬w1.class=verb"], "FAIL:coordination", 0),
               R("NP7", ["¬w0.surf=that", "¬w0.surf=of", "¬w0.surf=and"], "RET", 0),
               R("NP7", ["w0.surf=that", "¬slot." + s("noun") + "=事実"], "RET", 0),
@@ -144,6 +152,13 @@ def rules_for(role):
               R("NP7", ["w0.surf=and", "¬d.startsnp1"], "RET", 0),
               R("NP7", ["w0.surf=and", "d.startsnp1", "w1.class=verb"], "RET", 0)]
     return rules
+
+def all_rules_for(role):
+    """the rules of a role and of its of-phrase, with the of-phrase's return leading to the role's return"""
+    return rules_for(role) + rules_for(of_role(role)) + [R(("RET", of_role(role)), [], ("RET", role), 0)]
+
+def all_derived(role):
+    return {**derived(role), **derived(of_role(role))}
 
 # ------------------------------------------------------------------ simulator (the reference for the exhaustive check and for the hybrid)
 def eval_lit(lit, P, D):
@@ -209,24 +224,32 @@ def apply(slots, actions, toks, i, flags):
             elif c == "nnum": slots[slot] = RJ.number_of(tok) or "none"
 
 def run_module(role, toks, i0, regs, pend, rules=None, D=None):
-    """run the module from position i0; returns ("RET", i, slots, flags) or ("FAIL", reason, i)"""
-    rules = rules or rules_for(role); D = D or derived(role)
-    state, i, slots, flags = "NP0", i0, {}, {}
-    for _ in range(40):
+    """run the module from position i0 (its own rules, then its of-phrase's when "of" follows the head); returns
+    ("RET", i, slots, flags) or ("FAIL", reason, i).  The slots carry the role's sub-slots and, after an of-phrase, "<role>of.*"."""
+    rules = {role: rules_for(role), of_role(role): rules_for(of_role(role))} if rules is None else rules
+    D = {role: derived(role), of_role(role): derived(of_role(role))} if D is None else D
+    cur, state, i, slots, flags = role, "NP0", i0, {}, {}
+    for _ in range(80):
         P = np_predicates(toks, i, slots, regs, pend)
-        out = step(rules, D, state, P)
+        out = step(rules[cur], D[cur], state, P)
         if out is None: return ("FAIL", f"dead at {state}", i)
         if out[0] == "AMBIGUOUS": return ("FAIL", f"ambiguous at {state}: " + "; ".join(str(r[1]) for r in out[1][:2]), i)
         nxt, k, actions = out
         apply(slots, actions, toks, i, flags); i += k
-        if nxt == "RET": return ("RET", i, slots, flags)
+        if isinstance(nxt, tuple): state, cur = nxt; continue                 # into the of-phrase's run
+        if nxt == "RET":
+            if is_of_role(cur): return ("RET", i, slots, flags)               # the of-phrase returns for the whole phrase
+            return ("RET", i, slots, flags)
         if nxt.startswith("FAIL:"): return ("FAIL", nxt[5:], i)
         state = nxt
     return ("FAIL", "loop", i)
 
 def np_string(slots, role=None):
+    """the Japanese of a role's sub-slots: det poss [of-phrase の] num adj1 adj2 noun [の noun2] [mono]"""
     g = (lambda k: slots.get(f"{role}.{k}")) if role else (lambda k: slots.get(k))
-    s = "".join(g(k) or "" for k in ("det", "poss", "num", "adj1", "adj2", "noun"))
+    s = (g("det") or "") + (g("poss") or "")
+    if role and slots.get(f"{of_role(role)}.noun"): s += np_string(slots, of_role(role)) + "の"
+    s += "".join(g(k) or "" for k in ("num", "adj1", "adj2", "noun"))
     if g("noun2"): s += "の" + g("noun2")
     if g("mono"): s += g("mono")
     return s

@@ -25,6 +25,7 @@ NP_ROLES = ("subj", "obj", "iobj", "pp1", "pp2", "pp3", "cop", "cmp")
 NP_SUBS = ("det", "poss", "num", "adj1", "adj2", "noun", "noun2", "cls", "mono", "compound")
 FLAGS = ("past", "neg", "prog", "perf", "question", "imp", "please", "lets", "there", "tag", "coord", "sub", "neg_inner", "noless", "perf_had")
 UNSUPPORTED = ("infinitive", "control", "embedded", "purpose_clause", "pre_clause", "manner", "so_that", "howabout", "exclaim", "fixed_out", "relative", "suffix")
+# (a `folded` frame — one whose string came from an inner clause — prints like any other: the string is opaque to the rules; only the cell cannot hold it)
 PRON6 = ("私", "彼", "彼女", "私たち", "彼ら", "あなた")            # generate(): a possessive coreferent with one of these subjects is dropped
 NOPART = "∅"                                                      # an explicit empty object particle (generate's ""), a value a slot can hold
 EMPTY = (None, "", False)
@@ -71,7 +72,9 @@ def flatten(c):
 
 def np_string(F, role):
     if not filled(F.get(f"{role}.noun")): return None
-    s = "".join(F.get(f"{role}.{k}") or "" for k in ("det", "poss", "num", "adj1", "adj2", "noun"))
+    s = (F.get(f"{role}.det") or "") + (F.get(f"{role}.poss") or "")
+    if F.get(f"{role}of.noun"): s += np_string(F, f"{role}of") + "の"
+    s += "".join(F.get(f"{role}.{k}") or "" for k in ("num", "adj1", "adj2", "noun"))
     if F.get(f"{role}.noun2"): s += "の" + F[f"{role}.noun2"]
     if F.get(f"{role}.mono"): s += F[f"{role}.mono"]
     return s
@@ -234,8 +237,16 @@ def build_rules():
         subs = ["det", "poss", "num", "adj1", "adj2"]
         for a, b in zip(subs, subs[1:] + ["noun"]):
             st, nx = P(a), P(b)
-            if a == "poss" and coref:
-                B.rule(st, [f"slot.{role}.poss", f"¬{coref}"], nx, [S(f"{role}.poss")]); B.rule(st, [f"slot.{role}.poss", coref], nx); B.rule(st, [f"¬slot.{role}.poss"], nx)
+            if a == "poss":
+                after = nx if role.endswith("of") else P("of")                 # after the possessive comes the of-phrase, if the role may have one
+                if coref:                                                      # the possessive coreferent with the subject is dropped
+                    B.rule(st, [f"slot.{role}.poss", f"¬{coref}"], after, [S(f"{role}.poss")]); B.rule(st, [f"slot.{role}.poss", coref], after); B.rule(st, [f"¬slot.{role}.poss"], after)
+                else:
+                    B.rule(st, [f"slot.{role}.poss"], after, [S(f"{role}.poss")]); B.rule(st, [f"¬slot.{role}.poss"], after)
+                if after == P("of"):
+                    # the of-phrase: the module once more on the role "<role>of", then の
+                    B.rule(P("of"), [f"slot.{role}of.noun"], np(role + "of", P("ofno"))); B.rule(P("of"), [f"¬slot.{role}of.noun"], nx)
+                    B.rule(P("ofno"), [], nx, [C("の")])
             else:
                 B.rule(st, [f"slot.{role}.{a}"], nx, [S(f"{role}.{a}")]); B.rule(st, [f"¬slot.{role}.{a}"], nx)
         B.rule(P("noun"), [], P("noun2"), [S(f"{role}.noun")])

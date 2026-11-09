@@ -58,6 +58,7 @@ class Clause:
         self.fixed_out = None      # a fixed sentence (thank you for NP) that bypasses the template
         self.so_that = None        # so ADJ that S: S becomes the main clause, the adjective clause its ので-reason
         self.from_seen = False     # a from-PP was parsed: the next to-PP is まで
+        self.folded = False        # a string of this frame was generated from an inner clause (a relative clause, an infinitive, a that-clause folded into a noun phrase or the predicate): the frame cannot hold the clause itself
 
 QUANTIFIERS = ("such", "all", "both")                                   # determiners that may precede an article (mirrored in np_module)
 INDEFINITES = ("something", "anything", "nothing", "everything")        # pronouns an adjective may follow (mirrored in np_module)
@@ -175,6 +176,7 @@ class Parser:
                 sja, scls = self.parse_np(role="subj"); inner.subj, inner.subj_cls, inner.subj_num = sja, scls, self.np_number
             saved = self.c; self.c = inner; head_number = self.np_number
             self.phase = "VP0"; self.predicate(); self.c = saved; self.np_number = head_number
+            self.c.folded = True
             return generate(inner, polite=False, embedded=True)[:-1] + det + poss + num + adjs + ja, cls
         # possessive 's: John 's car
         if self.peek() == "'s" and (self.peek(1) is None or self.has(self.peek(1), "end") or self.has(self.peek(1), "prep") or self.peek(1) == ","):   # tom 's -> トムのもの
@@ -183,6 +185,7 @@ class Parser:
             self.i += 1; inner = Clause(); saved = self.c; self.c = inner
             sja, scls = self.parse_np(role="subj"); inner.subj, inner.subj_cls, inner.subj_num = sja, scls, self.np_number
             self.phase = "VP0"; self.predicate(); self.c = saved
+            self.c.folded = True
             return generate(inner, polite=False, embedded=True)[:-1] + "という" + ja, cls
         if self.peek() == "'s" and self.peek(1) and ("noun" in dict(self.readings(self.peek(1))) or "adj" in dict(self.readings(self.peek(1)))):
             self.i += 1
@@ -255,6 +258,7 @@ class Parser:
                     if self.peek() == "to" and self.peek(1) and self.has(self.peek(1), "verb"):
                         self.i += 1; inner = Clause(); inner.subj = xja; inner.subj_cls = xcls
                         saved = self.c; self.c = inner; self.verb_phrase(expect_base=True, from_copula=True); self.c = saved
+                        self.c.folded = True
                         c.subj = generate(inner, polite=False, embedded=True)[:-1] + {"need": "必要", "reason": "理由", "time": "時間"}[head0]
                     else:
                         c.pp.append((PREPS["for"], xja))
@@ -266,6 +270,7 @@ class Parser:
                 self.phase = "VP0"; self.predicate(); self.c = saved
                 if self.phase != "DONE": self.phase = "PRE"
                 if self.peek() == ",": self.i += 1
+                self.c.folded = True
                 c.pre_clause += generate(inner, polite=False, embedded=True)[:-1] + "ほど"
                 if self.peek() == "the" and self.peek(1) and (self.peek(1) == "more" or self.has(self.peek(1), "adj")):
                     self.i += 2; c.adv += "ますます"
@@ -283,6 +288,7 @@ class Parser:
                     if self.verb_form(self.peek()) == "ing":
                         inner = Clause(); self.c = inner
                         self.verb_phrase(expect_ing=True, from_copula=True); self.c = c
+                        self.c.folded = True
                         c.howabout = generate(inner, polite=False, embedded=True)[:-1] + "の"
                     else:
                         ja, cls = self.parse_np(); c.howabout = ja
@@ -322,6 +328,7 @@ class Parser:
                     if self.peek() == "to" and self.peek(1) and self.has(self.peek(1), "verb"):
                         self.i += 1; inner = Clause(); inner.subj = xja; inner.subj_cls = xcls
                         saved = self.c; self.c = inner; self.verb_phrase(expect_base=True, from_copula=True); self.c = saved
+                        self.c.folded = True
                         c.subj = generate(inner, polite=False, embedded=True)[:-1] + {"need": "必要", "reason": "理由", "time": "時間"}[head0]
                     else:
                         c.pp.append((PREPS["for"], xja))
@@ -527,6 +534,7 @@ class Parser:
             if self.verb_form(self.peek()) == "ing" and not self.starts_np(self.peek()):    # afraid of making mistakes -> 間違いをすることを (suite D)
                 inner = Clause(); saved = self.c; self.c = inner
                 self.verb_phrase(expect_ing=True, from_copula=True); self.c = saved
+                self.c.folded = True
                 c.obj = generate(inner, polite=False, embedded=True)[:-1] + "こと"
             else:
                 ja2, cls2 = self.parse_np(); c.obj = ja2
@@ -538,6 +546,7 @@ class Parser:
             if self.verb_form(self.peek()) == "ing":
                 inner = Clause(); saved = self.c; self.c = inner
                 self.verb_phrase(expect_ing=True, from_copula=True); self.c = saved
+                self.c.folded = True
                 c.obj = generate(inner, polite=False, embedded=True)[:-1] + "の"
             else:
                 ja2, cls2 = self.parse_np(); c.obj = ja2
@@ -603,6 +612,7 @@ class Parser:
             inner = Clause(); saved = self.c; self.c = inner
             self.verb_phrase(expect_base=True, from_copula=True); self.c = saved
             inner.past = c.past
+            self.c.folded = True
             c.copula = ("np", {"first": "最初に", "last": "最後に", "only": "唯一"}[w] + generate(inner, polite=False, embedded=True)[:-1] + "人", "h")
             self.tail_pp_adv(); return
         if self.starts_np(tok):
@@ -615,6 +625,7 @@ class Parser:
                 if c.subj_cls == "h" and c.subj not in ("それ", None): self.fail("copula infinitive")   # you must be a fool to do that: a judgment (〜するとは), not rendered
                 self.i += 1; inner = Clause(); saved = self.c; self.c = inner
                 self.verb_phrase(expect_base=True, from_copula=True); self.c = saved
+                self.c.folded = True
                 c.copula = ("np", generate(inner, polite=False, embedded=True)[:-1] + "のには" + ja, cls)
                 self.tail_pp_adv(); return
             if c.subj == "それ" and self.peek() == "that" and self.peek(1) and self.starts_np(self.peek(1)):          # it is a pity that S
@@ -653,6 +664,7 @@ class Parser:
                 elif self.verb_form(self.peek()) == "ing":          # look forward to seeing you
                     inner = Clause(); saved = self.c; self.c = inner
                     self.verb_phrase(expect_ing=True, from_copula=True); self.c = saved
+                    self.c.folded = True
                     c.obj = generate(inner, polite=False, embedded=True)[:-1] + "の"
                 else:
                     ja2, cls2 = self.parse_np(); c.obj = ja2
@@ -672,6 +684,7 @@ class Parser:
             if self.peek() != "to": self.fail("make it a rule")
             self.i += 1; inner = Clause(); inner.neg = neg; saved = self.c; self.c = inner
             self.verb_phrase(expect_base=True, from_copula=True); self.c = saved
+            self.c.folded = True
             c.verb = ("make it a rule", generate(inner, polite=False, embedded=True)[:-1] + "ことにしている", "fixed")
             self.tail_pp_adv(); return self.end() if not from_copula else None
         if lemma == "go" and self.peek() in USE and "go" in USE[self.peek()]:
@@ -801,6 +814,7 @@ class Parser:
             self.i += 1; ja, cls = self.parse_np(role="subj"); inner.subj, inner.subj_cls, inner.subj_num = ja, cls, self.np_number
             self.phase = "VP0"; self.predicate(); self.c = saved
             if self.peek() == "or" and self.peek(1) == "not": self.i += 2
+            self.c.folded = True
             body = generate(inner, polite=False, embedded=True)[:-1]
             return body + "かどうか"
         inner.wh = r["wh"]; inner.question = True; self.i += 1
@@ -813,6 +827,7 @@ class Parser:
             inner.wh = ("何歳" if nxt == "old" else "どのくらい", "adv"); self.i += 1
         if inner.wh[1] in ("o", "loc", "adv", "t") and self.peek() == "to" and self.peek(1) and self.verb_form(self.peek(1)) == "base":   # which way to go / how to do it
             self.i += 1; self.verb_phrase(expect_base=True, from_copula=True); self.c = saved
+            self.c.folded = True
             body = generate(inner, polite=False, embedded=True)[:-1]
             return (body[:-1] if body.endswith("か") else body) + "べきか"
         if self.peek() and self.starts_np(self.peek()):
@@ -826,6 +841,7 @@ class Parser:
         else:                                                   # what had happened / who came
             inner.subj = None; inner.wh = (inner.wh[0], "s"); self.phase = "VP0"; self.predicate()
         self.c = saved
+        self.c.folded = True
         body = generate(inner, polite=False, embedded=True)[:-1]
         return body if body.endswith("か") else body + "か"
 
@@ -908,12 +924,14 @@ class Parser:
             if c.verb and c.verb[0] == "have" and self.peek() == "to" and self.peek(1) and self.has(self.peek(1), "verb") and self.verb_form(self.peek(1)) == "base":   # have no obligation to help
                 self.i += 1; inner = Clause(); saved = self.c; self.c = inner
                 self.verb_phrase(expect_base=True, from_copula=True); self.c = saved
+                self.c.folded = True
                 c.obj = generate(inner, polite=False, embedded=True)[:-1] + c.obj
                 self.tail_pp_adv(); return
             if c.verb and c.verb[0] in VC["perception"] and self.peek() and self.verb_form(self.peek()) == "ing":   # hear someone talking
                 inner = Clause(); inner.subj = ja; inner.subj_cls = cls
                 saved = self.c; self.c = inner
                 self.verb_phrase(expect_ing=True, from_copula=True); self.c = saved
+                self.c.folded = True
                 c.obj = generate(inner, polite=False, embedded=True)[:-1] + "の"
                 self.tail_pp_adv(); return
             if head in USE and lemma0 in USE[head] and not c.want:        # the noun's use-verb replaces the light verb

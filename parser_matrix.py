@@ -36,7 +36,7 @@ FLAGS = ("past", "neg", "prog", "perf", "question", "imp", "please", "lets", "th
 ENUMS = ("modal", "want", "degree", "obj_particle", "wh", "time", "adv1", "adv2", "front", "cop_kind", "cop_adj", "cop_adv", "cop_part",
          "pp1_part", "pp2_part", "pp3_part", "cmp_kind", "verb", "purpose", "causative")
 UNSUPPORTED_REGS = ("infinitive", "control", "embedded", "purpose_clause", "pre_clause", "manner", "so_that", "howabout",
-                    "exclaim", "fixed_out", "relative", "suffix")
+                    "exclaim", "fixed_out", "relative", "suffix", "folded")
 OPEN = {"noun", "verb", "adj", "adv", "time", "num"}
 import re as _re
 IDENTITY_WORDS = {w for w in _re.findall(r'"([a-z][a-z\' ]*)"', open(__file__.replace("parser_matrix.py", "parser_rules.py"), encoding="utf-8").read())}   # words the parser tests by identity
@@ -235,7 +235,7 @@ def fold_use(post, role, head_ja, verb):
     new_verb, upart, stative = hit
     expected = {("verb", new_verb, ("const",))}
     optional = set()
-    if upart == "-": expected |= {(f"{role}.{sub}", None, ("clear",)) for sub in NP_SUBS}; optional = {("obj_particle", None, ("clear",))}
+    if upart == "-": expected |= {(sl, None, ("clear",)) for sl in np_slots(role)}; optional = {("obj_particle", None, ("clear",))}
     elif role.startswith("pp"): expected.add((f"{role}_part", (upart, upart), ("const",)))      # came to a decision: the particle of that PP
     else: expected.add(("obj_particle", upart, ("const",)))
     if stative: expected.add(("prog", True, ("const",)))
@@ -299,6 +299,9 @@ _last_parser = [None]
 
 # ----------------------------------------------------------------------------------------------- the hybrid: parse_np as a hand-translated module
 NP_SUBS = ("det", "poss", "num", "adj1", "adj2", "noun", "noun2", "cls", "mono", "compound")
+def np_slots(role):
+    """every sub-slot of a noun-phrase role, its of-phrase's included"""
+    return [f"{role}.{sub}" for sub in NP_SUBS] + [f"{role}of.{sub}" for sub in NP_SUBS]
 
 def np_site(chain):
     """the return address of a noun phrase: (caller methods, line of the parse_np call) for the outermost parse_np frame"""
@@ -371,11 +374,11 @@ def np_register_actions(before, after, tok, skip_roles):
         if r in skip_roles or after.get(r) == before.get(r): continue
         v = after.get(r)
         if v is None:
-            actions += [(f"{r}.{sub}", None, ("clear",)) for sub in NP_SUBS]; continue
+            actions += [(sl, None, ("clear",)) for sl in np_slots(r)]; continue
         # a slot acquiring another slot's old string is a move (give him a book: obj -> iobj)
         src_role = next((r2 for r2 in NP_ROLES if r2 != r and before.get(r2) == v), None)
         if src_role:
-            actions += [(f"{r}.{sub}", None, ("move", f"{src_role}.{sub}")) for sub in NP_SUBS]; continue
+            actions += [(sl, None, ("move", sl2)) for sl, sl2 in zip(np_slots(r), np_slots(src_role))]; continue
         if "time" in rs and v == rs["time"]: src = ("copy", "time")
         elif "loc" in rs and v == rs["loc"]: src = ("copy", "loc")
         elif "noun" in rs and v == rs["noun"][0]: src = ("copy", "noun")
@@ -421,8 +424,8 @@ def transition_rows(toks, events, snaps, np_spans, final):
             # entry
             acts = [("ret", sid, ("const",))]
             if old is not None:
-                if moved_to: acts += [(f"{moved_to}.{sub}", None, ("move", f"{role}.{sub}")) for sub in NP_SUBS]
-                acts += [(f"{role}.{sub}", None, ("clear",)) for sub in NP_SUBS]
+                if moved_to: acts += [(sl, None, ("move", sl2)) for sl, sl2 in zip(np_slots(moved_to), np_slots(role))]
+                acts += [(sl, None, ("clear",)) for sl in np_slots(role)]
             e1 = events[first]; e2 = events[first + 1] if first + 1 < len(events) else noreads
             P_read = frozenset(predicates(toks, e1["i"], snaps[first], set(e1["win_reads"]) | set(e2["win_reads"]), set(e1["reg_reads"]) | set(e2["reg_reads"]), pend))
             P_all = frozenset(predicates(toks, e1["i"], snaps[first], set(range(e1["i"], e1["i"] + WINDOW)), ALL_REGS, pend))
@@ -442,7 +445,7 @@ def transition_rows(toks, events, snaps, np_spans, final):
             if moved_to: snap_ret[moved_to] = old
             post = register_actions(snaps[last], snaps[last + 1], None, allow_copy=False)
             post += np_register_actions(snap_ret, snaps[last + 1], toks[i1] if i1 < len(toks) else None, {role})
-            if dropped: post += [(f"{role}.{sub}", None, ("clear",)) for sub in NP_SUBS]
+            if dropped: post += [(sl, None, ("clear",)) for sl in np_slots(role)]
             post = fold_use(post, role, heads.get(role), snaps[first].get("verb"))
             post.append(("ret", None, ("clear",)))
             for j in range(e1["i"], i1):
@@ -543,21 +546,24 @@ def hybrid_fail_rows(toks):
     return rows + [(prev, frozenset(P_all), frozenset(P_read), (FAIL, 0, ()))]
 
 def module_rules(roles):
-    """np_module's rules and derived predicates for the roles in use, in the compiler's rule format"""
+    """np_module's rules and derived predicates for the roles in use (each with its of-phrase role), in the compiler's rule format"""
     import np_module as NPM
     rules = []; derived = {}
     for role in sorted(roles):
-        D = NPM.derived(role)
-        for name, conjs in D.items(): derived[f"{name}@{role}"] = conjs
-        def lit(l):
-            neg = l.startswith("¬"); q = l[1:] if neg else l
-            if q.startswith("d."): q = f"{q}@{role}"
-            return (q, not neg)
-        for state, lits, (nxt, k, acts) in NPM.rules_for(role):
-            if nxt == "RET": tgt = ("RET", role)
-            elif nxt.startswith("FAIL:"): tgt = FAIL
-            else: tgt = (nxt, role)
-            rules.append(((state, role), tuple(lit(l) for l in lits), (tgt, k, norm_actions(acts))))
+        for r in (role, NPM.of_role(role)):
+            D = NPM.derived(r)
+            for name, conjs in D.items(): derived[f"{name}@{r}"] = conjs
+            def lit(l, r=r):
+                neg = l.startswith("¬"); q = l[1:] if neg else l
+                if q.startswith("d."): q = f"{q}@{r}"
+                return (q, not neg)
+            for state, lits, (nxt, k, acts) in NPM.rules_for(r):
+                if isinstance(nxt, tuple): tgt = nxt                                   # into the of-phrase's module
+                elif nxt == "RET": tgt = ("RET", r)
+                elif nxt.startswith("FAIL:"): tgt = FAIL
+                else: tgt = (nxt, r)
+                rules.append(((state, r), tuple(lit(l) for l in lits), (tgt, k, norm_actions(acts))))
+        rules.append(((("RET", NPM.of_role(role))), (), (("RET", role), 0, ())))           # the of-phrase's return is the phrase's return
     return rules, derived
 
 def eval_rule_lit(q, truth, P, derived):
@@ -668,9 +674,11 @@ def frame_to_snapshot(frame):
     return s
 
 def np_string(frame, role):
-    parts = [frame.get(f"{role}.{sub}") for sub in ("det", "poss", "num", "adj1", "adj2", "noun")]
+    """det poss [of-phrase の] num adj1 adj2 noun [の noun2] [mono], or None when the role is empty"""
     if frame.get(f"{role}.noun") is None: return None
-    s = "".join(p for p in parts if p)
+    s = (frame.get(f"{role}.det") or "") + (frame.get(f"{role}.poss") or "")
+    if frame.get(f"{role}of.noun"): s += np_string(frame, f"{role}of") + "の"       # the top of the mountain -> 山の頂上
+    s += "".join(frame.get(f"{role}.{sub}") or "" for sub in ("num", "adj1", "adj2", "noun"))
     if frame.get(f"{role}.noun2"): s += "の" + frame[f"{role}.noun2"]        # noun-noun compound
     if frame.get(f"{role}.mono"): s += frame[f"{role}.mono"]                  # tom 's -> トムのもの
     return s
@@ -701,7 +709,7 @@ def apply_actions(frame, actions, toks, i):
             frame["verb"] = new_verb
             if upart == "-":
                 frame.pop("obj_particle", None)
-                for sub in NP_SUBS: frame.pop(f"{slot}.{sub}", None)
+                for sl in np_slots(slot): frame.pop(sl, None)
             elif slot.startswith("pp"): frame[f"{slot}_part"] = (upart, upart)
             else: frame["obj_particle"] = upart
             if stative: frame["prog"] = True
@@ -1354,6 +1362,13 @@ class MatrixParser:
             return None
         def rec(k, rest):
             if k == len(subs): return head(rest)
+            if subs[k] == "num" and not role.endswith("of"):                      # an of-phrase, "<inner>の", may precede the number
+                for j, ch in enumerate(rest):
+                    if ch != "の": continue
+                    inner = self.split_np(role + "of", rest[:j]); r = rec(k, rest[j + 1:]) if inner is not None else None
+                    if inner is not None and r is not None:
+                        for sub, v in inner.items(): r["of:" + sub] = v
+                        return r
             for v in opts(subs[k]):
                 if rest.startswith(v):
                     r = rec(k + 1, rest[len(v):])
@@ -1371,7 +1386,7 @@ class MatrixParser:
                 if F.get(f"{role}.noun") is None: continue
                 parts = self.split_np(role, (F.pop(f"{role}.poss", None) or "") + F.pop(f"{role}.noun"))
                 if parts is None: raise ParseFail(f"PRINT: the {role} noun phrase is not spelled by this cell's vocabulary")
-                for sub, v in parts.items(): F[f"{role}.{sub}"] = v
+                for sub, v in parts.items(): F[f"{role}of.{sub[3:]}" if sub.startswith("of:") else f"{role}.{sub}"] = v
         s = np.zeros(self.nS); s[S[("ctrl", ("P", "P0"))]] = 1.0
         for slot, v in F.items():
             if v in (None, False, ""): continue

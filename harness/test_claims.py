@@ -245,6 +245,18 @@ def test_np_two_adjective_slots(root):
     assert out[0] == "FAIL" and out[1] == "three adjectives", out
     assert NPM.run_module("obj", ["a lot", "absent", "bus stop", "."], 0, {"verb": None, "cop_kind": None, "subj": None}, None)[0] == "RET"
 
+def test_np_of_phrase(root):
+    """an of-phrase is the noun-phrase module run once more on the role's of-phrase slots, printing before the head with の, and a
+    second of-phrase inside it is refused; the frame marks a folded inner clause, which the cell does not hold"""
+    toks = ["the", "name", "of", "that", "designer", "."]
+    p = PR.Parser(list(toks), []); ja, cls = p.parse_np()
+    out = NPM.run_module("obj", toks, 0, {"verb": None, "cop_kind": None, "subj": None}, None)
+    assert out[0] == "RET" and out[1] == p.i == 5 and NPM.np_string(out[2], "obj") == ja == "そのデザイナーの名前" and out[2]["objof.det"] == "その" and out[2]["objof.noun"] == "デザイナー"
+    nested = NPM.run_module("obj", ["the", "study", "of", "music", "of", "the", "world", "."], 0, {"verb": None, "cop_kind": None, "subj": None}, None)
+    assert nested[0] == "FAIL" and nested[1] == "nested of-phrase"
+    assert PR.parse_bounded(R.merge_multiword("it is a good idea to read this book .".split())).folded and not PR.parse_bounded(["i", "like", "dogs", "."]).folded
+    assert "folded" in PM.UNSUPPORTED_REGS
+
 # ---------------------------------------------------------------- the harness
 def _runner(root):
     import importlib.util
