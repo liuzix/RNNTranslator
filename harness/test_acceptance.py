@@ -58,7 +58,8 @@ def test_torch_action_in_hook(root):
 
 def test_print_rules_match_generate(root):
     """the printing rules, stepped, emit exactly what generate() prints, for frames the rule parser fills"""
-    pr = ST.PrintRules()
+    import gen_module as G
+    pr = G.PrintRules()
     positions = pr.positions(); rules = pr.rules_for(next(iter(positions), None)); derived = pr.derived()
     frames = [PR.parse_bounded(R.merge_multiword(s.split())) for s in ("i like the big dog .", "she did not read the book yesterday .", "he gave me a book .")]
     tokens = [pr.render(f) for f in frames]

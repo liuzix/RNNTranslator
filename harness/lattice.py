@@ -17,6 +17,8 @@ Items and their chains (levels rise left to right; a lower index is worse):
   np.exhaustive                 MISMATCHES < MATCH            (np_module against parse_np: the mismatch count, 0 is the top)
   suite <class> <sentence>      WRONG < REFUSED < RIGHT       (an acceptance case: RIGHT = the output equals the suite's expectation)
   torch.exact                   DIVERGING < EXACT             (the torch runner against the scipy runner: sentences whose states differ, 0 is the top)
+  printer <split> <citation>    MISFIRE < GAP < AGREE         (the printing rules against generate() on a sentence the rule parser parses)
+  printer.sweep                 MISMATCHES < MATCH            (the printing rules against generate() on the sweep over the predicates they test)
 
 Coverage and quality are views of this state, not gates: coverage = |RIGHT ∪ UNKNOWN| / N, quality = chrF over the outputs.
 """
@@ -26,9 +28,9 @@ import json, os, collections
 SENTENCE_ORDER = {("WRONG", "REFUSED"), ("WRONG", "RIGHT"), ("REFUSED", "RIGHT"), ("UNKNOWN", "RIGHT")}
 CHAINS = {"matrix": ["MISFIRE", "GAP", "AGREE"], "negative": ["ACCEPTED", "REFUSED"], "control": ["REFUSED", "ACCEPTED"],
           "negative.matrix": ["ACCEPTED", "REFUSED"], "np.exhaustive": ["MISMATCHES", "MATCH"], "suite": ["WRONG", "REFUSED", "RIGHT"],
-          "torch.exact": ["DIVERGING", "EXACT"]}
+          "torch.exact": ["DIVERGING", "EXACT"], "printer": ["MISFIRE", "GAP", "AGREE"], "printer.sweep": ["MISMATCHES", "MATCH"]}
 TOP = {"sentence": "RIGHT", "matrix": "AGREE", "negative": "REFUSED", "control": "ACCEPTED", "negative.matrix": "REFUSED", "np.exhaustive": "MATCH", "suite": "RIGHT",
-       "torch.exact": "EXACT"}
+       "torch.exact": "EXACT", "printer": "AGREE", "printer.sweep": "MATCH"}
 
 def cmp(kind, old, new):
     """-> 'up' | 'down' | 'same' | 'incomparable'"""
@@ -69,9 +71,11 @@ def matrix_level(rules_out, matrix_out):
     if rules_out and not matrix_out: return "GAP"
     return "MISFIRE"
 
-def levels(rules_outputs, matrix_outputs, negatives_rows, np_mismatches, references, verdicts, ungrammatical, suites_rows=None, torch_diverging=None):
-    """every item -> (kind, level, detail).  rules_outputs / matrix_outputs: {split: {citation: output}}; references: {split: {citation: ja}};
-    torch_diverging: the sentences on which the torch runner's states differ from the scipy runner's (None when the torch action did not run)"""
+def levels(rules_outputs, matrix_outputs, negatives_rows, np_mismatches, references, verdicts, ungrammatical, suites_rows=None, torch_diverging=None,
+           printer_outputs=None, printer_sweep=None):
+    """every item -> (kind, level, detail).  rules_outputs / matrix_outputs / printer_outputs: {split: {citation: output}}; references: {split: {citation: ja}};
+    torch_diverging: the sentences on which the torch runner's states differ from the scipy runner's; printer_sweep: the sweep's mismatch count
+    (None when that action did not run)"""
     L = {}
     for split in ("dev", "test"):
         for key, out in rules_outputs.get(split, {}).items():
@@ -79,6 +83,8 @@ def levels(rules_outputs, matrix_outputs, negatives_rows, np_mismatches, referen
             L[f"sentence {item}"] = ("sentence", sentence_level(out, references[split].get(key), item, verdicts, ungrammatical), out)
             if split in matrix_outputs and key in matrix_outputs[split]:
                 L[f"matrix {item}"] = ("matrix", matrix_level(out, matrix_outputs[split][key]), matrix_outputs[split][key])
+            if out and printer_outputs and key in printer_outputs.get(split, {}):
+                p = printer_outputs[split][key]; L[f"printer {item}"] = ("printer", "AGREE" if p == out else ("GAP" if not p else "MISFIRE"), p)
     for row in negatives_rows or []:
         L[f"negative {row['sentence']}"] = ("negative", "ACCEPTED" if row.get("sentence.rules") else "REFUSED", row.get("sentence.rules"))
         L[f"control {row['control']}"] = ("control", "ACCEPTED" if row.get("control.rules") else "REFUSED", row.get("control.rules.reason"))
@@ -87,6 +93,7 @@ def levels(rules_outputs, matrix_outputs, negatives_rows, np_mismatches, referen
     for row in suites_rows or []:
         L[f"suite {row['class']} {row['sentence']}"] = ("suite", row["level"], row["output"])
     if torch_diverging is not None: L["torch.exact"] = ("torch.exact", "EXACT" if torch_diverging == 0 else "DIVERGING", torch_diverging)
+    if printer_sweep is not None: L["printer.sweep"] = ("printer.sweep", "MATCH" if printer_sweep == 0 else "MISMATCHES", printer_sweep)
     return L
 
 def compare_levels(old, new):

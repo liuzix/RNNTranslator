@@ -97,7 +97,7 @@ def check_baseline(root, corpus_dir):
             if foreign: errors.append(f"baseline {split}: {len(foreign)} citation(s) do not match the pinned corpus line: " + "; ".join(repr(s) for s in foreign[:3]))
             uncited = cites - set(outs)
             if uncited: errors.append(f"baseline {split}: {len(uncited)} corpus line(s) have no output: " + "; ".join(repr(s) for s in sorted(uncited)[:3]))
-            for part in ("matrix", "refusals"):
+            for part in ("matrix", "refusals", "printer"):
                 bad = [s for s in base["outputs"][part].get(split, {}) if s not in cites]
                 if bad: errors.append(f"baseline {split}: {len(bad)} {part} citation(s) do not match the pinned corpus line")
         refused = {k for k, v in outs.items() if not v}

@@ -24,6 +24,7 @@ Actions (inputs listed in ACTIONS below):
     negatives  the ungrammatical sentences of harness/negatives.json refused by both parsers, their controls accepted
     suites   the acceptance suites of harness/suites/<class>.json: each case RIGHT / REFUSED / WRONG against its expectation
     torch    the cell under PyTorch: the scipy and torch runners stepped side by side on dev+test, the states compared at every step
+    printer  the printing rules (gen_module) against generate(): every parsed sentence, and a sweep over the predicates they test
 """
 import sys, os, json, hashlib, subprocess, shutil, tempfile, glob, time, argparse
 
@@ -40,6 +41,7 @@ ACTIONS = {
     "negatives": {"version": 1, "script": "harness/eval_negatives.py", "inputs": SOURCES + ["parser_matrix.py", "np_module.py", "harness/negatives.json"], "corpus": True, "args": []},
     "suites": {"version": 1, "script": "harness/eval_suites.py", "inputs": SOURCES + ["harness/suites/*.json"], "corpus": False, "args": []},
     "torch":  {"version": 1, "script": "harness/eval_torch.py",  "inputs": SOURCES + ["parser_matrix.py", "np_module.py", "cell_torch.py"], "corpus": True, "args": []},
+    "printer": {"version": 1, "script": "harness/eval_printer.py", "inputs": SOURCES + ["gen_module.py"], "corpus": True, "args": []},
 }
 FULL_NP_LEN = 3            # `check --full`: the np action over windows up to this length (~4 minutes)
 
@@ -205,6 +207,7 @@ def metrics(results):
     out["negatives.accepted"] = g["accepted"]; out["negatives.controls_refused"] = g["controls_refused_by_rules"]; out["negatives.matrix_accepted"] = g["matrix_accepted"]
     s = results["suites"]; out["suites.right"] = s["right"]; out["suites.cases"] = s["cases"]; out["suites.closed"] = s["closed"]
     out["torch.diverging"] = results["torch"]["diverging"]
+    out["printer.misfire"] = results["printer"]["misfire"]; out["printer.sweep_mismatches"] = results["printer"]["sweep"]["mismatches"]
     return out
 
 # ------------------------------------------------------------------------------------------------ the lattice (harness/lattice.py)
@@ -227,7 +230,8 @@ def item_levels(doc, corpus, src_root=ROOT):
     verdicts, ungrammatical = LT.load_adjudications(os.path.join(src_root, "harness", "adjudications.json"))
     return LT.levels(doc["outputs"]["rules"], doc["outputs"].get("matrix", {}), doc["outputs"].get("negatives", []),
                      doc["detail"]["np"]["mismatches"], references(corpus), verdicts, ungrammatical, doc["outputs"].get("suites", []),
-                     torch_diverging=doc["detail"].get("torch", {}).get("diverging"))
+                     torch_diverging=doc["detail"].get("torch", {}).get("diverging"),
+                     printer_outputs=doc["outputs"].get("printer"), printer_sweep=doc["detail"].get("printer", {}).get("sweep", {}).get("mismatches"))
 
 def as_document(results):
     """results of the actions -> the baseline's shape"""
@@ -236,11 +240,12 @@ def as_document(results):
                        "matrix": {k: v for k, v in results["matrix"].items() if k != "outputs"}, "np": results["np"],
                        "negatives": {k: v for k, v in results["negatives"].items() if k != "rows"},
                        "suites": {k: v for k, v in results["suites"].items() if k != "rows"},
-                       "torch": {k: v for k, v in results["torch"].items() if k != "diverging_items"}},
+                       "torch": {k: v for k, v in results["torch"].items() if k != "diverging_items"},
+                       "printer": {k: v for k, v in results["printer"].items() if k != "outputs"}},
             "outputs": {"rules": {s: results["rules"][s]["outputs"] for s in ("dev", "test")}, "matrix": results["matrix"].get("outputs", {}),
                         "negatives": [{k: v for k, v in r.items() if not k.endswith(".reason")} for r in results["negatives"].get("rows", [])],
                         "refusals": {s: results["rules"][s].get("refusals", {}) for s in ("dev", "test")},
-                        "suites": results["suites"].get("rows", [])}}
+                        "suites": results["suites"].get("rows", []), "printer": results["printer"].get("outputs", {"dev": {}, "test": {}})}}
 
 def compare(results, baseline_path, corpus, src_root=ROOT):
     """the gate: no item may move down or into an incomparable level; the aggregate metrics are printed as views"""

@@ -116,6 +116,34 @@ def test_slot_write_circuit(root):
     for tgt, srcs in into6.items():
         if S.names[tgt][0] == "slot": assert all(w == 1.0 and src[0] == "L5" and L5.names[src[1]][0] in ("keep", "write", "writec", "writem", "writeu") for src, w in srcs)
 
+def test_print_rules_normal_form(root):
+    """every printing rule is (position, literals, (next position, token)): the literals are base predicates of the flat frame or
+    derived predicates whose DNF is over base literals, the tokens are of the four kinds, every next position is a position or
+    DONE / FAIL, and the rules reach the sentence end from P0"""
+    import gen_module as G
+    pr = G.PrintRules(); D = pr.derived(); positions = set(pr.positions()); F = G.flatten(PR.parse_bounded(R.merge_multiword("i like the big dog .".split())))
+    assert pr.positions()[0] == "P0" and "DONE" not in positions
+    def check_base(name):
+        G.base_pred(name, F)                                                      # KeyError if it is not a predicate of the flat frame
+    for name, conjs in D.items():
+        assert name.startswith("d.") and conjs
+        for conj in conjs:
+            for l in conj: assert not l.lstrip("¬").startswith("d."), f"{name} nests a derived predicate"; check_base(l.lstrip("¬"))
+    reach = {"P0"}; frontier = ["P0"]; nxts = set()
+    while frontier:
+        p = frontier.pop()
+        for pos, lits, (nxt, tok) in pr.rules_for(p):
+            assert pos == p and isinstance(lits, tuple)
+            for l in lits:
+                q = l.lstrip("¬")
+                if q.startswith("d."): assert q in D
+                else: check_base(q)
+            assert tok is None or tok[0] in ("c", "s", "vf", "af"), tok
+            nxts.add(nxt)
+            if nxt not in reach and nxt != "DONE" and not (isinstance(nxt, str) and nxt.startswith("FAIL:")): reach.add(nxt); frontier.append(nxt)
+    assert "DONE" in nxts and reach == positions, f"{len(positions - reach)} positions unreachable from P0, {len(reach - positions)} targets without rules"
+    assert "".join(pr.render(F)) == R.generate(PR.parse_bounded(R.merge_multiword("i like the big dog .".split())))
+
 def test_layers_roundtrip(root):
     toks = R.merge_multiword("a lot of people came .".split())
     assert toks[0] == "a lot"
@@ -170,7 +198,9 @@ def _fake_world(tmp, dev_outputs, matrix_outputs, negatives, adjudications=None)
                "matrix": {"identical": 0, "wrong_frame": 0, "matrix_parses_refused": 0, "outputs": {"dev": matrix_outputs, "test": {}}},
                "np": {"mismatches": 0}, "negatives": {"accepted": 0, "controls_refused_by_rules": 0, "matrix_accepted": 0, "rows": negatives},
                "suites": {"classes": {}, "cases": 0, "right": 0, "closed": 0, "open": 0, "rows": []},
-               "torch": {"sentences": 2, "steps": 8, "diverging": 0, "torch": "0", "dtype": "float32"}}
+               "torch": {"sentences": 2, "steps": 8, "diverging": 0, "torch": "0", "dtype": "float32"},
+               "printer": {"agree": 0, "gap": 0, "misfire": 0, "rules": 0, "positions": 0, "per_split": {}, "outputs": {"dev": {}, "test": {}},
+                           "sweep": {"frames": 0, "match": 0, "mismatches": 0, "refused": 0, "generate_crash": 0}}}
     return corpus, os.path.join(tmp, "src"), results
 
 def test_lattice_order(root):
@@ -190,6 +220,10 @@ def test_lattice_order(root):
     empty = {"dev": {}, "test": {}}
     assert LT.levels({}, {}, [], 0, empty, {}, {}, [], torch_diverging=0)["torch.exact"] == ("torch.exact", "EXACT", 0)
     assert LT.levels({}, {}, [], 0, empty, {}, {}, [], torch_diverging=3)["torch.exact"][1] == "DIVERGING" and "torch.exact" not in LT.levels({}, {}, [], 0, empty, {}, {}, [])
+    assert LT.CHAINS["printer"] == ["MISFIRE", "GAP", "AGREE"] and LT.CHAINS["printer.sweep"] == ["MISMATCHES", "MATCH"] and LT.cmp("printer", "GAP", "MISFIRE") == "down"
+    ro = {"dev": {"1: a .": "あ。", "2: b .": "い。", "3: c .": "う。", "4: d .": ""}, "test": {}}; po = {"dev": {"1: a .": "あ。", "2: b .": "", "3: c .": "え。", "4: d .": ""}}
+    Lp = LT.levels(ro, {}, [], 0, {"dev": {}, "test": {}}, {}, {}, [], printer_outputs=po, printer_sweep=0)
+    assert [Lp[f"printer dev {k}"][1] for k in ("1: a .", "2: b .", "3: c .")] == ["AGREE", "GAP", "MISFIRE"] and "printer dev 4: d ." not in Lp and Lp["printer.sweep"][1] == "MATCH"
 
 def test_precommit_hook_runs_check(root):
     """the hook runs the check on the staged tree, and the gate refuses a down move or an unjudged change"""

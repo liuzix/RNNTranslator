@@ -33,7 +33,9 @@
     "suites.right",
     "suites.cases",
     "suites.closed",
-    "torch.diverging"
+    "torch.diverging",
+    "printer.misfire",
+    "printer.sweep_mismatches"
    ],
    "properties": {
     "rules.dev.covered": {
@@ -89,6 +91,14 @@
     "torch.diverging": {
      "type": "integer",
      "minimum": 0
+    },
+    "printer.misfire": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "printer.sweep_mismatches": {
+     "type": "integer",
+     "minimum": 0
     }
    }
   },
@@ -100,7 +110,8 @@
     "np",
     "negatives",
     "suites",
-    "torch"
+    "torch",
+    "printer"
    ],
    "additionalProperties": false,
    "properties": {
@@ -371,6 +382,73 @@
        "type": "string"
       }
      }
+    },
+    "printer": {
+     "type": "object",
+     "required": [
+      "agree",
+      "gap",
+      "misfire",
+      "rules",
+      "positions",
+      "sweep",
+      "per_split"
+     ],
+     "description": "the printer action: the printing rules of gen_module against generate() on every parsed sentence and on the sweep",
+     "properties": {
+      "agree": {
+       "type": "integer",
+       "minimum": 0
+      },
+      "gap": {
+       "type": "integer",
+       "minimum": 0
+      },
+      "misfire": {
+       "type": "integer",
+       "minimum": 0
+      },
+      "rules": {
+       "type": "integer",
+       "minimum": 0
+      },
+      "positions": {
+       "type": "integer",
+       "minimum": 0
+      },
+      "sweep": {
+       "type": "object",
+       "required": [
+        "frames",
+        "match",
+        "mismatches",
+        "refused",
+        "generate_crash"
+       ],
+       "properties": {
+        "frames": {
+         "type": "integer",
+         "minimum": 0
+        },
+        "match": {
+         "type": "integer",
+         "minimum": 0
+        },
+        "mismatches": {
+         "type": "integer",
+         "minimum": 0
+        },
+        "refused": {
+         "type": "integer",
+         "minimum": 0
+        },
+        "generate_crash": {
+         "type": "integer",
+         "minimum": 0
+        }
+       }
+      }
+     }
     }
    }
   },
@@ -381,10 +459,11 @@
     "matrix",
     "negatives",
     "refusals",
-    "suites"
+    "suites",
+    "printer"
    ],
    "additionalProperties": false,
-   "description": "the items of the lattice: per split, '<line>: <sentence>' -> the rule transducer's Japanese ('' = refused) and the matrix parser's; the negatives rows; the refusal reason per refused sentence",
+   "description": "the items of the lattice: per split, '<line>: <sentence>' -> the rule transducer's Japanese ('' = refused) and the matrix parser's; the negatives rows; the refusal reason per refused sentence; per split, the printing rules' Japanese for every parsed sentence ('' = refused)",
    "properties": {
     "rules": {
      "type": "object",
@@ -522,6 +601,34 @@
          "REFUSED",
          "WRONG"
         ]
+       }
+      }
+     }
+    },
+    "printer": {
+     "type": "object",
+     "required": [
+      "dev",
+      "test"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "dev": {
+       "type": "object",
+       "additionalProperties": {
+        "type": "string"
+       },
+       "propertyNames": {
+        "pattern": "^[1-9]\\d*: \\S(.*\\S)?$"
+       }
+      },
+      "test": {
+       "type": "object",
+       "additionalProperties": {
+        "type": "string"
+       },
+       "propertyNames": {
+        "pattern": "^[1-9]\\d*: \\S(.*\\S)?$"
        }
       }
      }

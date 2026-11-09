@@ -32,15 +32,6 @@ class Stub:
     item = None                    # the TODO.yaml item this stub belongs to
     def _hit(self, name): CALLS[f"{type(self).__name__}.{name}"] += 1; return TODO
 
-class PrintRules(Stub):
-    """the printing rules in the normal form of np_module: per position, an ordered decision diagram over slot predicates
-    whose terminals emit one token (item print-rules)"""
-    item = "print-rules"
-    def positions(self): return self._hit("positions")                       # -> the printing control points, in template order
-    def rules_for(self, position): return self._hit("rules_for")             # -> rules (position, literals, (next, emit, token)) in the compiler's format
-    def derived(self): return self._hit("derived")                           # -> derived predicates (name -> DNF over base literals)
-    def render(self, frame): return self._hit("render")                      # -> the tokens the rules emit for a frame, by stepping them
-
 class Decoder(Stub):
     """the printing rules compiled into the cell: emit, read gates, form gates, read and lookup units, y(t) (item decoder-compile)"""
     item = "decoder-compile"

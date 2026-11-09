@@ -25,18 +25,19 @@ items:
 
 - id: print-rules
   title: Printing rules in normal form for single-clause frames, checked against generate()
-  status: open
+  status: done
   round: 3
   context:
   - text: The semantic layer generates the Japanese from the frame, and the frame never looks at the English again.
     pinned_by: test_layers_roundtrip
-  - text: generate() prints the slots in a fixed order with three lookups — particles from the verb class, conjugation from the flags, drops — and contains string surgery that slices the inner predicate off a printed string, which cannot compile and marks registers the frame lacks.
+  - text: "`gen_module.py` holds the printing rules in the normal form of np_module — per position, an ordered decision over slot predicates (base literals and derived DNFs, every one a test on the flat frame) whose terminals emit one token: a constant morpheme, a slot's value, or a form of the verb or the copula's adjective from the morphology table."
+    pinned_by: test_print_rules_normal_form
+  - text: The `printer` action steps the rules on every sentence the rule parser parses and on a sweep of frames over the predicates they test; the rules agree with generate() wherever they print and refuse the frames that hold a register the cell has no block for, as the lattice items printer and printer.sweep record.
+    pinned_by: printer
+  - text: generate() still contains string surgery that slices the inner predicate off a printed string for inner clauses, infinitives and control, which the rules do not cover and the frame cannot hold.
     hypothesis: true
-  - text: A printing rule has the shape of a parsing rule — per position, an ordered decision diagram over slot predicates whose terminals emit one token — and can be checked against generate() exhaustively over the predicates it tests.
-    hypothesis: true
-  stubs: [PrintRules]
   acceptance: test_print_rules_match_generate
-  touches: [gen_module.py, harness/eval_printer.py, harness/test_claims.py]
+  touches: [gen_module.py, harness/eval_printer.py, harness/test_claims.py, harness/lattice.py]
 
 - id: decoder-compile
   title: "Compile the printing rules into the cell: emit, read gates, form gates, y(t)"
