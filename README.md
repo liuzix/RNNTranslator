@@ -103,7 +103,7 @@ Today the 2,045 items stand at: sentences RIGHT 60, UNKNOWN 653, REFUSED 262, WR
 
 ## Acceptance suites
 
-Each residual class of the second-round review has an acceptance suite under `harness/suites/`: sentences with the exact Japanese the transducer must produce, every case an item of the lattice, and the class is closed when every case is RIGHT. The suites hold 33 cases in 11 classes, 19 right, 4 classes closed.
+Each residual class of the second-round review has an acceptance suite under `harness/suites/`: sentences with the exact Japanese the transducer must produce, every case an item of the lattice, and the class is closed when every case is RIGHT. The suites hold 33 cases in 11 classes, 20 right, 4 classes closed.
 
 | class | what it covers | right / cases | status |
 | --- | --- | --- | --- |
@@ -116,12 +116,12 @@ Each residual class of the second-round review has an acceptance suite under `ha
 | H | Discourse, ellipsis, coordination | 2 / 3 | open |
 | I | Passives and absolute clauses | 0 / 3 | open |
 | K | Particles by verb frame | 3 / 3 | closed |
-| L | Sense and reading selection | 0 / 3 | open |
+| L | Sense and reading selection | 1 / 3 | open |
 | M | Register and dropped words | 0 / 3 | open |
 
 ## Where it stands
 
-The rule transducer translates 416 of 499 test sentences (83%) and 316 of 496 dev sentences (64%), with char-BLEU 36.1 and 34.6 inside coverage. On the 995 dev and test sentences, the two parser implementations parse 530 identically; the matrix misfires silently on 2 (2 wrong frames and 0 parses of sentences the rules refuse) and refuses 200 sentences the rules parse. The compiled cell has 1981 rules (431 extracted, 132 entry, 180 exit, 235 refusal, 1003 from the noun-phrase module), 16,003 state units, 2,044 input units and 222,334 nonzeros. `np_module` agrees with `parse_np` on all 32,040 windows of at most 2 tokens over 89 token classes. Its two adjective slots refuse an adverb followed by two adjectives, where `parse_np` concatenates. The rule parser refuses all 18 negatives and accepts all 18 controls; the matrix refuses 18 of the negatives and accepts 14 of the controls, the rest falling to its extracted clause-level rules. Hypothesis: the remaining misfires come from the extracted clause-level rules, so the next modules to translate by hand are the PP machine, `predicate` and `copula_predicate`.
+The rule transducer translates 416 of 499 test sentences (83%) and 316 of 496 dev sentences (64%), with char-BLEU 36.1 and 34.6 inside coverage. On the 995 dev and test sentences, the two parser implementations parse 530 identically; the matrix misfires silently on 2 (2 wrong frames and 0 parses of sentences the rules refuse) and refuses 200 sentences the rules parse. The compiled cell has 1981 rules (431 extracted, 132 entry, 180 exit, 235 refusal, 1003 from the noun-phrase module), 16,004 state units, 2,044 input units and 222,373 nonzeros. `np_module` agrees with `parse_np` on all 32,040 windows of at most 2 tokens over 89 token classes. Its two adjective slots refuse an adverb followed by two adjectives, where `parse_np` concatenates. The rule parser refuses all 18 negatives and accepts all 18 controls; the matrix refuses 18 of the negatives and accepts 14 of the controls, the rest falling to its extracted clause-level rules. Hypothesis: the remaining misfires come from the extracted clause-level rules, so the next modules to translate by hand are the PP machine, `predicate` and `copula_predicate`.
 
 ## License
 
@@ -156,7 +156,7 @@ Every sentence above is quoted here with what pins it: a test in `harness/test_c
 - "The `negatives` action runs the 18 ungrammatical sentences of `harness/negatives.json`, taken or adapted from the syntax literature, asserts that the rule parser refuses every one and accepts every grammatical control, and counts what the matrix does with them.": Pinned by `negatives`
 - "The rule transducer translates 416 of 499 test sentences (83%) and 316 of 496 dev sentences (64%), with char-BLEU 36.1 and 34.6 inside coverage.": Pinned by `rules`
 - "On the 995 dev and test sentences, the two parser implementations parse 530 identically; the matrix misfires silently on 2 (2 wrong frames and 0 parses of sentences the rules refuse) and refuses 200 sentences the rules parse.": Pinned by `matrix`
-- "The compiled cell has 1981 rules (431 extracted, 132 entry, 180 exit, 235 refusal, 1003 from the noun-phrase module), 16,003 state units, 2,044 input units and 222,334 nonzeros.": Pinned by `matrix`
+- "The compiled cell has 1981 rules (431 extracted, 132 entry, 180 exit, 235 refusal, 1003 from the noun-phrase module), 16,004 state units, 2,044 input units and 222,373 nonzeros.": Pinned by `matrix`
 - "`np_module` agrees with `parse_np` on all 32,040 windows of at most 2 tokens over 89 token classes.": Pinned by `np`
 - "Its two adjective slots refuse an adverb followed by two adjectives, where `parse_np` concatenates.": Pinned by `test_np_two_adjective_slots`
 - "The rule parser refuses all 18 negatives and accepts all 18 controls; the matrix refuses 18 of the negatives and accepts 14 of the controls, the rest falling to its extracted clause-level rules.": Pinned by `negatives`
@@ -169,5 +169,5 @@ Every sentence above is quoted here with what pins it: a test in `harness/test_c
 - "Today the 2,045 items stand at: sentences RIGHT 60, UNKNOWN 653, REFUSED 262, WRONG 20; matrix AGREE 793, GAP 200, MISFIRE 2; negatives REFUSED 18 of 18 and controls ACCEPTED 18; 75 adjudications so far.": Pinned by `rules`
 - "The frontier holds 1,137 items in 22 groups.": Pinned by `rules`
 - "Each residual class of the second-round review has an acceptance suite under `harness/suites/`: sentences with the exact Japanese the transducer must produce, every case an item of the lattice, and the class is closed when every case is RIGHT.": Pinned by `test_suites_are_items`
-- "The suites hold 33 cases in 11 classes, 19 right, 4 classes closed.": Pinned by `suites`
+- "The suites hold 33 cases in 11 classes, 20 right, 4 classes closed.": Pinned by `suites`
 - "The code is MIT-licensed, and the corpus is the Tanaka Corpus via small_parallel_enja under its own terms.": Pinned by `test_license_is_mit`

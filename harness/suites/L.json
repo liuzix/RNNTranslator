@@ -6,8 +6,9 @@
  "cases": [
   {
    "sentence": "my son has gone to america to study medicine .",
-   "expect": "私の息子は医学を勉強するためにアメリカに行った。",
-   "citation": "test 199"
+   "expect": "私の息子はアメリカに医学を勉強しに行った。",
+   "citation": "test 199",
+   "note": "the purpose of a motion verb reads 〜しに行く here (went to see -> 見に行った); ために is the other natural form; open: the purpose clause is an inner clause the cell cannot represent"
   },
   {
    "sentence": "he studies medicine .",

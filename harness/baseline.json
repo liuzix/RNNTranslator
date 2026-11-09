@@ -3,16 +3,16 @@
 "matrix": {
 "both_refuse": 263,
 "cell": {
-"build_seconds": 25,
+"build_seconds": 27,
 "input_units": 2044,
 "layers": [
-990,
+994,
 135,
 2172,
 790,
-31257
+31260
 ],
-"nnz": 222334,
+"nnz": 222373,
 "rules": 1981,
 "rules_by_kind": {
 "entry": 132,
@@ -26,7 +26,7 @@
 "out of scope": 158,
 "refused": 273
 },
-"state_units": 16003,
+"state_units": 16004,
 "unresolved": {}
 },
 "identical": 530,
@@ -64,7 +64,7 @@
 }
 },
 "refused_parseable": 200,
-"summary": "identical 530, wrong frame 2, matrix parses refused 0, refused parseable 200, both refuse 263; nnz 222334, rules 1981",
+"summary": "identical 530, wrong frame 2, matrix parses refused 0, refused parseable 200, both refuse 263; nnz 222373, rules 1981",
 "wrong_frame": 2
 },
 "negatives": {
@@ -74,7 +74,7 @@
 "count": 18,
 "matrix_accepted": 0,
 "problems": [],
-"seconds": 27,
+"seconds": 25,
 "summary": "negatives: rules refuse 18/18 and accept 18/18 controls; matrix refuses 18/18 and accepts 14/18 controls"
 },
 "np": {
@@ -84,7 +84,7 @@
 "max_len": 2,
 "mismatch_kinds": 0,
 "mismatches": 0,
-"seconds": 5,
+"seconds": 6,
 "summary": "np_module vs parse_np: 32040 cases (len<=2, 89 tokens), 0 mismatches"
 },
 "rules": {
@@ -210,9 +210,9 @@
 "cases": 3,
 "closed": false,
 "refused": 0,
-"right": 0,
+"right": 1,
 "title": "Sense and reading selection",
-"wrong": 3
+"wrong": 2
 },
 "M": {
 "cases": 3,
@@ -225,8 +225,8 @@
 },
 "closed": 4,
 "open": 7,
-"right": 19,
-"summary": "suites: 19/33 cases right, 4 of 11 classes closed (open: D, E, G, H, I, L, M)"
+"right": 20,
+"summary": "suites: 20/33 cases right, 4 of 11 classes closed (open: D, E, G, H, I, L, M)"
 }
 },
 "metrics": {
@@ -242,7 +242,7 @@
 "rules.test.covered": 416,
 "suites.cases": 33,
 "suites.closed": 4,
-"suites.right": 19
+"suites.right": 20
 },
 "outputs": {
 "matrix": {
@@ -2927,7 +2927,7 @@
 {
 "citation": "test 199",
 "class": "L",
-"expect": "私の息子は医学を勉強するためにアメリカに行った。",
+"expect": "私の息子はアメリカに医学を勉強しに行った。",
 "level": "WRONG",
 "output": "私の息子はアメリカに研究の薬に行った。",
 "reason": null,
@@ -2937,8 +2937,8 @@
 "citation": null,
 "class": "L",
 "expect": "彼は医学を勉強する。",
-"level": "WRONG",
-"output": "彼は薬を勉強する。",
+"level": "RIGHT",
+"output": "彼は医学を勉強する。",
 "reason": null,
 "sentence": "he studies medicine ."
 },
@@ -2980,5 +2980,5 @@
 }
 ]
 },
-"taken": "2026-11-08 at eacc67c (staged)"
+"taken": "2026-11-08 at 6353203 (staged)"
 }
