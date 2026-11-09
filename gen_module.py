@@ -388,6 +388,7 @@ def build_predicate(B, np):
     B.rule("PRED", ["¬flag.there", "slot.cop_kind=adj", "slot.cmp.noun"], "PRED_ADJ", [("af", "stem", True)])
     B.rule("PRED", ["¬flag.there", "slot.cop_kind=adj", "¬slot.cmp.noun"], "PRED_ADJ", [("af", "stem", False)])
     for k in ("ia", "na", "fixed", "v1"): B.rule("PRED_ADJ", [f"adj.kind={k}"], ("K", {"ia": "IA", "na": "NA", "fixed": "FIXED", "v1": "V1C"}[k]))
+    B.rule("PRED_ADJ", [f"¬adj.kind={k}" for k in ("ia", "na", "fixed", "v1")], "FAIL:adjective kind")
     B.rule("PRED", ["¬flag.there", "slot.cop_kind=np"], np("cop", ("K", "NA", "noun")))
     for kind in ("pp", "adv"):
         B.rule("PRED", ["¬flag.there", f"slot.cop_kind={kind}", "subj.animate"], ("K", "V1C"), [C("い")])
@@ -526,7 +527,8 @@ def build_predicate(B, np):
                     for polite in (False, True):
                         lits = []
                         if mode in ("conj", "conj_nn"):
-                            if past or polite or (mode == "conj_nn" and neg): continue
+                            if past or polite: continue
+                            if mode == "conj_nn" and neg: B.rule(st, ["d.neg"], "FAIL:a negated ほうがいい under would"); continue
                             lits += ["d.neg"] if neg else ["¬d.neg"]
                         elif mode == "lets":
                             if past or neg or not polite: continue

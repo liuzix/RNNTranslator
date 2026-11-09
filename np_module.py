@@ -89,7 +89,8 @@ def rules_for(role):
     rules += [
               R("NP0", ["¬d.lotof", "¬w0.class=det", "¬w0.class=pron"], "NP1", 0)]
     # NPM — the adjective after an indefinite pronoun: something new -> 何か新しいもの
-    rules += [R("NPM", ["w0.class=adj"], "RET", 1, [(s("mono"), None, ("copy", "adj_mono"))])]
+    rules += [R("NPM", ["w0.class=adj"], "RET", 1, [(s("mono"), None, ("copy", "adj_mono"))]),
+              R("NPM", ["¬w0.class=adj"], "FAIL:adjective expected", 0)]
     # a second determiner or possessive after "name 's": the rule parser concatenates, the slots cannot
     for filled in (["slot." + s("det")], ["¬slot." + s("det"), "slot." + s("poss")]):
         rules += [R("NP0", filled + ["d.lotof"], "FAIL:possessive noun phrase", 0),

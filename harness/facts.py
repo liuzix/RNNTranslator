@@ -26,6 +26,10 @@ def facts(root=ROOT):
     f["cell.rules"] = cell["rules"]; f["cell.nnz"] = cell["nnz"]; f["cell.state_units"] = cell["state_units"]; f["cell.input_units"] = cell["input_units"]
     f["cell.layers"] = len(cell["layers"])
     for kind, n in cell["rules_by_kind"].items(): f[f"cell.rules.{kind}"] = n
+    cn = cell["canon"]
+    f["canon.control_points"] = cn["control_points"]; f["canon.complete"] = cn["complete"]; f["canon.consistent"] = cn["consistent"]
+    f["canon.incomplete"] = cn["control_points"] - cn["complete"]; f["canon.inconsistent"] = cn["control_points"] - cn["consistent"]
+    f["canon.nodes"] = cn["nodes"]; f["canon.example"] = cn["example"].rstrip("\n")
     n = base["detail"]["np"]
     f["np.cases"] = n["cases"]; f["np.max_len"] = n["max_len"]; f["np.mismatches"] = n["mismatches"]; f["np.alphabet"] = n["alphabet"]
     g = base["detail"]["negatives"]

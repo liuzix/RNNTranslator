@@ -4,32 +4,41 @@
 "both_refuse": 263,
 "cell": {
 "build_seconds": 39,
+"canon": {
+"complete": 1039,
+"consistent": 1039,
+"control_points": 1039,
+"example": "NP1@cop:\n  w0 ⟨class=num ∧ surf=one⟩:\n      = class=num » #2: → ('NP2', 'cop') k=1 (('cop.num', None, ('copy', 'num')),)\n      = class=num ∧ surf=one » w1 ⟨class=noun⟩:\n          = class=noun » #2\n          * » cop.det ⟨slot.cop.det⟩:\n              = slot.cop.det » #1: → ('NP2', 'cop') k=0 ()\n              * » cop.poss ⟨slot.cop.poss⟩:\n                  = slot.cop.poss » #1\n                  * » #2\n      * » #1\n",
+"nodes": 17483,
+"not_total": [],
+"seconds": 80.7
+},
 "input_units": 2936,
 "layers": [
 2899,
 424,
-4982,
+10924,
 2069,
-114897
+114435
 ],
-"nnz": 834815,
-"rules": 4705,
+"nnz": 954059,
+"rules": 10647,
 "rules_by_kind": {
-"clause": 1282,
+"clause": 2255,
 "entry": 108,
-"exit": 65,
-"fail": 140,
+"exit": 616,
+"fail": 3704,
 "flush": 13,
-"module": 1476,
+"module": 2328,
 "outer": 335,
-"print": 1286
+"print": 1288
 },
 "scope": {
 "in scope": 576,
 "out of scope": 146,
 "refused": 273
 },
-"state_units": 70884,
+"state_units": 70730,
 "unresolved": {}
 },
 "identical": 567,
@@ -59,7 +68,7 @@
 }
 },
 "refused_parseable": 165,
-"summary": "identical 567, wrong frame 0, matrix parses refused 0, refused parseable 165, both refuse 263; nnz 834815, rules 4705",
+"summary": "identical 567, wrong frame 0, matrix parses refused 0, refused parseable 165, both refuse 263; nnz 954059, rules 10647; canon: 1039 control points, 0 with a gap, 0 with a conflict",
 "wrong_frame": 0
 },
 "negatives": {
@@ -69,7 +78,7 @@
 "count": 18,
 "matrix_accepted": 0,
 "problems": [],
-"seconds": 41,
+"seconds": 43,
 "summary": "negatives: rules refuse 18/18 and accept 18/18 controls; matrix refuses 18/18 and accepts 15/18 controls"
 },
 "np": {
@@ -79,7 +88,7 @@
 "max_len": 2,
 "mismatch_kinds": 0,
 "mismatches": 0,
-"seconds": 5,
+"seconds": 6,
 "summary": "np_module vs parse_np: 32040 cases (len<=2, 89 tokens), 0 mismatches"
 },
 "printer": {
@@ -124,8 +133,8 @@
 }
 },
 "positions": 632,
-"rules": 1285,
-"summary": "printer vs generate: agree 621, gap 111, misfire 0 on the corpus; sweep 167985 frames, 154333 match, 0 mismatches, 2576 refused, 11076 generate() cannot print; 1285 rules at 632 positions",
+"rules": 1287,
+"summary": "printer vs generate: agree 621, gap 111, misfire 0 on the corpus; sweep 167985 frames, 154333 match, 0 mismatches, 2576 refused, 11076 generate() cannot print; 1287 rules at 632 positions",
 "sweep": {
 "frames": 167985,
 "generate_crash": 11076,
@@ -178,7 +187,7 @@
 "there-clause with a that-claus": "('outer', 'there', 'None', [], None, None)"
 },
 "refused": 2576,
-"seconds": 50.8
+"seconds": 48.2
 }
 },
 "rules": {
@@ -325,7 +334,7 @@
 "torch": {
 "diverging": 0,
 "dtype": "float32",
-"seconds": 264.7,
+"seconds": 283.1,
 "sentences": 995,
 "steps": 55767,
 "summary": "torch 2.15.0+cpu: 995 sentences, 55767 steps compared, 0 diverging",
@@ -3824,5 +3833,5 @@
 }
 ]
 },
-"taken": "2026-11-09 at 043a038"
+"taken": "2026-11-09 at 8dd8fa7"
 }

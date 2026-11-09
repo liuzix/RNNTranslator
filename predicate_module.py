@@ -140,6 +140,7 @@ def build_cop():
     rs += d.otherwise("FAIL:copula predicate")
     for w in sorted(R.PREPS):                                                            # the copula's PP: the preposition, then the noun phrase
         rs.append(("CP_PREP", (f"w0.surf={w}",), (("NP0", "cop"), 1, (("ret", "cop_pp", ("const",)), ("cop_part", R.PREPS[w], ("const",))) + tuple(clears("cop")))))
+    rs.append(("CP_PREP", tuple(f"¬w0.surf={w}" for w in sorted(R.PREPS)), ("FAIL:preposition expected", 0, ())))     # the table's otherwise
     # after the adjective: than, enough to, too … to, to V, of X to V, for X to V, that S
     d = Decision("cop", "CP_ADJ", D)
     d.branch(["w0.surf=than", "w1.class=time", "flag.noless"], "CP_THAN_T", 1, [("cmp_kind", "noless", ("const",))] + clears("cmp"))

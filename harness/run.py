@@ -37,7 +37,7 @@ SOURCES = ["rules_ja.py", "tables.py", "tables/*.tbl", "parser.py", "parser_rule
 CELL = ["parser_matrix.py", "np_module.py", "pp_module.py", "predicate_module.py", "gen_module.py"]   # the compiled cell: the compiler, the hand-translated modules, the printing rules
 ACTIONS = {
     "rules":  {"version": 1, "script": "harness/eval_rules.py",  "inputs": SOURCES, "corpus": True,  "args": []},
-    "matrix": {"version": 1, "script": "harness/eval_matrix.py", "inputs": SOURCES + CELL, "corpus": True, "args": []},
+    "matrix": {"version": 1, "script": "harness/eval_matrix.py", "inputs": SOURCES + CELL + ["canon.py"], "corpus": True, "args": []},
     "np":     {"version": 1, "script": "harness/eval_np.py",     "inputs": SOURCES + CELL, "corpus": False, "args": ["--max-len", "2"]},
     "negatives": {"version": 1, "script": "harness/eval_negatives.py", "inputs": SOURCES + CELL + ["harness/negatives.json"], "corpus": True, "args": []},
     "suites": {"version": 1, "script": "harness/eval_suites.py", "inputs": SOURCES + ["harness/suites/*.json"], "corpus": False, "args": []},

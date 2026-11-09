@@ -170,12 +170,21 @@ def build():
         rs.append(("PP_LOC", (f"d.pp.count{n}",), ("PP0", 1, ((f"{role}_part", R.PREPS["at"], ("const",)), (f"{role}.noun", None, ("copy", "loc")), (f"{role}.cls", "t", ("const",))))))
     D["d.pp.count3"] = COUNT(3)
     for st in ("PP_PREPTIME", "PP_PREPNP", "PP_LOC"): rs.append((st, ("d.pp.count3",), ("FAIL:four prepositional phrases", 0, ())))
+    not_prep = tuple(f"¬w0.surf={w}" for w in sorted(R.PREPS))                   # the tables' otherwise: a value outside the table is refused
+    for st in ("PP_PREPTIME", "PP_PREPNP"): rs.append((st, not_prep + ("¬d.pp.count3",), ("FAIL:preposition expected", 0, ())))
+    parts = sorted({part for (lemma, part) in R.PARTICLE_AFTER})
     for (lemma, part), (ja, conj) in sorted(R.PARTICLE_AFTER.items()):
         for v in verb_values(lemma):
             rs.append(("PP_PAFTER", (f"w0.surf={part}", f"slot.verb={v}"), ("PP0", 1, (("verb", (lemma + " " + part, ja, conj), ("const",)),))))
+    for part in parts:
+        verbs = [v for (lemma, p) in sorted(R.PARTICLE_AFTER) if p == part for v in verb_values(lemma)]
+        rs.append(("PP_PAFTER", (f"w0.surf={part}",) + tuple(f"¬slot.verb={v}" for v in verbs), ("FAIL:no particle after this verb", 0, ())))
+    rs.append(("PP_PAFTER", tuple(f"¬w0.surf={p}" for p in parts), ("FAIL:particle expected", 0, ())))
     for whv in WH_BASE:
         for w in sorted(R.PREPS):
             rs.append(("PP_WHPREP", (f"w0.surf={w}", f"slot.wh={whv}"), ("PP0", 1, (("wh", (whv[0] + R.PREPS[w][1 if whv[1] == "loc" else 0], "pp"), ("const",)),))))
+    for w in sorted(R.PREPS): rs.append(("PP_WHPREP", (f"w0.surf={w}",) + tuple(f"¬slot.wh={whv}" for whv in WH_BASE), ("FAIL:no question word", 0, ())))
+    rs.append(("PP_WHPREP", not_prep, ("FAIL:preposition expected", 0, ())))
     rs += adv_write("adv", 1, "PP_AS2", "PP_AS1")
     rs.append(("PP_AS2", ("w0.surf=as",), (("NP0", "cmp"), 1, (("ret", "pp", ("const",)), ("cmp_kind", "as", ("const",))) + tuple(clears("cmp")))))
     rs.append(("PP_AS2", ("¬w0.surf=as",), ("FAIL:as expected", 0, ())))

@@ -9,8 +9,22 @@ both_refuse             neither parses
 """
 import sys, os, json, argparse, collections, time
 sys.path.insert(0, os.getcwd())
-import rules_ja as R, run_rules as H, parser as P
+import rules_ja as R, run_rules as H, parser as P, canon as C
 from parser_rules import ParseFail
+
+def canon_survey(comp):
+    """the canonical diagram of every control point of the cell (canon.py), over the cell's own slot vocabulary: how many are complete
+    and consistent, the nodes in all, and one diagram's text form as the README's example"""
+    by_prev = collections.defaultdict(list)
+    for p, l, o in comp["rules"]: by_prev[p].append((l, o))
+    tab = C.Table(C.Model(comp["slot_vocab"])); out = {"control_points": len(by_prev), "complete": 0, "consistent": 0, "nodes": 0, "not_total": []}
+    for prev, rs in sorted(by_prev.items(), key=str):
+        d = C.diagram(rs, table=tab); out["nodes"] += C.size(d)
+        out["complete"] += C.complete(d); out["consistent"] += C.consistent(d)
+        if not (C.complete(d) and C.consistent(d)) and len(out["not_total"]) < 20: out["not_total"].append(str(prev))
+    example = ("NP1", "cop")
+    out["example"] = C.dump(C.diagram(by_prev[example], table=tab), "NP1@cop") if example in by_prev else ""
+    return out
 
 def crosstab(mp, rp, rows):
     """rows: (line, en tokens, ja) from run_rules.load_indexed; returns the counts and the matrix output per citation"""
@@ -57,11 +71,14 @@ def main():
     for s in res["per_split"]:
         for k in ("identical", "wrong_frame", "matrix_parses_refused", "refused_parseable", "both_refuse"): tot[k] += res["per_split"][s][k]
     res.update(tot)
+    t0 = time.time(); canon = canon_survey(comp); canon["seconds"] = round(time.time() - t0, 1)
     res["cell"] = {"state_units": mp.nS, "input_units": mp.nX, "nnz": int(mp.nnz()), "layers": [len(L) for L, _, _ in comp["layers"]], "rules": len(comp["rules"]),
                    "rules_by_kind": dict(kinds), "build_seconds": round(build_s), "scope": dict(comp.get("scope", {})),
-                   "unresolved": {q: n for q, n in sorted(comp.get("unresolved", {}).items())}}     # positive literals the cell cannot see: those rules can never fire
+                   "unresolved": {q: n for q, n in sorted(comp.get("unresolved", {}).items())},     # positive literals the cell cannot see: those rules can never fire
+                   "canon": canon}
     res["summary"] = (f"identical {res['identical']}, wrong frame {res['wrong_frame']}, matrix parses refused {res['matrix_parses_refused']}, "
-                      f"refused parseable {res['refused_parseable']}, both refuse {res['both_refuse']}; nnz {res['cell']['nnz']}, rules {res['cell']['rules']}"
+                      f"refused parseable {res['refused_parseable']}, both refuse {res['both_refuse']}; nnz {res['cell']['nnz']}, rules {res['cell']['rules']}; "
+                      f"canon: {canon['control_points']} control points, {canon['control_points'] - canon['complete']} with a gap, {canon['control_points'] - canon['consistent']} with a conflict"
                       + (f"; UNRESOLVED literals {sum(res['cell']['unresolved'].values())}: {', '.join(res['cell']['unresolved'])}" if res["cell"]["unresolved"] else ""))
     json.dump(res, open(a.out, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     print(res["summary"])

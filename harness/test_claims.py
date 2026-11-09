@@ -211,6 +211,81 @@ def test_output_is_one_hot_morphemes(root):
         assert len(on) == (1 if s[mp.emit_unit] > 0.5 else 0), (ctrl, len(on))
         emitted += on
     assert emitted == mp.run(toks)[1] and steps > len(emitted) and "".join(PM.output_lexicon(u) for u in emitted) == "彼女は休んだ。"
+def _diagrams(root):
+    """every control point of the small cell -> (its rules, its canonical diagram), built in one table over the cell's own vocabulary"""
+    import canon as C
+    comp, mp = small_cell(root)
+    if "canon" not in _cell:
+        by_prev = collections.defaultdict(list)
+        for p, l, o in comp["rules"]: by_prev[p].append((l, o))
+        tab = C.Table(C.Model(comp["slot_vocab"]))
+        _cell["canon"] = (tab, {prev: (rs, C.diagram(rs, table=tab)) for prev, rs in by_prev.items()})
+    tab, D = _cell["canon"]
+    return C, tab, D
+
+def test_canon_is_canonical(root):
+    """a control point's rules have one reduced ordered decision diagram over the cell's variables: the same object whatever order the
+    rules come in, no variable tested twice on a path, and the paths are the rules in normal form — the region a path describes is
+    covered by exactly the original rules whose outcome its leaf carries, a GAP by none, a CONFLICT by rules with the outcomes it lists"""
+    C, tab, D = _diagrams(root)
+    assert len(D) > 100
+    for prev, (rs, d) in D.items():
+        assert C.diagram(C.shuffled(rs, 1), table=tab) is d and C.diagram(list(reversed(rs)), table=tab) is d, f"{prev}: the diagram depends on the rules' order"
+        def no_repeat(n, seen=()):
+            if n.kind != "TEST": return True
+            return n.var not in seen and all(no_repeat(b, seen + (n.var,)) for b in n.branches.values())
+        assert no_repeat(d), f"{prev}: a variable tested twice on one path"
+        forms = [(tab.normalize(lits, out), out) for lits, out in rs]
+        for lits, leaf in C.paths(d):
+            classes = C.path_classes(lits); outs = {}
+            for nr, out in forms:
+                if nr is None: continue
+                f = nr[0]
+                for var, true in classes.items(): f = C.substitute(f, var, tuple(sorted(true)))
+                if f != C.F and C.satisfiable(f, tab): outs[repr(out)] = out       # some input of the region satisfies the rule: it covers part of it
+            outs = sorted(outs.values(), key=repr)
+            if leaf.kind == C.TERM: assert outs == [leaf.out], f"{prev}: path outcome differs from the rules"
+            elif leaf.kind == C.GAP: assert outs == [], f"{prev}: a gap the rules cover"
+            else: assert tuple(outs) == leaf.out, f"{prev}: conflict mismatch"
+
+def test_canon_over_feasible_inputs(root):
+    """the diagram ranges over feasible inputs, not over literals treated as independent: a token is never a determiner and a verb at
+    once, so a rule asking for both has no path; the PP slots fill in order, so pp.count=1 and a filled pp2 together are no region;
+    a derived predicate is tested through its base literals; a slot's values are what the rules can write, or nothing"""
+    import canon as C
+    tab = C.Table()                                                            # the universal model: the hand-written rules' vocabulary and the lexicon
+    A, B, X = ("A", 0, ()), ("B", 0, ()), ("X", 0, ())
+    d = C.diagram([((("w0.class=det", True), ("w0.class=end", True)), X), ((("w0.class=det", False),), B), ((("w0.class=det", True), ("w0.class=end", False)), A)], table=tab)
+    assert C.complete(d) and C.consistent(d) and {l.out for l in C.leaves(d)} == {A, B}, "a token that is a determiner and the end at once"
+    assert all(isinstance(v, frozenset) for v in tab.model.universe("w0")) and len(tab.model.universe("w0")) < len(tab.model.feats), "window values are the tokens' predicate sets, grouped"
+    d = C.diagram([((("pp.count=0", True),), A), ((("pp.count=1", True),), A), ((("pp.count=2", True),), A), ((("pp.count=3", True),), B)], table=tab)
+    assert C.complete(d) and C.consistent(d) and d.var == "pp.count", "the PP count is one variable, the PPs filling in order"
+    d = C.diagram([((("d.neg", True),), A), ((("d.neg", False),), B)], table=tab)
+    assert C.complete(d) and C.consistent(d) and all(n.var in ("neg", "adv1", "adv2", "subj.noun", "obj.noun") for n in C._nodes(d) if n.kind == "TEST"), "d.neg tested as itself"
+    d = C.diagram([((("slot.cop_kind=adj", True),), A), ((("slot.cop_kind=np", True),), B)], table=tab)
+    assert not C.complete(d) and d.var == "cop_kind" and len(d.branches) >= 3, "cop_kind: adj, np, and the other values or nothing"
+
+def test_canon_dsl_roundtrip(root):
+    """the text form of every diagram parses back to the same diagram, and the name round-trips"""
+    C, tab, D = _diagrams(root)
+    for prev, (rs, d) in D.items():
+        name, back = C.parse(C.dump(d, str(prev)), table=tab)
+        assert back is d and name == str(prev), f"{prev}: text form does not round-trip"
+    text = C.dump(D[("NP1", "cop")][1], "NP1@cop")
+    assert text.startswith("NP1@cop:\n") and "w0 ⟨" in text and "→ (" in text, text
+
+def test_canon_control_points_total(root):
+    """every control point of the cell is complete and consistent over its feasible inputs — every input reaches exactly one outcome,
+    a refusal included: the hand-written modules by their otherwise-rules (a table position refuses a value outside its table), the
+    induced control points by the refusals the compiler materialises where a guard fails or the traces disagreed, and the return
+    states by its closing refusal for a return address no caller serves"""
+    C, tab, D = _diagrams(root)
+    bad = [prev for prev, (rs, d) in D.items() if not (C.complete(d) and C.consistent(d))]
+    assert not bad, f"{len(bad)} of {len(D)} control points are not total, e.g. {bad[0]}"
+    induced = {prev for prev in D if isinstance(prev[0], tuple) or prev in (("START",), ("INNER",))}
+    assert len(induced) >= 25 and any(out == (PM.FAIL, 0, ()) for prev in induced for lits, out in D[prev][0]), "no refusal materialised at the induced control points"
+    assert any(prev[0] in ("RET", "RETM") and out == (PM.FAIL, 0, ()) and lits and all(not t and PM.is_return_key(q) for q, t in lits) for prev, (rs, d) in D.items() for lits, out in rs), "no closing refusal at a return state"
+    assert any(prev[0] == "M" and out == (PM.FAIL, 0, ()) and lits and all(not t and q.startswith("w0.surf=") for q, t in lits) for prev, (rs, d) in D.items() for lits, out in rs), "no otherwise at a table position"
 
 def test_layers_roundtrip(root):
     toks = R.merge_multiword("a lot of people came .".split())

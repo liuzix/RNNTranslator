@@ -925,14 +925,32 @@ def has_conflict(tree):
     if tree[0] == "conflict": return True
     return has_conflict(tree[2]) or has_conflict(tree[3])
 
-def tree_rules(tree, path=()):
-    """flatten a tree into (literals, outcome) rules; literals are (predicate, truth), the leaf's guard appended"""
+def tree_rules(tree, path=(), keys=None):
+    """flatten a tree into (literals, outcome) rules; literals are (predicate, truth), the leaf's guard appended — and the refusals
+    the tree left implicit made explicit, so that every induced control point decides every input (pinned by
+    test_canon_control_points_total): where a guard literal fails, and where the traces disagreed (a conflict leaf), the rule is
+    FAIL.  A return state (RET, RETM) is shared by every caller, each keyed by its return address, so a failing address guard is
+    not negated (that would fire on another caller's address) but spelled out over the other addresses this tree knows; an address
+    none of the callers serves is closed by the compiler (close_returns)"""
+    if keys is None: keys = sorted(_return_keys(tree))
     if tree[0] == "leaf":
-        seen = {q for q, t in path}
-        return [(path + tuple((q, True) for q in tree[2] if q not in seen), tree[1])]
-    if tree[0] == "conflict": return [(path, ("CONFLICT", tree[1], tree[2]))]
+        seen = {q for q, t in path}; fixed = {q for q, t in path if t and is_return_key(q)}
+        guard = sorted((q for q in tree[2] if q not in seen), key=lambda q: (not is_return_key(q), q))      # the return address first
+        rules = [(path + tuple((q, True) for q in guard), tree[1])]
+        for j, q in enumerate(guard):
+            before = path + tuple((g, True) for g in guard[:j])
+            if is_return_key(q):
+                if not fixed: rules += [(before + ((k, True),), (FAIL, 0, ())) for k in keys if k != q]
+            else: rules.append((before + ((q, False),), (FAIL, 0, ())))
+        return rules
+    if tree[0] == "conflict": return [(path, (FAIL, 0, ()))]
     _, q, yes, no = tree
-    return tree_rules(yes, path + ((q, True),)) + tree_rules(no, path + ((q, False),))
+    return tree_rules(yes, path + ((q, True),), keys) + tree_rules(no, path + ((q, False),), keys)
+
+def _return_keys(tree):
+    if tree[0] == "leaf": return {q for q in tree[2] if is_return_key(q)}
+    if tree[0] == "conflict": return set()
+    return ({tree[1]} if is_return_key(tree[1]) else set()) | _return_keys(tree[2]) | _return_keys(tree[3])
 
 def frame_to_snapshot(frame):
     """the slot dict as the snapshot() view (so predicates read it the same way)"""
@@ -1147,45 +1165,48 @@ def implied(sets, by_superset):
         keep.append(a)
     return keep
 
-def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None, decoder=True):
-    """trees (per previous control point) + hand-written rules -> the cell: five sparse ReLU layers over a one-hot state and
-    the lexical input, then the new state.  `derived` maps a predicate name to a DNF over base literals (np_module.derived).
-    With `decoder`, the printing rules of gen_module join the rule set (decoder_rules) and the state gets the output units."""
-    derived = dict(derived or {})
-    rules = []   # (prev, literals, (cp, k, actions))
-    for prev, t in trees.items():
-        for lits, out in tree_rules(t):
-            if out[0] == "CONFLICT": continue
-            rules.append((prev, lits, out))
-    rules += list(extra_rules)
-    if decoder:
-        prules, pderived = decoder_rules(); rules += prules; derived.update(pderived)
-    emits = [(ri, v) for ri, (prev, lits, (cp, k, actions)) in enumerate(rules) for slot, v, src in actions if src == PRINT_SRC]
-    out_tokens = sorted({v for ri, v in emits}, key=str)
-    const_out = sorted({tok[1] for tok in out_tokens if tok[0] == "c"})
-    read_out = sorted({(tok[1], tok[2] if len(tok) > 2 else None) for tok in out_tokens if tok[0] == "s"}, key=str)
-    form_out = sorted({(tok[1], tok[2]) for tok in out_tokens if tok[0] == "vf"})
-    aform_out = sorted({tok[2] for tok in out_tokens if tok[0] == "af"})
-    # ---- vocabularies
+def is_return_key(q): return q.startswith(("reg.ret=", "reg.mret="))
+
+def close_returns(rules):
+    """at a return state — ("RET", role) of the noun-phrase module, ("RETM", module, exit) of a clause module — every rule is keyed by
+    the return address it serves, and the hand-written modules and the induced hand-overs each add theirs, so no single one can
+    write the otherwise: the compiler closes the state with a refusal for an address none of them serves (a state with an
+    unconditional return is total already)"""
+    by_prev = collections.defaultdict(list)
+    for prev, lits, out in rules:
+        if isinstance(prev, tuple) and prev[0] in ("RET", "RETM"): by_prev[prev].append(lits)
+    extra = []
+    for prev, litss in sorted(by_prev.items(), key=str):
+        keys = set()
+        for lits in litss:
+            ks = [q for q, t in lits if t and is_return_key(q)]
+            if not ks: keys = None; break
+            keys |= set(ks)
+        if keys: extra.append((prev, tuple((q, False) for q in sorted(keys)), (FAIL, 0, ())))
+    return extra
+
+MOVE_FN = {"move": lambda v: v, "move_time": lambda v: v + "時"}
+
+def vocabulary(rules):
+    """the values every slot can hold under a rule set: the constants the rules write, every value the lexicon can produce for
+    the copy sources they use, what the moves carry over (to a depth of three), and what the USE lookup rewrites; -> (slot
+    vocabulary, source vocabulary, the copy pairs, the move pairs, the rules that apply the USE feedback per role)"""
     slot_vocab = collections.defaultdict(set)
     for _, _, (cp, k, actions) in rules:
         for slot, v, src in actions:
             if src[0] == "const" and v is not None: slot_vocab[slot].add(v)
-    # copy sources: every value the lexicon can produce for that source
     src_vocab = collections.defaultdict(set)
     for tok in list(R.LEX) + list(R.PRONOUNS) + list(R.DETS) + list(R.NUMBERS) + list(R.WH) + list(R.MODALS) + list(R.VERB_FORMS):
         for s, v in source_values(tok).items(): src_vocab[s].add(v)
     for s, vals in window_source_vocab().items(): src_vocab[s] |= set(vals)
     for s in src_vocab: src_vocab[s] = sorted(src_vocab[s], key=str)
     copy_pairs = set(); move_pairs = set()
-    MOVE_FN = {"move": lambda v: v, "move_time": lambda v: v + "時"}
     for _, _, (cp, k, actions) in rules:
         for slot, v, src in actions:
             if src[0] == "copy": copy_pairs.add((slot, src[1])); slot_vocab[slot] |= set(src_vocab[src[1]])
             if src[0] in MOVE_FN: move_pairs.add((slot, src[1], src[0]))
     for _ in range(3):
         for slot, src_slot, fn in list(move_pairs): slot_vocab[slot] |= {MOVE_FN[fn](v) for v in slot_vocab.get(src_slot, ())}
-    # the USE lookup: every value a pair of this cell can write (verb after the feedback, particle, prog)
     use_rules = collections.defaultdict(list)                                   # role -> the rules that apply the feedback on it
     for ri, (prev, lits, (cp, k, actions)) in enumerate(rules):
         for slot, v, src in actions:
@@ -1198,15 +1219,43 @@ def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None, decoder
             slot_vocab["verb"].add(new_verb)
             if upart != "-": slot_vocab[f"{role}_part" if role.startswith("pp") else "obj_particle"].add((upart, upart) if role.startswith("pp") else upart)
             if stative: slot_vocab["prog"].add(True)
+    return slot_vocab, src_vocab, copy_pairs, move_pairs, use_rules
+
+def universal_vocabulary():
+    """every slot's values over the hand-written rules of every module — the noun-phrase module for every role, the clause modules,
+    the printing rules, the clause flush — and the lexicon's copy sources: the universe a diagram (canon.py) ranges over when it
+    has no particular cell"""
+    rules = module_rules(set(NP_ROLES))[0] + clause_module_rules()[0] + decoder_rules()[0]
+    slot_vocab = vocabulary(rules)[0]
+    rules += clause_flush_rules(sorted(slot_vocab))
+    return vocabulary(rules)[0]
+
+def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None, decoder=True):
+    """trees (per previous control point) + hand-written rules -> the cell: five sparse ReLU layers over a one-hot state and
+    the lexical input, then the new state.  `derived` maps a predicate name to a DNF over base literals (np_module.derived).
+    With `decoder`, the printing rules of gen_module join the rule set (decoder_rules) and the state gets the output units."""
+    derived = dict(derived or {})
+    rules = []   # (prev, literals, (cp, k, actions))
+    for prev, t in trees.items():
+        for lits, out in tree_rules(t):
+            if out[0] == "CONFLICT": continue
+            rules.append((prev, lits, out))
+    rules += list(extra_rules)
+    rules += close_returns(rules)
+    if decoder:
+        prules, pderived = decoder_rules(); rules += prules; derived.update(pderived)
+    emits = [(ri, v) for ri, (prev, lits, (cp, k, actions)) in enumerate(rules) for slot, v, src in actions if src == PRINT_SRC]
+    out_tokens = sorted({v for ri, v in emits}, key=str)
+    const_out = sorted({tok[1] for tok in out_tokens if tok[0] == "c"})
+    read_out = sorted({(tok[1], tok[2] if len(tok) > 2 else None) for tok in out_tokens if tok[0] == "s"}, key=str)
+    form_out = sorted({(tok[1], tok[2]) for tok in out_tokens if tok[0] == "vf"})
+    aform_out = sorted({tok[2] for tok in out_tokens if tok[0] == "af"})
+    # ---- vocabularies
+    slot_vocab, src_vocab, copy_pairs, move_pairs, use_rules = vocabulary(rules)
     if not decoder: rules.append((("CLOSE",), (), (("DONE",), 0, ())))          # without a print head the end of reading is DONE at once
     else:                                                         # the clause flush over every slot this cell has; its tag moves and modes join the vocabulary
-        frules = clause_flush_rules(sorted(slot_vocab)); rules += frules
-        for _, _, (cp, k, actions) in frules:
-            for slot, v, src in actions:
-                if src[0] == "const" and v is not None: slot_vocab[slot].add(v)
-                if src[0] in MOVE_FN: move_pairs.add((slot, src[1], src[0]))
-        for _ in range(3):
-            for slot, src_slot, fn in list(move_pairs): slot_vocab[slot] |= {MOVE_FN[fn](v) for v in slot_vocab.get(src_slot, ())}
+        rules += clause_flush_rules(sorted(slot_vocab))
+        slot_vocab, src_vocab, copy_pairs, move_pairs, use_rules = vocabulary(rules)
     # ---- state index: control, slots, pend_prep, shift
     S = Index()
     ctrl_states = {("START",), ("DONE",), FAIL} | set(trees) | set(out[0] for _, _, out in rules) | set(prev for prev, _, _ in rules)

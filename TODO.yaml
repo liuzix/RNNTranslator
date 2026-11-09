@@ -113,18 +113,28 @@ items:
 
 - id: normal-form
   title: Reduced ordered decision diagrams as the canonical form of the rules
-  status: open
+  status: done
   round: 3
+  depends_on: [hand-modules]
   context:
-  - text: A compiled rule is a control point, a conjunction of literals and a target with the tokens consumed and the slot writes; the cell holds rules of the module kind and rules extracted from traces.
-    pinned_by: test_matrix_cell_shape
-  - text: Per control point, a reduced ordered decision diagram over a fixed literal order is canonical — the same machine always yields the same diagram, every path ends in a terminal or a refusal, and "module equals induced" becomes diagram equality.
-    hypothesis: true
-  stubs: [Canon]
+    - text: A control point's rules have one reduced ordered decision diagram over the cell's variables, the same whatever order the rules
+        came in, whose paths are the rules with no redundant literal; `canon.py` builds it, and its text form reads back to the same
+        diagram.
+      pinned_by: test_canon_is_canonical
+    - text: The diagram ranges over feasible inputs — the lexicon's tokens in the window, the values a slot can hold or nothing, the PP
+        slots filling in order, and derived predicates, counts, table hits and the USE pair expanded into base literals — so it has no
+        path that no input can take.
+      pinned_by: test_canon_over_feasible_inputs
+    - text: Every control point of the cell is complete and consistent — the hand-written modules by their otherwise-rules, the induced
+        control points by the refusals the compiler materialises where a guard fails or the traces disagreed, the return states by
+        its closing refusal for an address no caller serves.
+      pinned_by: test_canon_control_points_total
+    - text: With every control point total, "module equals induced" is diagram equality, so a hand translation of an extracted path is
+        checked by comparing its diagram with the induced one.
+      hypothesis: true
   acceptance: test_canonical_diagrams
-  touches: [canon.py, parser_matrix.py, np_module.py]
+  touches: [canon.py, parser_matrix.py, np_module.py, pp_module.py, predicate_module.py, gen_module.py]
 
-# ---------------------------------------------------------------------------------------------------- carried over
 - id: matrix-chain-scope
   title: Matrix items only for sentences the rules parse
   status: open

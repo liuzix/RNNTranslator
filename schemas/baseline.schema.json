@@ -244,8 +244,40 @@
         "state_units",
         "input_units",
         "nnz",
-        "rules"
-       ]
+        "rules",
+        "canon"
+       ],
+       "properties": {
+        "canon": {
+         "type": "object",
+         "description": "the canonical diagrams of the whole cell (canon.py): how many control points are complete and consistent, the nodes in all, the README's example in text form",
+         "required": [
+          "control_points",
+          "complete",
+          "consistent",
+          "nodes",
+          "example"
+         ],
+         "additionalProperties": true,
+         "properties": {
+          "control_points": {
+           "type": "integer"
+          },
+          "complete": {
+           "type": "integer"
+          },
+          "consistent": {
+           "type": "integer"
+          },
+          "nodes": {
+           "type": "integer"
+          },
+          "example": {
+           "type": "string"
+          }
+         }
+        }
+       }
       },
       "per_split": {
        "type": "object"

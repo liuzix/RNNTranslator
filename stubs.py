@@ -31,10 +31,3 @@ TODO = _Todo()
 class Stub:
     item = None                    # the TODO.yaml item this stub belongs to
     def _hit(self, name): CALLS[f"{type(self).__name__}.{name}"] += 1; return TODO
-
-class Canon(Stub):
-    """reduced ordered decision diagrams as the canonical form of the rules (item normal-form)"""
-    item = "normal-form"
-    def diagram(self, rules, prev, order): return self._hit("diagram")       # -> the diagram of one control point under a literal order
-    def complete(self, diagram): return self._hit("complete")                # -> every path ends in a terminal or FAIL
-    def equal(self, d1, d2): return self._hit("equal")                       # -> the two diagrams are the same
