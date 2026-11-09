@@ -3,30 +3,31 @@
 "matrix": {
 "both_refuse": 263,
 "cell": {
-"build_seconds": 27,
+"build_seconds": 28,
 "input_units": 2030,
 "layers": [
-995,
-135,
-2165,
-791,
-31263
+1037,
+150,
+3127,
+1341,
+52166
 ],
-"nnz": 229430,
-"rules": 1974,
+"nnz": 391041,
+"rules": 2936,
 "rules_by_kind": {
 "entry": 132,
 "exit": 180,
 "fail": 235,
 "module": 996,
-"outer": 431
+"outer": 431,
+"print": 962
 },
 "scope": {
 "in scope": 564,
 "out of scope": 158,
 "refused": 273
 },
-"state_units": 16005,
+"state_units": 37266,
 "unresolved": {}
 },
 "identical": 531,
@@ -56,7 +57,7 @@
 }
 },
 "refused_parseable": 201,
-"summary": "identical 531, wrong frame 0, matrix parses refused 0, refused parseable 201, both refuse 263; nnz 229430, rules 1974",
+"summary": "identical 531, wrong frame 0, matrix parses refused 0, refused parseable 201, both refuse 263; nnz 391041, rules 2936",
 "wrong_frame": 0
 },
 "negatives": {
@@ -66,7 +67,7 @@
 "count": 18,
 "matrix_accepted": 0,
 "problems": [],
-"seconds": 27,
+"seconds": 28,
 "summary": "negatives: rules refuse 18/18 and accept 18/18 controls; matrix refuses 18/18 and accepts 13/18 controls"
 },
 "np": {
@@ -165,7 +166,7 @@
 "imperative": "('verb', \"('eat', '食べる', 'i')\", ['neg', 'imp'], None, 'better')"
 },
 "refused": 80,
-"seconds": 31.4
+"seconds": 31.7
 }
 },
 "rules": {
@@ -312,10 +313,10 @@
 "torch": {
 "diverging": 0,
 "dtype": "float32",
-"seconds": 44.5,
+"seconds": 111.7,
 "sentences": 995,
-"steps": 13875,
-"summary": "torch 2.15.0+cpu: 995 sentences, 13875 steps compared, 0 diverging",
+"steps": 41029,
+"summary": "torch 2.15.0+cpu: 995 sentences, 41029 steps compared, 0 diverging",
 "torch": "2.15.0+cpu"
 }
 },
@@ -3811,5 +3812,5 @@
 }
 ]
 },
-"taken": "2026-11-09 at 1223f90"
+"taken": "2026-11-09 at 818de16"
 }

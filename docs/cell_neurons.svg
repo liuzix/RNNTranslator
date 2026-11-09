@@ -13,13 +13,13 @@
 <rect x="70" y="60" width="220" height="690" rx="10" fill="#dcefd8" stroke="#999" stroke-width="1"/>
 <rect x="70" y="775" width="220" height="250" rx="10" fill="#f8dcdc" stroke="#999" stroke-width="1"/>
 <rect x="1320" y="60" width="220" height="690" rx="10" fill="#fde7c8" stroke="#999" stroke-width="1"/>
-<rect x="1610" y="450" width="180" height="320" rx="10" fill="#fff3e2" stroke="#999" stroke-width="1" stroke-dasharray="6,4"/>
+<rect x="1610" y="450" width="180" height="320" rx="10" fill="#fff3e2" stroke="#999" stroke-width="1"/>
 <text x="180" y="84" font-size="15" font-family="Helvetica, Arial, sans-serif" fill="#222" text-anchor="middle" font-weight="bold">s(t)</text>
 <text x="180" y="102" font-size="11" font-family="Helvetica, Arial, sans-serif" fill="#555" text-anchor="middle" font-weight="normal">one-hot blocks</text>
 <text x="180" y="799" font-size="15" font-family="Helvetica, Arial, sans-serif" fill="#222" text-anchor="middle" font-weight="bold">x(t)</text>
 <text x="180" y="817" font-size="11" font-family="Helvetica, Arial, sans-serif" fill="#555" text-anchor="middle" font-weight="normal">readings of the window</text>
 <text x="1430" y="84" font-size="15" font-family="Helvetica, Arial, sans-serif" fill="#222" text-anchor="middle" font-weight="bold">s(t+1)</text>
-<text x="1700" y="474" font-size="15" font-family="Helvetica, Arial, sans-serif" fill="#222" text-anchor="middle" font-weight="bold">y(t)  (proposed)</text>
+<text x="1700" y="474" font-size="15" font-family="Helvetica, Arial, sans-serif" fill="#222" text-anchor="middle" font-weight="bold">y(t)</text>
 <text x="1700" y="492" font-size="11" font-family="Helvetica, Arial, sans-serif" fill="#555" text-anchor="middle" font-weight="normal">one morpheme, one-hot</text>
 <circle cx="215" cy="120" r="7" fill="#fff" stroke="#333" stroke-width="1.3"/>
 <circle cx="215" cy="138" r="7" fill="#fff" stroke="#333" stroke-width="1.3"/>
@@ -28,9 +28,9 @@
 <circle cx="215" cy="192" r="7" fill="#fff" stroke="#333" stroke-width="1.3"/>
 <circle cx="215" cy="210" r="7" fill="#fff" stroke="#333" stroke-width="1.3"/>
 <text x="193" y="169.0" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#444" text-anchor="end" font-weight="normal">ctrl: reading</text>
-<circle cx="215" cy="234" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3" stroke-dasharray="3,3"/>
-<circle cx="215" cy="252" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3" stroke-dasharray="3,3"/>
-<circle cx="215" cy="270" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3" stroke-dasharray="3,3"/>
+<circle cx="215" cy="234" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3"/>
+<circle cx="215" cy="252" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3"/>
+<circle cx="215" cy="270" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3"/>
 <text x="193" y="256.0" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#444" text-anchor="end" font-weight="normal">ctrl: printing</text>
 <circle cx="215" cy="298" r="7" fill="#333" stroke="#333" stroke-width="1.3"/>
 <circle cx="215" cy="316" r="7" fill="#fff" stroke="#333" stroke-width="1.3"/>
@@ -61,7 +61,7 @@
 <text x="193" y="654.0" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#444" text-anchor="end" font-weight="normal">pend</text>
 <circle cx="215" cy="696" r="7" fill="#fff" stroke="#333" stroke-width="1.3"/>
 <text x="193" y="700.0" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#444" text-anchor="end" font-weight="normal">shift</text>
-<circle cx="215" cy="714" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3" stroke-dasharray="3,3"/>
+<circle cx="215" cy="714" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3"/>
 <text x="193" y="718" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#444" text-anchor="end" font-weight="normal">emit</text>
 <circle cx="215" cy="838" r="7" fill="#333" stroke="#333" stroke-width="1.3"/>
 <circle cx="215" cy="856" r="7" fill="#fff" stroke="#333" stroke-width="1.3"/>
@@ -82,9 +82,9 @@
 <circle cx="1430" cy="174" r="7" fill="#fff" stroke="#333" stroke-width="1.3"/>
 <circle cx="1430" cy="192" r="7" fill="#333" stroke="#333" stroke-width="1.3"/>
 <circle cx="1430" cy="210" r="7" fill="#fff" stroke="#333" stroke-width="1.3"/>
-<circle cx="1430" cy="234" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3" stroke-dasharray="3,3"/>
-<circle cx="1430" cy="252" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3" stroke-dasharray="3,3"/>
-<circle cx="1430" cy="270" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3" stroke-dasharray="3,3"/>
+<circle cx="1430" cy="234" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3"/>
+<circle cx="1430" cy="252" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3"/>
+<circle cx="1430" cy="270" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3"/>
 <circle cx="1430" cy="298" r="7" fill="#333" stroke="#333" stroke-width="1.3"/>
 <circle cx="1430" cy="316" r="7" fill="#fff" stroke="#333" stroke-width="1.3"/>
 <circle cx="1430" cy="334" r="7" fill="#fff" stroke="#333" stroke-width="1.3"/>
@@ -107,22 +107,22 @@
 <circle cx="1430" cy="650" r="7" fill="#fff" stroke="#333" stroke-width="1.3"/>
 <circle cx="1430" cy="668" r="7" fill="#fff" stroke="#333" stroke-width="1.3"/>
 <circle cx="1430" cy="696" r="7" fill="#333" stroke="#333" stroke-width="1.3"/>
-<circle cx="1430" cy="714" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3" stroke-dasharray="3,3"/>
+<circle cx="1430" cy="714" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3"/>
 <text x="1452" y="368" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#444" text-anchor="start" font-weight="normal">obj noun</text>
-<circle cx="1700" cy="520" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3" stroke-dasharray="3,3"/>
-<circle cx="1700" cy="538" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3" stroke-dasharray="3,3"/>
-<circle cx="1700" cy="556" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3" stroke-dasharray="3,3"/>
-<circle cx="1700" cy="574" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3" stroke-dasharray="3,3"/>
+<circle cx="1700" cy="520" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3"/>
+<circle cx="1700" cy="538" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3"/>
+<circle cx="1700" cy="556" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3"/>
+<circle cx="1700" cy="574" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3"/>
 <text x="1678" y="551.0" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#444" text-anchor="end" font-weight="normal">obj noun tokens</text>
-<circle cx="1700" cy="610" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3" stroke-dasharray="3,3"/>
-<circle cx="1700" cy="628" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3" stroke-dasharray="3,3"/>
-<circle cx="1700" cy="646" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3" stroke-dasharray="3,3"/>
+<circle cx="1700" cy="610" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3"/>
+<circle cx="1700" cy="628" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3"/>
+<circle cx="1700" cy="646" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3"/>
 <text x="1678" y="632.0" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#444" text-anchor="end" font-weight="normal">verb stem forms</text>
-<circle cx="1700" cy="682" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3" stroke-dasharray="3,3"/>
-<circle cx="1700" cy="700" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3" stroke-dasharray="3,3"/>
-<circle cx="1700" cy="718" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3" stroke-dasharray="3,3"/>
+<circle cx="1700" cy="682" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3"/>
+<circle cx="1700" cy="700" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3"/>
+<circle cx="1700" cy="718" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3"/>
 <text x="1678" y="704.0" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#444" text-anchor="end" font-weight="normal">particles</text>
-<circle cx="1700" cy="742" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3" stroke-dasharray="3,3"/>
+<circle cx="1700" cy="742" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.3"/>
 <text x="1678" y="746.0" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#444" text-anchor="end" font-weight="normal">。</text>
 <circle cx="470" cy="300" r="7" fill="#fff" stroke="#777" stroke-width="1.3"/>
 <circle cx="470" cy="318" r="7" fill="#fff" stroke="#777" stroke-width="1.3"/>
@@ -197,8 +197,8 @@
 <circle cx="790" cy="448" r="7" fill="#fff" stroke="#777" stroke-width="1.3"/>
 <circle cx="790" cy="466" r="7" fill="#fff" stroke="#777" stroke-width="1.3"/>
 <circle cx="790" cy="358" r="7" fill="#333333" stroke="#333333" stroke-width="1.6"/>
-<circle cx="790" cy="466" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.4" stroke-dasharray="3,3"/>
-<path d="M222.0,252.0 C500.5,292.0 500.5,506.0 779.0,466.0" fill="none" stroke="#d4791c" stroke-width="1.0" stroke-dasharray="4,3" marker-end="url(#arr-d4791c)"/>
+<circle cx="790" cy="466" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.4"/>
+<path d="M222.0,252.0 C500.5,292.0 500.5,506.0 779.0,466.0" fill="none" stroke="#d4791c" stroke-width="1.0" marker-end="url(#arr-d4791c)"/>
 <path d="M222.0,156.0 C500.5,96.0 500.5,298.0 779.0,358.0" fill="none" stroke="#333333" stroke-width="1.4" marker-end="url(#arr-333333)"/>
 <line x1="476.9" y1="406.9" x2="779.1" y2="359.7" stroke="#333333" stroke-width="1.4" marker-end="url(#arr-333333)"/>
 <line x1="631.9" y1="377.2" x2="779.1" y2="359.3" stroke="#333333" stroke-width="1.4" marker-end="url(#arr-333333)"/>
@@ -249,15 +249,15 @@
 <text x="975" y="136" font-size="11" font-family="Helvetica, Arial, sans-serif" fill="#555" text-anchor="middle" font-weight="normal">next ctrl</text>
 <circle cx="975" cy="300" r="7" fill="#333333" stroke="#333333" stroke-width="1.6"/>
 <text x="975" y="286" font-size="11" font-family="Helvetica, Arial, sans-serif" fill="#555" text-anchor="middle" font-weight="normal">shift</text>
-<circle cx="975" cy="330" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.4" stroke-dasharray="3,3"/>
+<circle cx="975" cy="330" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.4"/>
 <text x="989" y="334" font-size="11" font-family="Helvetica, Arial, sans-serif" fill="#d4791c" text-anchor="start" font-weight="normal">emit</text>
 <circle cx="975" cy="390" r="7" fill="#c0392b" stroke="#c0392b" stroke-width="1.6"/>
 <text x="989" y="380" font-size="11" font-family="Helvetica, Arial, sans-serif" fill="#c0392b" text-anchor="start" font-weight="normal">block gate</text>
 <circle cx="975" cy="450" r="7" fill="#1f5fbf" stroke="#1f5fbf" stroke-width="1.6"/>
 <text x="989" y="470" font-size="11" font-family="Helvetica, Arial, sans-serif" fill="#1f5fbf" text-anchor="start" font-weight="normal">source gate</text>
-<circle cx="975" cy="510" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.4" stroke-dasharray="3,3"/>
+<circle cx="975" cy="510" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.4"/>
 <text x="989" y="502" font-size="11" font-family="Helvetica, Arial, sans-serif" fill="#d4791c" text-anchor="start" font-weight="normal">read gate</text>
-<circle cx="975" cy="570" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.4" stroke-dasharray="3,3"/>
+<circle cx="975" cy="570" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.4"/>
 <text x="989" y="586" font-size="11" font-family="Helvetica, Arial, sans-serif" fill="#d4791c" text-anchor="start" font-weight="normal">form gate</text>
 <circle cx="975" cy="640" r="7" fill="#fff" stroke="#777" stroke-width="1.3"/>
 <circle cx="975" cy="658" r="7" fill="#fff" stroke="#777" stroke-width="1.3"/>
@@ -266,9 +266,9 @@
 <text x="975" y="626" font-size="11" font-family="Helvetica, Arial, sans-serif" fill="#555" text-anchor="middle" font-weight="normal">other gates</text>
 <circle cx="975" cy="760" r="7" fill="#fff" stroke="#777" stroke-width="1.3"/>
 <text x="975" y="746" font-size="11" font-family="Helvetica, Arial, sans-serif" fill="#555" text-anchor="middle" font-weight="normal">USE gate</text>
-<line x1="796.8" y1="467.6" x2="964.3" y2="507.5" stroke="#d4791c" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-d4791c)"/>
-<line x1="795.6" y1="461.9" x2="966.1" y2="336.5" stroke="#d4791c" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-d4791c)"/>
-<line x1="796.1" y1="469.4" x2="965.4" y2="564.6" stroke="#d4791c" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-d4791c)"/>
+<line x1="796.8" y1="467.6" x2="964.3" y2="507.5" stroke="#d4791c" stroke-width="1.2" marker-end="url(#arr-d4791c)"/>
+<line x1="795.6" y1="461.9" x2="966.1" y2="336.5" stroke="#d4791c" stroke-width="1.2" marker-end="url(#arr-d4791c)"/>
+<line x1="796.1" y1="469.4" x2="965.4" y2="564.6" stroke="#d4791c" stroke-width="1.2" marker-end="url(#arr-d4791c)"/>
 <line x1="795.6" y1="353.9" x2="966.1" y2="228.5" stroke="#333333" stroke-width="1.4" marker-end="url(#arr-333333)"/>
 <line x1="796.7" y1="355.9" x2="964.5" y2="303.3" stroke="#333333" stroke-width="1.4" marker-end="url(#arr-333333)"/>
 <line x1="796.9" y1="359.2" x2="964.2" y2="388.1" stroke="#c0392b" stroke-width="1.4" marker-end="url(#arr-c0392b)"/>
@@ -314,14 +314,14 @@
 <circle cx="1180" cy="504" r="7" fill="#fff" stroke="#2a8a5c" stroke-width="1.6"/>
 <text x="1180" y="436" font-size="11" font-family="Helvetica, Arial, sans-serif" fill="#2a8a5c" text-anchor="middle" font-weight="normal">keep units</text>
 <circle cx="1180" cy="366" r="7" fill="#1f5fbf" stroke="#1f5fbf" stroke-width="1.6"/>
-<circle cx="1180" cy="570" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.4" stroke-dasharray="3,3"/>
-<circle cx="1180" cy="588" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.4" stroke-dasharray="3,3"/>
-<circle cx="1180" cy="606" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.4" stroke-dasharray="3,3"/>
-<circle cx="1180" cy="624" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.4" stroke-dasharray="3,3"/>
+<circle cx="1180" cy="570" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.4"/>
+<circle cx="1180" cy="588" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.4"/>
+<circle cx="1180" cy="606" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.4"/>
+<circle cx="1180" cy="624" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.4"/>
 <text x="1180" y="556" font-size="11" font-family="Helvetica, Arial, sans-serif" fill="#d4791c" text-anchor="middle" font-weight="normal">read units</text>
-<circle cx="1180" cy="670" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.4" stroke-dasharray="3,3"/>
-<circle cx="1180" cy="688" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.4" stroke-dasharray="3,3"/>
-<circle cx="1180" cy="706" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.4" stroke-dasharray="3,3"/>
+<circle cx="1180" cy="670" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.4"/>
+<circle cx="1180" cy="688" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.4"/>
+<circle cx="1180" cy="706" r="7" fill="#fff" stroke="#d4791c" stroke-width="1.4"/>
 <text x="1180" y="656" font-size="11" font-family="Helvetica, Arial, sans-serif" fill="#d4791c" text-anchor="middle" font-weight="normal">lookup units</text>
 <circle cx="1180" cy="760" r="7" fill="#fff" stroke="#777" stroke-width="1.3"/>
 <circle cx="1180" cy="778" r="7" fill="#fff" stroke="#777" stroke-width="1.3"/>
@@ -332,27 +332,27 @@
 <text x="1180" y="746" font-size="11" font-family="Helvetica, Arial, sans-serif" fill="#555" text-anchor="middle" font-weight="normal">other blocks</text>
 <circle cx="1180" cy="910" r="7" fill="#fff" stroke="#c0392b" stroke-width="1.3"/>
 <text x="1194" y="914" font-size="11" font-family="Helvetica, Arial, sans-serif" fill="#c0392b" text-anchor="start" font-weight="normal">no source → FAIL</text>
-<line x1="981.7" y1="512.0" x2="1169.4" y2="566.9" stroke="#d4791c" stroke-width="1.1" stroke-dasharray="4,3" marker-end="url(#arr-d4791c)"/>
+<line x1="981.7" y1="512.0" x2="1169.4" y2="566.9" stroke="#d4791c" stroke-width="1.1" marker-end="url(#arr-d4791c)"/>
 <text x="1191" y="574" font-size="10" font-family="Helvetica, Arial, sans-serif" fill="#d4791c" text-anchor="start" font-weight="normal">−1</text>
-<line x1="981.5" y1="512.5" x2="1169.7" y2="584.1" stroke="#d4791c" stroke-width="1.1" stroke-dasharray="4,3" marker-end="url(#arr-d4791c)"/>
+<line x1="981.5" y1="512.5" x2="1169.7" y2="584.1" stroke="#d4791c" stroke-width="1.1" marker-end="url(#arr-d4791c)"/>
 <text x="1191" y="592" font-size="10" font-family="Helvetica, Arial, sans-serif" fill="#d4791c" text-anchor="start" font-weight="normal">−1</text>
-<line x1="981.3" y1="513.0" x2="1170.0" y2="601.3" stroke="#d4791c" stroke-width="1.1" stroke-dasharray="4,3" marker-end="url(#arr-d4791c)"/>
+<line x1="981.3" y1="513.0" x2="1170.0" y2="601.3" stroke="#d4791c" stroke-width="1.1" marker-end="url(#arr-d4791c)"/>
 <text x="1191" y="610" font-size="10" font-family="Helvetica, Arial, sans-serif" fill="#d4791c" text-anchor="start" font-weight="normal">−1</text>
-<line x1="981.1" y1="513.4" x2="1170.4" y2="618.7" stroke="#d4791c" stroke-width="1.1" stroke-dasharray="4,3" marker-end="url(#arr-d4791c)"/>
+<line x1="981.1" y1="513.4" x2="1170.4" y2="618.7" stroke="#d4791c" stroke-width="1.1" marker-end="url(#arr-d4791c)"/>
 <text x="1191" y="628" font-size="10" font-family="Helvetica, Arial, sans-serif" fill="#d4791c" text-anchor="start" font-weight="normal">−1</text>
-<line x1="981.3" y1="573.1" x2="1170.1" y2="665.2" stroke="#d4791c" stroke-width="1.1" stroke-dasharray="4,3" marker-end="url(#arr-d4791c)"/>
+<line x1="981.3" y1="573.1" x2="1170.1" y2="665.2" stroke="#d4791c" stroke-width="1.1" marker-end="url(#arr-d4791c)"/>
 <text x="1191" y="674" font-size="10" font-family="Helvetica, Arial, sans-serif" fill="#d4791c" text-anchor="start" font-weight="normal">−1</text>
-<line x1="981.1" y1="573.5" x2="1170.5" y2="682.5" stroke="#d4791c" stroke-width="1.1" stroke-dasharray="4,3" marker-end="url(#arr-d4791c)"/>
+<line x1="981.1" y1="573.5" x2="1170.5" y2="682.5" stroke="#d4791c" stroke-width="1.1" marker-end="url(#arr-d4791c)"/>
 <text x="1191" y="692" font-size="10" font-family="Helvetica, Arial, sans-serif" fill="#d4791c" text-anchor="start" font-weight="normal">−1</text>
-<line x1="980.8" y1="573.9" x2="1170.8" y2="699.9" stroke="#d4791c" stroke-width="1.1" stroke-dasharray="4,3" marker-end="url(#arr-d4791c)"/>
+<line x1="980.8" y1="573.9" x2="1170.8" y2="699.9" stroke="#d4791c" stroke-width="1.1" marker-end="url(#arr-d4791c)"/>
 <text x="1191" y="710" font-size="10" font-family="Helvetica, Arial, sans-serif" fill="#d4791c" text-anchor="start" font-weight="normal">−1</text>
-<path d="M222.0,380.0 C695.5,520.0 695.5,710.0 1169.0,570.0" fill="none" stroke="#d4791c" stroke-width="0.9" stroke-dasharray="4,3" marker-end="url(#arr-d4791c)"/>
-<path d="M222.0,398.0 C695.5,538.0 695.5,728.0 1169.0,588.0" fill="none" stroke="#d4791c" stroke-width="0.9" stroke-dasharray="4,3" marker-end="url(#arr-d4791c)"/>
-<path d="M222.0,416.0 C695.5,556.0 695.5,746.0 1169.0,606.0" fill="none" stroke="#d4791c" stroke-width="0.9" stroke-dasharray="4,3" marker-end="url(#arr-d4791c)"/>
-<path d="M222.0,434.0 C695.5,574.0 695.5,764.0 1169.0,624.0" fill="none" stroke="#d4791c" stroke-width="0.9" stroke-dasharray="4,3" marker-end="url(#arr-d4791c)"/>
-<path d="M222.0,480.0 C695.5,650.0 695.5,840.0 1169.0,670.0" fill="none" stroke="#d4791c" stroke-width="0.9" stroke-dasharray="4,3" marker-end="url(#arr-d4791c)"/>
-<path d="M222.0,498.0 C695.5,668.0 695.5,858.0 1169.0,688.0" fill="none" stroke="#d4791c" stroke-width="0.9" stroke-dasharray="4,3" marker-end="url(#arr-d4791c)"/>
-<path d="M222.0,516.0 C695.5,686.0 695.5,876.0 1169.0,706.0" fill="none" stroke="#d4791c" stroke-width="0.9" stroke-dasharray="4,3" marker-end="url(#arr-d4791c)"/>
+<path d="M222.0,380.0 C695.5,520.0 695.5,710.0 1169.0,570.0" fill="none" stroke="#d4791c" stroke-width="0.9" marker-end="url(#arr-d4791c)"/>
+<path d="M222.0,398.0 C695.5,538.0 695.5,728.0 1169.0,588.0" fill="none" stroke="#d4791c" stroke-width="0.9" marker-end="url(#arr-d4791c)"/>
+<path d="M222.0,416.0 C695.5,556.0 695.5,746.0 1169.0,606.0" fill="none" stroke="#d4791c" stroke-width="0.9" marker-end="url(#arr-d4791c)"/>
+<path d="M222.0,434.0 C695.5,574.0 695.5,764.0 1169.0,624.0" fill="none" stroke="#d4791c" stroke-width="0.9" marker-end="url(#arr-d4791c)"/>
+<path d="M222.0,480.0 C695.5,650.0 695.5,840.0 1169.0,670.0" fill="none" stroke="#d4791c" stroke-width="0.9" marker-end="url(#arr-d4791c)"/>
+<path d="M222.0,498.0 C695.5,668.0 695.5,858.0 1169.0,688.0" fill="none" stroke="#d4791c" stroke-width="0.9" marker-end="url(#arr-d4791c)"/>
+<path d="M222.0,516.0 C695.5,686.0 695.5,876.0 1169.0,706.0" fill="none" stroke="#d4791c" stroke-width="0.9" marker-end="url(#arr-d4791c)"/>
 <line x1="981.0" y1="446.5" x2="1170.5" y2="335.6" stroke="#1f5fbf" stroke-width="1.3" marker-end="url(#arr-1f5fbf)"/>
 <text x="1191" y="334" font-size="10" font-family="Helvetica, Arial, sans-serif" fill="#1f5fbf" text-anchor="start" font-weight="normal">−1</text>
 <line x1="981.3" y1="446.9" x2="1170.2" y2="352.9" stroke="#1f5fbf" stroke-width="1.3" marker-end="url(#arr-1f5fbf)"/>
@@ -412,26 +412,26 @@
 <line x1="1184.7" y1="754.8" x2="1422.7" y2="488.2" stroke="#777777" stroke-width="1.0" marker-end="url(#arr-777777)"/>
 <line x1="1182.4" y1="903.4" x2="1426.3" y2="220.4" stroke="#c0392b" stroke-width="0.9" stroke-dasharray="4,3" marker-end="url(#arr-c0392b)"/>
 <text x="1452" y="214" font-size="10" font-family="Helvetica, Arial, sans-serif" fill="#c0392b" text-anchor="start" font-weight="normal">FAIL</text>
-<line x1="980.3" y1="334.5" x2="1421.6" y2="706.9" stroke="#d4791c" stroke-width="1.1" stroke-dasharray="4,3" marker-end="url(#arr-d4791c)"/>
-<path d="M1187.0,570.0 C1438.0,570.0 1438.0,520.0 1689.0,520.0" fill="none" stroke="#d4791c" stroke-width="1.0" stroke-dasharray="4,3" marker-end="url(#arr-d4791c)"/>
-<path d="M1187.0,588.0 C1438.0,588.0 1438.0,538.0 1689.0,538.0" fill="none" stroke="#d4791c" stroke-width="1.0" stroke-dasharray="4,3" marker-end="url(#arr-d4791c)"/>
-<path d="M1187.0,606.0 C1438.0,606.0 1438.0,556.0 1689.0,556.0" fill="none" stroke="#d4791c" stroke-width="1.0" stroke-dasharray="4,3" marker-end="url(#arr-d4791c)"/>
-<path d="M1187.0,624.0 C1438.0,624.0 1438.0,574.0 1689.0,574.0" fill="none" stroke="#d4791c" stroke-width="1.0" stroke-dasharray="4,3" marker-end="url(#arr-d4791c)"/>
-<path d="M1187.0,670.0 C1438.0,670.0 1438.0,610.0 1689.0,610.0" fill="none" stroke="#d4791c" stroke-width="1.0" stroke-dasharray="4,3" marker-end="url(#arr-d4791c)"/>
-<path d="M1187.0,688.0 C1438.0,688.0 1438.0,628.0 1689.0,628.0" fill="none" stroke="#d4791c" stroke-width="1.0" stroke-dasharray="4,3" marker-end="url(#arr-d4791c)"/>
-<path d="M1187.0,706.0 C1438.0,706.0 1438.0,646.0 1689.0,646.0" fill="none" stroke="#d4791c" stroke-width="1.0" stroke-dasharray="4,3" marker-end="url(#arr-d4791c)"/>
-<path d="M797.0,466.0 C1243.0,586.0 1243.0,820.0 1689.0,700.0" fill="none" stroke="#d4791c" stroke-width="0.9" stroke-dasharray="4,3" marker-end="url(#arr-d4791c)"/>
+<line x1="980.3" y1="334.5" x2="1421.6" y2="706.9" stroke="#d4791c" stroke-width="1.1" marker-end="url(#arr-d4791c)"/>
+<path d="M1187.0,570.0 C1438.0,570.0 1438.0,520.0 1689.0,520.0" fill="none" stroke="#d4791c" stroke-width="1.0" marker-end="url(#arr-d4791c)"/>
+<path d="M1187.0,588.0 C1438.0,588.0 1438.0,538.0 1689.0,538.0" fill="none" stroke="#d4791c" stroke-width="1.0" marker-end="url(#arr-d4791c)"/>
+<path d="M1187.0,606.0 C1438.0,606.0 1438.0,556.0 1689.0,556.0" fill="none" stroke="#d4791c" stroke-width="1.0" marker-end="url(#arr-d4791c)"/>
+<path d="M1187.0,624.0 C1438.0,624.0 1438.0,574.0 1689.0,574.0" fill="none" stroke="#d4791c" stroke-width="1.0" marker-end="url(#arr-d4791c)"/>
+<path d="M1187.0,670.0 C1438.0,670.0 1438.0,610.0 1689.0,610.0" fill="none" stroke="#d4791c" stroke-width="1.0" marker-end="url(#arr-d4791c)"/>
+<path d="M1187.0,688.0 C1438.0,688.0 1438.0,628.0 1689.0,628.0" fill="none" stroke="#d4791c" stroke-width="1.0" marker-end="url(#arr-d4791c)"/>
+<path d="M1187.0,706.0 C1438.0,706.0 1438.0,646.0 1689.0,646.0" fill="none" stroke="#d4791c" stroke-width="1.0" marker-end="url(#arr-d4791c)"/>
+<path d="M797.0,466.0 C1243.0,586.0 1243.0,820.0 1689.0,700.0" fill="none" stroke="#d4791c" stroke-width="0.9" marker-end="url(#arr-d4791c)"/>
 <path d="M1320,90 H1305 V30 H330 V90 H292" fill="none" stroke="#333333" stroke-width="1.6" marker-end="url(#arr-333333)"/>
 <text x="817.5" y="22" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#333333" text-anchor="middle" font-weight="normal">next word: s(t) ← s(t+1)</text>
-<rect x="1610" y="800" width="180" height="54" rx="8" fill="#eeeeee" stroke="#999" stroke-dasharray="6,4"/>
+<rect x="1610" y="800" width="180" height="54" rx="8" fill="#eeeeee" stroke="#999"/>
 <text x="1700" y="823" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#222" text-anchor="middle" font-weight="bold">output lexical layer</text>
 <text x="1700" y="841" font-size="11" font-family="Helvetica, Arial, sans-serif" fill="#555" text-anchor="middle" font-weight="normal">unit → string</text>
-<path d="M1700,774 V796" fill="none" stroke="#777777" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arr-777777)"/>
-<rect x="1610" y="890" width="180" height="54" rx="8" fill="#eeeeee" stroke="#999" stroke-dasharray="6,4"/>
+<path d="M1700,774 V796" fill="none" stroke="#777777" stroke-width="1" marker-end="url(#arr-777777)"/>
+<rect x="1610" y="890" width="180" height="54" rx="8" fill="#eeeeee" stroke="#999"/>
 <text x="1700" y="913" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#222" text-anchor="middle" font-weight="bold">print head</text>
 <text x="1700" y="931" font-size="11" font-family="Helvetica, Arial, sans-serif" fill="#555" text-anchor="middle" font-weight="normal">appends when emit = 1</text>
-<path d="M1700,858 V886" fill="none" stroke="#777777" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arr-777777)"/>
-<path d="M1437.0,714.0 C1514.5,774.0 1514.5,977.0 1592.0,917.0" fill="none" stroke="#d4791c" stroke-width="0.9" stroke-dasharray="4,3" marker-end="url(#arr-d4791c)"/>
+<path d="M1700,858 V886" fill="none" stroke="#777777" stroke-width="1" marker-end="url(#arr-777777)"/>
+<path d="M1437.0,714.0 C1514.5,774.0 1514.5,977.0 1592.0,917.0" fill="none" stroke="#d4791c" stroke-width="0.9" marker-end="url(#arr-d4791c)"/>
 <rect x="70" y="1035" width="220" height="40" rx="8" fill="#eeeeee" stroke="#999"/>
 <text x="180" y="1052" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#222" text-anchor="middle" font-weight="bold">read head</text>
 <text x="180" y="1067" font-size="10" font-family="Helvetica, Arial, sans-serif" fill="#555" text-anchor="middle" font-weight="normal">advances when shift = 1</text>
@@ -455,7 +455,7 @@
 <circle cx="1398" cy="1014" r="7" fill="#fff" stroke="#333" stroke-width="1.3"/>
 <text x="1414" y="1018" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#222" text-anchor="start" font-weight="normal">unit = 0</text>
 <circle cx="1488" cy="1014" r="7" fill="#fff" stroke="#777" stroke-width="1.3" stroke-dasharray="3,3"/>
-<text x="1504" y="1018" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#222" text-anchor="start" font-weight="normal">proposed</text>
+<text x="1504" y="1018" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#222" text-anchor="start" font-weight="normal">proposed (tag slots)</text>
 <text x="1590" y="1018" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#222" text-anchor="start" font-weight="normal">−1  threshold beside a unit</text>
 <line x1="1300.0" y1="1040.0" x2="1332.0" y2="1040.0" stroke="#333333" stroke-width="1.4" marker-end="url(#arr-333333)"/>
 <text x="1346" y="1044" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#222" text-anchor="start" font-weight="normal">control: one-hot → rule → next</text>
@@ -469,8 +469,8 @@
 <text x="1636" y="1044" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#222" text-anchor="start" font-weight="normal">USE: the noun rewrites the verb</text>
 <line x1="1590.0" y1="1062.0" x2="1622.0" y2="1062.0" stroke="#c9c9c9" stroke-width="1.0" marker-end="url(#arr-c9c9c9)"/>
 <text x="1636" y="1066" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#222" text-anchor="start" font-weight="normal">other units, sparse</text>
-<line x1="1590.0" y1="1084.0" x2="1622.0" y2="1084.0" stroke="#d4791c" stroke-width="1.1" stroke-dasharray="4,3" marker-end="url(#arr-d4791c)"/>
-<text x="1636" y="1088" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#222" text-anchor="start" font-weight="normal">read (proposed): gate ∧ slot → y(t)</text>
-<line x1="1590.0" y1="1106.0" x2="1622.0" y2="1106.0" stroke="#d4791c" stroke-width="1.1" stroke-dasharray="4,3" marker-end="url(#arr-d4791c)"/>
+<line x1="1590.0" y1="1084.0" x2="1622.0" y2="1084.0" stroke="#d4791c" stroke-width="1.1" marker-end="url(#arr-d4791c)"/>
+<text x="1636" y="1088" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#222" text-anchor="start" font-weight="normal">read: read gate ∧ slot → y(t)</text>
+<line x1="1590.0" y1="1106.0" x2="1622.0" y2="1106.0" stroke="#d4791c" stroke-width="1.1" marker-end="url(#arr-d4791c)"/>
 <text x="1636" y="1110" font-size="12" font-family="Helvetica, Arial, sans-serif" fill="#222" text-anchor="start" font-weight="normal">lookup: form gate ∧ verb → stem</text>
 </svg>

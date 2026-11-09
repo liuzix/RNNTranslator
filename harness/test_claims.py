@@ -69,13 +69,15 @@ def test_rule_parser_bounds(root):
 def test_matrix_cell_shape(root):
     comp, mp = small_cell(root)
     assert len(comp["layers"]) == 5
-    kinds = {"module": 0, "outer": 0}
+    kinds = {"module": 0, "outer": 0, "print": 0}
     for prev, lits, out in comp["rules"]:
-        if isinstance(prev[0], str) and prev[0].startswith("NP"): kinds["module"] += 1
+        if prev[0] == "P" or prev == ("DONE",): kinds["print"] += 1
+        elif isinstance(prev[0], str) and prev[0].startswith("NP"): kinds["module"] += 1
         elif not (prev[0] == "RET" or out[0][0] == "NP0" or out[0] == PM.FAIL): kinds["outer"] += 1
-    assert kinds["module"] > 0 and kinds["outer"] > 0
-    assert ("shift",) in comp["S"]
-    assert {n[0] for n in comp["S"].names} == {"ctrl", "slot", "pend", "shift"}, "the state is not the four kinds of block"
+    assert kinds["module"] > 0 and kinds["outer"] > 0 and kinds["print"] > 0
+    assert ("shift",) in comp["S"] and ("emit",) in comp["S"]
+    assert {n[0] for n in comp["S"].names} == {"ctrl", "slot", "pend", "shift", "emit", "out"}, "the state is not the six kinds of block"
+    assert all(("ctrl", prev) in comp["S"] for prev, _, _ in comp["rules"] if prev[0] == "P"), "a printing position outside the control block"
     assert all(n[0] in ("pred", "src", "prep0", "one") for n in comp["X"].names), "an input unit that is not a reading of the window"
     assert all(w == 1.0 for _, _, w in comp["W6"]), "the readout is not 0/1 sums"
 
@@ -143,6 +145,69 @@ def test_print_rules_normal_form(root):
             if nxt not in reach and nxt != "DONE" and not (isinstance(nxt, str) and nxt.startswith("FAIL:")): reach.add(nxt); frontier.append(nxt)
     assert "DONE" in nxts and reach == positions, f"{len(positions - reach)} positions unreachable from P0, {len(reach - positions)} targets without rules"
     assert "".join(pr.render(F)) == R.generate(PR.parse_bounded(R.merge_multiword("i like the big dog .".split())))
+
+def test_decoder_is_the_cell_run_backwards(root):
+    """the printing rules are rules of the same cell: their positions are control states of the one control block, entered from
+    DONE at the end of reading; the frame the read head leaves is the frame the print head prints, and the print head's string
+    is what the rule transducer says on sentences the cell parses"""
+    comp, mp = small_cell(root); S = comp["S"]
+    prints = [r for r in comp["rules"] if r[0][0] == "P"]
+    assert prints and (("DONE",), (), (("P", "P0"), 0, ())) in comp["rules"]
+    assert all(("ctrl", r[0]) in S for r in prints) and ("ctrl", ("P", "DONE")) in S and ("ctrl", ("DONE",)) in S
+    for s in ("i like the big dog .", "she took a rest ."):
+        toks = R.merge_multiword(s.split())
+        assert mp.translate(toks) == R.translate(s.split())
+        frame, units = mp.run(toks)
+        assert "".join(PM.output_lexicon(u) for u in units) == R.generate(PM.frame_to_clause(frame)) and len(units) > 3
+    assert "".join(PM.output_lexicon(u) for u in mp.decode(PR.parse_bounded(R.merge_multiword("i like the big dog .".split())))) == "私は大きい犬が好きだ。"
+
+def test_decoder_mirrors_encoder(root):
+    """emit is to the printing rules what shift is to the consuming rules; a read gate is an OR of the rules that print a block and a
+    read unit is AND(read gate, value) as a write unit is AND(source gate, source value); a lookup unit is AND(form gate, verb);
+    a read with nothing in the block, or a form the verb has not, fires into FAIL as a copy with no source does"""
+    comp, mp = small_cell(root)
+    S = comp["S"]; L3, L4, L5 = comp["layers"][2][0], comp["layers"][3][0], comp["layers"][4][0]
+    W4, b4 = comp["layers"][3][1], comp["layers"][3][2]; W5, b5 = comp["layers"][4][1], comp["layers"][4][2]
+    into4 = collections.defaultdict(list); into5 = collections.defaultdict(list)
+    for u, src, w in W4: into4[u].append((src, w))
+    for u, src, w in W5: into5[u].append((src, w))
+    emit, shift = L4[("emit",)], L4[("shift",)]
+    rule_of = lambda src: comp["rules"][L3.names[src[1]][1]]
+    assert into4[emit] and all(src[0] == "L3" and L3.names[src[1]][0] == "rule" and w == 1.0 and rule_of(src)[0][0] == "P" for src, w in into4[emit]) and b4.get(emit, 0.0) == 0.0
+    assert all(rule_of(src)[2][1] >= 1 for src, w in into4[shift] if L3.names[src[1]][0] == "rule")      # shift: the rules that consume; emit: the rules that print
+    gates = [i for i, n in enumerate(L4.names) if n[0] in ("gread", "gform", "gaform")]
+    assert gates and all(into4[g] and all(src[0] == "L3" and w == 1.0 and rule_of(src)[0][0] == "P" for src, w in into4[g]) and b4.get(g, 0.0) == 0.0 for g in gates)
+    reads = [(i, n) for i, n in enumerate(L5.names) if n[0] == "read"]; forms = [(i, n) for i, n in enumerate(L5.names) if n[0] == "form"]
+    assert reads and forms
+    for i, (_, slot, idx, v) in reads:
+        assert b5.get(i) == -1.0 and sorted(into5[i], key=str) == sorted([(("L4", L4[("gread", slot, idx)]), 1.0), (("S", S[("slot", slot, v)]), 1.0)], key=str)
+    for i, (_, name, alt, v) in forms:
+        assert b5.get(i) == -1.0 and sorted(into5[i], key=str) == sorted([(("L4", L4[("gform", name, alt)]), 1.0), (("S", S[("slot", "verb", v)]), 1.0)], key=str)
+    into6 = collections.defaultdict(list)
+    for tgt, src, w in comp["W6"]: into6[tgt].append((src, w))
+    for i, (_, slot, idx, v) in reads: assert into6[S[("out", "s", slot, idx, v)]] == [(("L5", i), 1.0)]
+    crashes = [i for i, n in enumerate(L5.names) if n[0] in ("noread", "noform", "noaform")]
+    assert crashes and all((("L5", i), 1.0) in into6[S[("ctrl", PM.FAIL)]] for i in crashes)
+    for i in crashes:
+        ins = dict(into5[i]); assert sum(1 for src, w in ins.items() if w == 1.0 and src[0] == "L4") == 1 and all(w == -1.0 for src, w in ins.items() if src[0] == "S")
+
+def test_output_is_one_hot_morphemes(root):
+    """y(t): at every printing step exactly one output unit is on when emit is, none when it is not; every output unit is a constant,
+    a slot's value, or a form of a verb or an adjective, and the output lexical layer gives each a string"""
+    comp, mp = small_cell(root); S = comp["S"]
+    assert {n[1] for n in S.names if n[0] == "out"} == {"c", "s", "vf", "af"}
+    for n in S.names:
+        if n[0] == "out": assert isinstance(PM.output_lexicon(n), str)
+    toks = R.merge_multiword("she took a rest .".split())
+    s, frame = mp.read(toks); steps = 0; emitted = []
+    while True:
+        ctrl, _ = mp.read_state(s)
+        if ctrl == ("P", "DONE"): break
+        s = mp.step(s, mp.empty_input()); steps += 1
+        on = [S.names[i] for i in mp.out_units if s[i] > 0.5]
+        assert len(on) == (1 if s[mp.emit_unit] > 0.5 else 0), (ctrl, len(on))
+        emitted += on
+    assert emitted == mp.run(toks)[1] and steps > len(emitted) and "".join(PM.output_lexicon(u) for u in emitted) == "彼女は休んだ。"
 
 def test_layers_roundtrip(root):
     toks = R.merge_multiword("a lot of people came .".split())

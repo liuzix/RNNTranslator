@@ -2,7 +2,7 @@
 ' The compiled cell as a recurrent network with two heads: a read head over the English (advanced by the shift unit) and a
 ' print head over the Japanese (advanced by the emit unit).  One state, one set of layers; reading rules consume a token
 ' and write slots, printing rules read slots and emit a token.  Below, one slot write and its mirror, one slot read.
-' Dashed boxes are proposed, not built.  Rendered hermetically by `harness/render_diagram.py` with the PlantUML jar
+' The dashed box (the tag slots) is proposed, not built.  Rendered hermetically by `harness/render_diagram.py` with the PlantUML jar
 ' pinned in docs/architecture.lock.json.
 skinparam shadowing false
 skinparam defaultFontName sans-serif
@@ -36,8 +36,8 @@ rectangle "**one step**: five ReLU layers, weights ±1, integer thresholds" as S
 }
 
 rectangle "**s(t+1)**" as SN #FDE7C8
-rectangle "**y(t)**  one morpheme (proposed)\none-hot: slot values · stem forms\nparticles · suffixes · 。" as Y #FFFFFF;line.dashed
-rectangle "**output lexical layer** (proposed)\nunit → string; the print head\nappends it when emit = 1" as OUT #EEEEEE;line.dashed
+rectangle "**y(t)**  one morpheme\none-hot: slot values · stem forms\nparticles · suffixes · 。" as Y #FDE7C8
+rectangle "**output lexical layer**\nunit → string; the print head\nappends it when emit = 1" as OUT #EEEEEE
 rectangle "**read head**\nadvances when shift = 1" as HEAD #EEEEEE
 
 rectangle "**one slot write**: the layers seen from one block of s(t)" as WRITE #FFFBEA {
@@ -59,12 +59,12 @@ rectangle "**one slot write**: the layers seen from one block of s(t)" as WRITE 
   KEEP --> NEXTB
 }
 
-rectangle "**one slot read** (proposed): the same layers seen from the output" as READ #FFFBEA;line.dashed {
+rectangle "**one slot read**: the same layers seen from the output" as READ #FFFBEA {
   rectangle "L3  the rules that\nprint this block" as RRULE
   rectangle "s(t)  the block\none-hot over its values" as RBLK
-  rectangle "s(t)  verb · flags\npast · neg · polite" as RFLAGS
+  rectangle "s(t)  the verb\none-hot over its values" as RFLAGS
   rectangle "L4  read gate\nOR of those rules\n(+ emit)" as RGATE
-  rectangle "L4  form gate\nAND(rule, flags): which\nstem form or suffix" as RFORM
+  rectangle "L4  form gate\nOR of the rules asking\nfor this stem form" as RFORM
   rectangle "L5  read units, one per value\nReLU(read gate + block − 1)\nthe gate selects: a mux" as RAND
   rectangle "L5  lookup units\nReLU(form gate + verb − 1)\nconjugation as a table" as RLOOK
   rectangle "W6  y(t) = read + lookup\n0/1 sums, one morpheme" as YTOK
@@ -72,7 +72,7 @@ rectangle "**one slot read** (proposed): the same layers seen from the output" a
   RRULE --> RFORM
   RBLK --> RAND
   RGATE --> RAND
-  RFLAGS --> RFORM
+  RFLAGS --> RLOOK
   RFORM --> RLOOK
   RAND --> YTOK
   RLOOK --> YTOK
@@ -86,9 +86,9 @@ L2 --> L3
 L3 --> L4
 L4 --> L5
 L5 --> SN : W6
-L5 .[#777777].> Y : W6
+L5 --> Y : W6
 SN --> S : one step
-Y .[#777777].> OUT
+Y --> OUT
 SN .[#777777,norank].> HEAD : shift
 
 ' the insets' columns line up with the layers they zoom into

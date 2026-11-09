@@ -14,11 +14,19 @@ Two kinds of rules make up the cell:
 Register writes are factored into copy (slot <- a reading of the current token), const, move / move_time (slot <- another
 slot) and clear.  Whatever the cell cannot represent (an inner clause, a register with no block) becomes a FAIL row, so
 the machine refuses there instead of guessing; inside its scope it must agree with the rule parser exactly.
+
+The decoder is the same cell run backwards (decoder_rules): the printing rules of gen_module become rules whose control
+states are the printing positions, entered from DONE, and whose one action emits a token — a constant morpheme (its own
+output unit), a slot read (a read gate ORed from the rules, one read unit per value, AND of gate and value, mirroring the
+write units) or a form lookup (a form gate, one lookup unit per verb or adjective value).  The read-out sums them into
+the output units y(t), one-hot, and the `emit` unit, mirroring `shift`, tells the print head to append the unit's string
+(output_lexicon).  A read with nothing in the block, or a form the verb has not, fires a crash unit into FAIL.
 """
 import sys, collections, itertools
 import numpy as np
 import scipy.sparse as sp
 import rules_ja as R
+import gen_module as GM
 from parser_rules import Parser, Clause, ParseFail, Overflow, parse_bounded
 
 WINDOW = 4
@@ -596,7 +604,7 @@ def build_hybrid(sentences, verbose=False):
     trees = induce(rows)
     mrules, derived = module_rules(roles)
     derived["agree.bad"] = AGREE_DNF
-    comp = compile_matrices(trees, extra_rules=mrules, derived=derived)
+    comp = compile_matrices(trees, extra_rules=mrules, derived=derived)       # the printing rules join inside (decoder_rules)
     if verbose: print("hybrid build:", dict(scope), "| data rows", len(rows), "| module rules", len(mrules), "| roles", sorted(roles))
     comp["scope"] = scope; comp["rows"] = rows
     return comp
@@ -783,9 +791,43 @@ def source_values(tok):
     pick = {s: (last[s] if s in ("noun", "ncls", "adj", "adj_pair", "adj_mono", "adj_caus", "adv", "adv_front", "loc", "time", "wh") else first[s]) for s in last}
     return pick
 
-def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None):
+PRINT_SRC = ("emit",)          # the action of a printing rule: ("out", token, PRINT_SRC)
+
+def print_state(pos):
+    """a printing position as a control state; a FAIL:<reason> exit is the cell's FAIL"""
+    return FAIL if isinstance(pos, str) and pos.startswith("FAIL:") else ("P", pos)
+
+def decoder_rules():
+    """gen_module's printing rules in the compiler's rule format, with the bridge from the end of reading to the first printing
+    position: -> (rules, derived predicates)"""
+    pr = GM.PrintRules()
+    rules = [(("DONE",), (), (("P", "P0"), 0, ()))]
+    for pos, lits, (nxt, tok) in pr.rules():
+        acts = (("out", tok, PRINT_SRC),) if tok is not None else ()
+        rules.append((("P", pos), tuple((l[1:], False) if l.startswith("¬") else (l, True) for l in lits), (print_state(nxt), 0, acts)))
+    return rules, pr.derived()
+
+def form_ok(verb, name, alt):
+    """the verb has this form (gen_module.vform does not refuse it); the alternative forms belong to 'understand' alone"""
+    if alt and verb[0] != "understand": return False
+    try: GM.vform(verb, name, alt); return True
+    except GM.Refuse: return False
+
+def output_lexicon(unit):
+    """the output lexical layer: an output unit of the state -> the string the print head appends"""
+    kind = unit[1]
+    if kind == "c": return unit[2]
+    if kind == "s":
+        _, _, slot, idx, v = unit; v = v if idx is None else v[idx]
+        return "" if v == GM.NOPART else str(v)
+    if kind == "vf": _, _, name, alt, v = unit; return GM.vform(v, name, alt)
+    if kind == "af": _, _, strip, v = unit; return GM.adj_stem(v, strip)
+    raise ValueError(unit)
+
+def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None, decoder=True):
     """trees (per previous control point) + hand-written rules -> the cell: five sparse ReLU layers over a one-hot state and
-    the lexical input, then the new state.  `derived` maps a predicate name to a DNF over base literals (np_module.derived)."""
+    the lexical input, then the new state.  `derived` maps a predicate name to a DNF over base literals (np_module.derived).
+    With `decoder`, the printing rules of gen_module join the rule set (decoder_rules) and the state gets the output units."""
     derived = dict(derived or {})
     rules = []   # (prev, literals, (cp, k, actions))
     for prev, t in trees.items():
@@ -793,6 +835,14 @@ def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None):
             if out[0] == "CONFLICT": continue
             rules.append((prev, lits, out))
     rules += list(extra_rules)
+    if decoder:
+        prules, pderived = decoder_rules(); rules += prules; derived.update(pderived)
+    emits = [(ri, v) for ri, (prev, lits, (cp, k, actions)) in enumerate(rules) for slot, v, src in actions if src == PRINT_SRC]
+    out_tokens = sorted({v for ri, v in emits}, key=str)
+    const_out = sorted({tok[1] for tok in out_tokens if tok[0] == "c"})
+    read_out = sorted({(tok[1], tok[2] if len(tok) > 2 else None) for tok in out_tokens if tok[0] == "s"}, key=str)
+    form_out = sorted({(tok[1], tok[2]) for tok in out_tokens if tok[0] == "vf"})
+    aform_out = sorted({tok[2] for tok in out_tokens if tok[0] == "af"})
     # ---- vocabularies
     slot_vocab = collections.defaultdict(set)
     for _, _, (cp, k, actions) in rules:
@@ -837,6 +887,16 @@ def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None):
     preps = sorted(w for w in R.PREPS)
     for w in preps: S.add(("pend", w))
     S.add(("shift",))
+    # y(t): one output unit per morpheme the print head can emit — a constant, a slot's value, a form of a verb or an adjective
+    for s_ in const_out: S.add(("out", "c", s_))
+    for slot, idx in read_out:
+        for v in slot_vocab.get(slot, []): S.add(("out", "s", slot, idx, v))
+    for name, alt in form_out:
+        for v in slot_vocab.get("verb", []):
+            if form_ok(v, name, alt): S.add(("out", "vf", name, alt, v))
+    for strip in aform_out:
+        for v in slot_vocab.get("cop_adj", []): S.add(("out", "af", strip, v))
+    if emits: S.add(("emit",))
     def slot_units(slot): return [S[("slot", slot, v)] for v in slot_vocab.get(slot, [])]
     # ---- input index: window predicates, copy sources, prep-surface of slot 0
     X = Index()
@@ -868,6 +928,11 @@ def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None):
         if q == "subj.sore": return [(("S", S[("slot", "subj.noun", "それ")]), 1.0)] if ("slot", "subj.noun", "それ") in S else None
         if q.startswith("pend_prep="): return [(("S", S[("pend", q[10:])]), 1.0)] if ("pend", q[10:]) in S else None
         if q.startswith("reg.ret="): return [(("S", S[("slot", "ret", q[8:])]), 1.0)] if ("slot", "ret", q[8:]) in S else None
+        if q.startswith("flag."): return [(("S", u), 1.0) for u in slot_units(q[5:])] or None
+        fam = GM.family_of(q)                                       # a printer predicate: a test on one slot's value, an OR over the values that pass
+        if fam:
+            slot, test, arg = fam
+            return [(("S", S[("slot", slot, u)]), 1.0) for u in slot_vocab.get(slot, []) if test(u, arg)] or None
         return None
     # ---- layer 1: register predicates derived from the state (OR over slot units); derived conjunctions (AND over base literals);
     #      USE pairs (AND of verb unit and head-noun unit)
@@ -968,9 +1033,18 @@ def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None):
         if ("pred", q) in X: return ("X", X[("pred", q)])
         return None
     unresolved = collections.Counter()
+    def implied(sets, by_superset):
+        """drop a literal another literal of the same rule implies: a positive one whose units are a superset of another positive
+        one's (B => A), a negative one whose units are a subset of another negative one's (not B => not A)"""
+        keep = []
+        for i, a in enumerate(sets):
+            if any(j != i and (b < a if by_superset else a < b) or (b == a and j < i) for j, b in enumerate(sets)): continue
+            keep.append(a)
+        return keep
     for ri, (prev, lits, (cp, k, actions)) in enumerate(rules):
         u = L3.add(("rule", ri)); npos = 1
         W3.append((u, ("S", S[("ctrl", prev)]), 1.0))
+        pos, neg, unseen = [], [], False
         for q, truth in lits:
             if q in derived:                                   # through its NOT unit: positive wants NOT = 0, negative wants NOT = 1
                 nu = ("L2", L2[("nor", q)])
@@ -981,10 +1055,21 @@ def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None):
             if ref is not None: es = [(ref, 1.0)]
             else: es = base_edges(q)
             if es is None:
-                if truth: unresolved[q] += 1; W3.append((u, ("X", X[("one",)]), -5.0))      # a positive literal the cell cannot see: the rule can never fire
+                if truth:
+                    unseen = True                                                           # a positive literal the cell cannot see: the rule can never fire
+                    if prev[0] != "P": unresolved[q] += 1                                  # (a printing rule on a value no reading rule writes is dead by design)
                 continue                                                                # a negative literal on an unseen predicate is vacuously true
-            for ref, w in es: W3.append((u, ref, w if truth else -w))
-            if truth: npos += 1
+            (pos if truth else neg).append(frozenset(ref for ref, w in es))
+        pos, neg = implied(pos, True), implied(neg, False)
+        acc = collections.defaultdict(float)
+        for refs in pos:
+            for ref in refs: acc[ref] += 1.0
+        for refs in neg:
+            for ref in refs: acc[ref] -= 1.0
+        for ref, w in acc.items():
+            if w: W3.append((u, ref, w))                        # a unit in a positive and a negative literal cancels to nothing: AND(P, not N) over one-hot blocks
+        if unseen: W3.append((u, ("X", X[("one",)]), -5.0))
+        npos += len(pos)
         b3[u] = -(npos - 1)
     # skip-state rules: SKIP(ri, j) -> SKIP(ri, j-1) or the target
     for ri, (prev, lits, (cp, k, actions)) in enumerate(rules):
@@ -1002,9 +1087,24 @@ def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None):
             nxt = ("ctrl", ("SKIP", ri, j - 1)) if j > 1 else ("ctrl", cp)
             u2 = L4.add(("next", nxt)); W4.append((u2, ("L3", L3[("skiprule", ri, j)]), 1.0)); W4.append((shift, ("L3", L3[("skiprule", ri, j)]), 1.0))
     # gates per slot (any write/clear) and per (slot, source) copy / (slot, from, fn) move
+    # the print head: emit (OR of the printing rules that emit, as shift is of the rules that consume), read gates per slot read,
+    # form gates per verb form and adjective form; a constant morpheme is written by its rules directly (L5)
+    gate_read = {}; gate_form = {}; gate_aform = {}; const_out_w = collections.defaultdict(list); emit = None
+    if emits:
+        emit = L4.add(("emit",))
+        for ri, tok in emits:
+            W4.append((emit, ("L3", L3[("rule", ri)]), 1.0))
+            if tok[0] == "c": const_out_w[tok[1]].append(ri)
+            elif tok[0] == "s":
+                g = gate_read.setdefault((tok[1], tok[2] if len(tok) > 2 else None), L4.add(("gread", tok[1], tok[2] if len(tok) > 2 else None))); W4.append((g, ("L3", L3[("rule", ri)]), 1.0))
+            elif tok[0] == "vf":
+                g = gate_form.setdefault((tok[1], tok[2]), L4.add(("gform", tok[1], tok[2]))); W4.append((g, ("L3", L3[("rule", ri)]), 1.0))
+            elif tok[0] == "af":
+                g = gate_aform.setdefault(tok[2], L4.add(("gaform", tok[2]))); W4.append((g, ("L3", L3[("rule", ri)]), 1.0))
     gate_slot = {}; gate_copy = {}; gate_move = {}; const_w = collections.defaultdict(list)
     for ri, (prev, lits, (cp, k, actions)) in enumerate(rules):
         for slot, v, src in actions:
+            if src == PRINT_SRC: continue
             g = gate_slot.setdefault(slot, L4.add(("gate", slot))); W4.append((g, ("L3", L3[("rule", ri)]), 1.0))
             if src[0] == "copy":
                 gc = gate_copy.setdefault((slot, src[1]), L4.add(("gcopy", slot, src[1]))); W4.append((gc, ("L3", L3[("rule", ri)]), 1.0))
@@ -1082,17 +1182,44 @@ def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None):
         if not srcs: continue
         cu = L5.add(("nosrc", slot, s)); W5.append((cu, ("L4", gc), 1.0))
         for xi in srcs: W5.append((cu, ("X", xi), -1.0))
+    # the print head's units: a read unit per value = AND(read gate, the value), its mirror of a write unit; a lookup unit per
+    # verb or adjective value = AND(form gate, the value); a constant morpheme = OR of the rules that emit it; and the crash of
+    # a read with nothing in the block or a form the verb has not -> FAIL (the mirror of nosrc)
+    for (slot, idx), g in gate_read.items():
+        for v in slot_vocab.get(slot, []):
+            ru = L5.add(("read", slot, idx, v)); W5.append((ru, ("L4", g), 1.0)); W5.append((ru, ("S", S[("slot", slot, v)]), 1.0)); b5[ru] = -1.0
+        cu = L5.add(("noread", slot, idx)); W5.append((cu, ("L4", g), 1.0))
+        for u in slot_units(slot): W5.append((cu, ("S", u), -1.0))
+    for (name, alt), g in gate_form.items():
+        valid = [v for v in slot_vocab.get("verb", []) if form_ok(v, name, alt)]
+        for v in valid:
+            lu = L5.add(("form", name, alt, v)); W5.append((lu, ("L4", g), 1.0)); W5.append((lu, ("S", S[("slot", "verb", v)]), 1.0)); b5[lu] = -1.0
+        cu = L5.add(("noform", name, alt)); W5.append((cu, ("L4", g), 1.0))
+        for v in valid: W5.append((cu, ("S", S[("slot", "verb", v)]), -1.0))
+    for strip, g in gate_aform.items():
+        for v in slot_vocab.get("cop_adj", []):
+            lu = L5.add(("aform", strip, v)); W5.append((lu, ("L4", g), 1.0)); W5.append((lu, ("S", S[("slot", "cop_adj", v)]), 1.0)); b5[lu] = -1.0
+        cu = L5.add(("noaform", strip)); W5.append((cu, ("L4", g), 1.0))
+        for u in slot_units("cop_adj"): W5.append((cu, ("S", u), -1.0))
+    for s_, ris in const_out_w.items():
+        ou = L5.add(("outc", s_))
+        for ri in ris: W5.append((ou, ("L3", L3[("rule", ri)]), 1.0))
     # ---- layer 6: the new state = next control + shift + keep + write
     W6 = []
     for i, name in enumerate(L4.names):
         if name[0] == "next": W6.append((S[name[1]], ("L4", i), 1.0))
         if name[0] == "shift": W6.append((S[("shift",)], ("L4", i), 1.0))
+        if name[0] == "emit": W6.append((S[("emit",)], ("L4", i), 1.0))
     for i, name in enumerate(L5.names):
         if name[0] in ("keep", "write", "writec", "writem"):
             key = ("pend", name[2]) if name[1] == "pend" else ("slot", name[1], name[-1])
             W6.append((S[key], ("L5", i), 1.0))
         if name[0] == "writeu": W6.append((S[("slot", name[1], name[2])], ("L5", i), 1.0))
-        if name[0] in ("nosrc", "nouse"): W6.append((S[("ctrl", FAIL)], ("L5", i), 1.0))
+        if name[0] in ("nosrc", "nouse", "noread", "noform", "noaform"): W6.append((S[("ctrl", FAIL)], ("L5", i), 1.0))
+        if name[0] == "read": W6.append((S[("out", "s", name[1], name[2], name[3])], ("L5", i), 1.0))
+        if name[0] == "form": W6.append((S[("out", "vf", name[1], name[2], name[3])], ("L5", i), 1.0))
+        if name[0] == "aform": W6.append((S[("out", "af", name[1], name[2])], ("L5", i), 1.0))
+        if name[0] == "outc": W6.append((S[("out", "c", name[1])], ("L5", i), 1.0))
     layers = [(L1, W1, b1), (L2, W2, b2), (L3, W3, b3), (L4, W4, b4), (L5, W5, b5)]
     return {"S": S, "X": X, "layers": layers, "W6": W6, "rules": rules, "slot_vocab": slot_vocab, "src_vocab": src_vocab,
             "unresolved": unresolved, "derived": derived, "dead_conj": dead_conj}
@@ -1121,6 +1248,8 @@ class MatrixParser:
         self.W6 = sp.csr_matrix((vals_, (rows_, cols_)), shape=(self.nS, width))
         self.width = width
         self.shift_unit = S[("shift",)] if ("shift",) in S else None
+        self.emit_unit = S[("emit",)] if ("emit",) in S else None
+        self.out_units = [i for i, n in enumerate(S.names) if n[0] == "out"]
     def nnz(self): return sum(M.nnz for M, _ in self.mats) + self.W6.nnz
     def lexical_input(self, toks, i):
         """the lexical layer's output for the window at i: class / surface / extra predicates of the four slots"""
@@ -1135,8 +1264,10 @@ class MatrixParser:
                 for q in qs:
                     if ("pred", q) in X: x[X[("pred", q)]] = 1
         return x
-    def step(self, s, x, toks, i, verb_value):
-        X = self.c["X"]
+    def input_vector(self, toks, i, verb_value):
+        """the whole input of one reading step: the window's readings, the table hits joined with the frame's verb, the copy
+        sources of slot 0, the preposition in slot 0, and the constant"""
+        X = self.c["X"]; x = self.lexical_input(toks, i)
         for h in table_hits(toks, i, verb_value):
             q = "hit=" + ",".join(map(str, h))
             if ("pred", q) in X: x[X[("pred", q)]] = 1
@@ -1145,6 +1276,12 @@ class MatrixParser:
             if ("src", sname, v) in X: x[X[("src", sname, v)]] = 1
         if tok in R.PREPS: x[X[("prep0", tok)]] = 1
         x[X[("one",)]] = 1
+        return x
+    def empty_input(self):
+        """the input of a printing step: the print head reads no token, only the constant is on"""
+        x = np.zeros(self.nX); x[self.c["X"][("one",)]] = 1; return x
+    def step(self, s, x):
+        """one step of the cell: the five layers and the readout, acts = [s; x] -> s'"""
         acts = np.concatenate([s, x])
         for M, bias in self.mats:
             h = np.maximum(0.0, M @ acts + bias); acts = np.concatenate([acts, h])
@@ -1157,18 +1294,99 @@ class MatrixParser:
             elif name[0] == "slot": frame[name[1]] = name[2]
         if failed: return FAIL, frame
         return (ctrl if n_ctrl == 1 else ("MULTI", n_ctrl) if n_ctrl else None), frame
-    def parse(self, toks, bound_per_token=12):
-        """one matrix step per parser transition; the `shift` unit tells the window when to advance (k=0 transitions do not)"""
+    def read(self, toks, bound_per_token=12):
+        """the read head: one matrix step per parser transition, the `shift` unit telling the window when to advance (k=0
+        transitions do not); -> (the state at DONE, the frame read out of it)"""
         S = self.c["S"]; s = np.zeros(self.nS); s[S[("ctrl", ("START",))]] = 1.0; i = 0
         for step in range(bound_per_token * (len(toks) + 2)):
             ctrl, frame = self.read_state(s)
-            if ctrl == ("DONE",): return frame_to_clause(frame)
+            if ctrl == ("DONE",): return s, frame
             if ctrl == FAIL: raise ParseFail(f"MATRIX: FAIL at token {i} ({toks[i] if i < len(toks) else 'END'!r})", i)
             if ctrl is None: raise ParseFail(f"MATRIX: no rule fired at token {i} ({toks[i] if i < len(toks) else 'END'!r})", i)
             if ctrl[0] == "MULTI": raise ParseFail(f"MATRIX: {ctrl[1]} rules fired at token {i}", i)
             if i > len(toks): raise ParseFail("MATRIX: ran past the end", i)
-            verb_value = frame.get("verb")
-            x = self.lexical_input(toks, i)
-            s = self.step(s, x, toks, i, verb_value)
+            s = self.step(s, self.input_vector(toks, i, frame.get("verb")))
             if self.shift_unit is None or s[self.shift_unit] > 0.5: i += 1
         raise ParseFail("MATRIX: did not reach DONE", i)
+    def parse(self, toks, bound_per_token=12):
+        """the parser interface: the frame at the end of reading, as a Clause"""
+        return frame_to_clause(self.read(toks, bound_per_token)[1])
+    def print_out(self, s, bound=400):
+        """the print head: from a state whose control is DONE or a printing position, step with no token until the last printing
+        position, appending the one output unit that is on whenever `emit` is; -> the output units, in order"""
+        if self.emit_unit is None: raise ParseFail("PRINT: this cell has no decoder")
+        S = self.c["S"]; out = []
+        for _ in range(bound):
+            ctrl, frame = self.read_state(s)
+            if ctrl == ("P", "DONE"): return out
+            if ctrl == FAIL: raise ParseFail(f"PRINT: FAIL after {len(out)} morphemes")
+            if ctrl is None: raise ParseFail(f"PRINT: no rule fired after {len(out)} morphemes")
+            if ctrl[0] == "MULTI": raise ParseFail(f"PRINT: {ctrl[1]} rules fired after {len(out)} morphemes")
+            s = self.step(s, self.empty_input())
+            if s[self.emit_unit] > 0.5:
+                on = [S.names[i] for i in self.out_units if s[i] > 0.5]
+                if len(on) != 1: raise ParseFail(f"PRINT: {len(on)} output units on at {ctrl}")
+                out.append(on[0])
+        raise ParseFail("PRINT: did not finish")
+    def run(self, toks):
+        """read, then print: -> (the frame at the end of reading, the output units the print head emitted)"""
+        s, frame = self.read(toks)
+        return frame, self.print_out(s)
+    def translate(self, toks):
+        """the whole cell on a sentence: the output lexical layer's strings of the emitted units, joined"""
+        return "".join(output_lexicon(u) for u in self.run(list(toks))[1])
+    def split_np(self, role, s):
+        """a noun phrase's Japanese -> its sub-slots (det poss num adj1 adj2 noun [noun2] [mono]) from the cell's vocabulary of the
+        role, the first decomposition that spells the string; None if none does"""
+        V = self.c["slot_vocab"]; subs = ("det", "poss", "num", "adj1", "adj2")
+        def opts(sub): return sorted((v for v in V.get(f"{role}.{sub}", []) if isinstance(v, str)), key=len, reverse=True)
+        def head(rest):
+            for noun in opts("noun"):
+                if not rest.startswith(noun): continue
+                tail = rest[len(noun):]
+                if tail == "": return {"noun": noun}
+                for n2 in opts("noun2"):
+                    if tail.startswith("の" + n2):
+                        t2 = tail[len(n2) + 1:]
+                        if t2 == "": return {"noun": noun, "noun2": n2}
+                        if t2 in opts("mono"): return {"noun": noun, "noun2": n2, "mono": t2}
+                if tail in opts("mono"): return {"noun": noun, "mono": tail}
+            return None
+        def rec(k, rest):
+            if k == len(subs): return head(rest)
+            for v in opts(subs[k]):
+                if rest.startswith(v):
+                    r = rec(k + 1, rest[len(v):])
+                    if r is not None: r[subs[k]] = v; return r
+            return rec(k + 1, rest)
+        return rec(0, s)
+    def load_frame(self, frame):
+        """a state holding a frame (a Clause, or a flat frame of the cell) and the first printing position, for the print head
+        alone; a Clause's noun phrases are split into the cell's sub-slots by its vocabulary"""
+        S = self.c["S"]
+        if isinstance(frame, dict): F = dict(frame)
+        else:
+            F = GM.flatten(frame)
+            for role in GM.NP_ROLES:
+                if F.get(f"{role}.noun") is None: continue
+                parts = self.split_np(role, (F.pop(f"{role}.poss", None) or "") + F.pop(f"{role}.noun"))
+                if parts is None: raise ParseFail(f"PRINT: the {role} noun phrase is not spelled by this cell's vocabulary")
+                for sub, v in parts.items(): F[f"{role}.{sub}"] = v
+        s = np.zeros(self.nS); s[S[("ctrl", ("P", "P0"))]] = 1.0
+        for slot, v in F.items():
+            if v in (None, False, ""): continue
+            if ("slot", slot, v) in S: s[S[("slot", slot, v)]] = 1.0
+            elif slot in self.c["slot_vocab"]: raise ParseFail(f"PRINT: {v!r} is not a value of {slot} in this cell")
+        return s
+    def decode(self, frame):
+        """the print head on a frame placed in the state: -> the output units"""
+        return self.print_out(self.load_frame(frame))
+
+class Decoder:
+    """the decoder of a compiled cell: its compilation (part of every cell compile_matrices builds), the print head on a
+    frame, and the output lexical layer"""
+    def compile(self, comp):
+        if ("emit",) in comp["S"]: return comp
+        return compile_matrices({}, extra_rules=[r for r in comp["rules"] if r[0][0] != "P" and r[0] != ("DONE",)], derived={k: v for k, v in comp["derived"].items() if not k.startswith("d.") or "@" in k})
+    def decode(self, mp, frame): return mp.decode(frame)
+    def output_lexicon(self, unit): return output_lexicon(unit)

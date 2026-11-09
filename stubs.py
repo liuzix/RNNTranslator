@@ -32,13 +32,6 @@ class Stub:
     item = None                    # the TODO.yaml item this stub belongs to
     def _hit(self, name): CALLS[f"{type(self).__name__}.{name}"] += 1; return TODO
 
-class Decoder(Stub):
-    """the printing rules compiled into the cell: emit, read gates, form gates, read and lookup units, y(t) (item decoder-compile)"""
-    item = "decoder-compile"
-    def compile(self, comp): return self._hit("compile")                     # -> the compiled cell extended with the decoder's units and W6 rows into y(t)
-    def decode(self, mp, frame): return self._hit("decode")                  # -> the y(t) units emitted while the print head runs, from a frame in the state
-    def output_lexicon(self, unit): return self._hit("output_lexicon")       # -> the string of one y(t) unit
-
 class HandModules(Stub):
     """the PP machine, predicate and copula_predicate translated by hand with complete guards (item hand-modules)"""
     item = "hand-modules"

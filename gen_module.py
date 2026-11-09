@@ -132,6 +132,12 @@ FAMILIES = {
     "want.complement": ("want", lambda v, arg: v in R.COMPLEMENTS),
 }
 
+def family_of(name):
+    """-> (slot, test, argument) when `name` is a family predicate, else None"""
+    for prefix, (slot, test) in FAMILIES.items():
+        if name == prefix or (prefix.endswith("=") and name.startswith(prefix)): return slot, test, name[len(prefix):]
+    return None
+
 def base_pred(name, F):
     if name.startswith("flag."): return bool(F.get(name[5:]))
     if name.startswith("slot."):

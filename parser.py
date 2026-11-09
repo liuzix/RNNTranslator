@@ -18,6 +18,7 @@ class ParserInterface:
         """tokens: list of merged English tokens -> Frame; raises ParseFail"""
         raise NotImplementedError
     def translate(self, tokens):
+        """the Japanese for a sentence; the matrix implementation overrides this with its print head"""
         return R.generate(self.parse(tokens))
 
 class RuleParser(ParserInterface):
@@ -34,6 +35,4 @@ def build_matrix_parser(sentences, verbose=False):
     behaviour on `sentences` (lists of merged tokens); the noun-phrase module (np_module) is hand-translated and complete"""
     import parser_matrix as PM
     comp = PM.build_hybrid(sentences, verbose=verbose)
-    mp = PM.MatrixParser(comp)
-    mp.translate = lambda toks: R.generate(mp.parse(list(toks)))
-    return mp
+    return PM.MatrixParser(comp)        # translate() is the cell's own print head, not generate() on the frame

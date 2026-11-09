@@ -34,13 +34,14 @@ CORPUS_FILES = ("dev.en", "dev.ja", "test.en", "test.ja")
 CORPUS_REL = os.path.join("data", "small_parallel_enja")
 
 SOURCES = ["rules_ja.py", "tables.py", "tables/*.tbl", "parser.py", "parser_rules.py", "run_rules.py"]
+CELL = ["parser_matrix.py", "np_module.py", "gen_module.py"]          # the compiled cell: the compiler, the noun-phrase module, the printing rules
 ACTIONS = {
     "rules":  {"version": 1, "script": "harness/eval_rules.py",  "inputs": SOURCES, "corpus": True,  "args": []},
-    "matrix": {"version": 1, "script": "harness/eval_matrix.py", "inputs": SOURCES + ["parser_matrix.py", "np_module.py"], "corpus": True, "args": []},
-    "np":     {"version": 1, "script": "harness/eval_np.py",     "inputs": SOURCES + ["parser_matrix.py", "np_module.py"], "corpus": False, "args": ["--max-len", "2"]},
-    "negatives": {"version": 1, "script": "harness/eval_negatives.py", "inputs": SOURCES + ["parser_matrix.py", "np_module.py", "harness/negatives.json"], "corpus": True, "args": []},
+    "matrix": {"version": 1, "script": "harness/eval_matrix.py", "inputs": SOURCES + CELL, "corpus": True, "args": []},
+    "np":     {"version": 1, "script": "harness/eval_np.py",     "inputs": SOURCES + CELL, "corpus": False, "args": ["--max-len", "2"]},
+    "negatives": {"version": 1, "script": "harness/eval_negatives.py", "inputs": SOURCES + CELL + ["harness/negatives.json"], "corpus": True, "args": []},
     "suites": {"version": 1, "script": "harness/eval_suites.py", "inputs": SOURCES + ["harness/suites/*.json"], "corpus": False, "args": []},
-    "torch":  {"version": 1, "script": "harness/eval_torch.py",  "inputs": SOURCES + ["parser_matrix.py", "np_module.py", "cell_torch.py"], "corpus": True, "args": []},
+    "torch":  {"version": 1, "script": "harness/eval_torch.py",  "inputs": SOURCES + CELL + ["cell_torch.py"], "corpus": True, "args": []},
     "printer": {"version": 1, "script": "harness/eval_printer.py", "inputs": SOURCES + ["gen_module.py"], "corpus": True, "args": []},
 }
 FULL_NP_LEN = 3            # `check --full`: the np action over windows up to this length (~4 minutes)

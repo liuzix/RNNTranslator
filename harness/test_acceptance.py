@@ -69,7 +69,7 @@ def test_print_rules_match_generate(root):
 def test_decoder_emits_japanese(root):
     """the compiled cell has an emit unit and y(t) units, and the print head's output, through the output lexical layer, is generate()'s string"""
     comp, mp, sents = small_cell(root)
-    d = ST.Decoder()
+    d = PM.Decoder()
     comp2 = d.compile(comp)
     mp2 = PM.MatrixParser(comp2) if comp2 else mp
     toks = R.merge_multiword("i like the big dog .".split()); frame = PR.parse_bounded(toks)

@@ -41,19 +41,18 @@ items:
 
 - id: decoder-compile
   title: "Compile the printing rules into the cell: emit, read gates, form gates, y(t)"
-  status: open
+  status: done
   round: 3
   depends_on: [print-rules]
   context:
-  - text: The state is four kinds of one-hot block — control, slots, the pending preposition and the shift — with no emit unit and no output units.
+  - text: The state is six kinds of one-hot block — control, slots, the pending preposition, the shift and emit units, and the output morpheme — and the printing positions are control states of the one control block, entered from DONE.
     pinned_by: test_matrix_cell_shape
-  - text: A slot write is a gated copy — a block gate and a source gate in one layer, write and keep units in the next, the readout summing them into the block — and the read the decoder needs is the same circuit with the arrows reversed.
-    pinned_by: test_slot_write_circuit
-  - text: The decoder is the same cell run backwards, sharing one state and one set of layers with the encoder, with an emit unit mirroring shift, read gates mirroring write gates and a form lookup mirroring the USE lookup.
-    hypothesis: true
-  stubs: [Decoder]
+  - text: A slot write is a gated copy — a block gate and a source gate in one layer, write and keep units in the next, the readout summing them into the block — and a slot read is the same circuit with the arrows reversed, a read gate ORed from the printing rules and one read unit per value summed into the output; a read with nothing in the block fires into FAIL as a copy with no source does.
+    pinned_by: test_decoder_mirrors_encoder
+  - text: The cell's own print head, not generate() on the frame, is what the matrix action compares with the rule transducer, and the torch action steps both runners through the printing too.
+    pinned_by: test_decoder_is_the_cell_run_backwards
   acceptance: test_decoder_emits_japanese
-  touches: [parser_matrix.py, cell_torch.py, harness/eval_matrix.py, harness/lattice.py]
+  touches: [parser_matrix.py, cell_torch.py, parser.py, harness/eval_matrix.py, harness/render_neurons.py, docs/cell.puml]
 
 - id: hand-modules
   title: Translate the PP machine, predicate and copula_predicate by hand into modules with complete guards

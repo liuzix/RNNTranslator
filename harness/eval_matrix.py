@@ -1,7 +1,7 @@
 """The matrix parser against the rule parser: compile the hybrid cell on dev+test, cross-tabulate both implementations
 of the parser interface on every sentence, and record the cell's size.
 
-identical               both parse and the generated Japanese is the same
+identical               both translate and the Japanese is the same (the cell's is what its print head emits)
 wrong_frame             both parse, different Japanese            } silent misfires — the matrix answers where it should
 matrix_parses_refused   the rule parser refuses, the matrix parses } not, or answers wrongly; the baseline guards their sum
 refused_parseable       the rule parser parses, the matrix refuses (out of the cell's scope, or a FAIL row)
@@ -43,7 +43,8 @@ def main():
     comp = mp.c
     kinds = collections.Counter()
     for prev, lits, out in comp["rules"]:
-        if isinstance(prev[0], str) and prev[0].startswith("NP"): kinds["module"] += 1
+        if prev[0] == "P" or prev == ("DONE",): kinds["print"] += 1                 # the decoder: the printing positions, entered from DONE
+        elif isinstance(prev[0], str) and prev[0].startswith("NP"): kinds["module"] += 1
         elif prev[0] == "RET": kinds["exit"] += 1
         elif out[0][0] == "NP0": kinds["entry"] += 1
         elif out[0] == ("FAIL",): kinds["fail"] += 1
