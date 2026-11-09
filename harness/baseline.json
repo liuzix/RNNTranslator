@@ -4,15 +4,15 @@
 "both_refuse": 263,
 "cell": {
 "build_seconds": 39,
-"input_units": 2806,
+"input_units": 2936,
 "layers": [
-2681,
-419,
+2899,
+424,
 4982,
 2069,
 114897
 ],
-"nnz": 834148,
+"nnz": 834815,
 "rules": 4705,
 "rules_by_kind": {
 "clause": 1282,
@@ -59,7 +59,7 @@
 }
 },
 "refused_parseable": 165,
-"summary": "identical 567, wrong frame 0, matrix parses refused 0, refused parseable 165, both refuse 263; nnz 834148, rules 4705",
+"summary": "identical 567, wrong frame 0, matrix parses refused 0, refused parseable 165, both refuse 263; nnz 834815, rules 4705",
 "wrong_frame": 0
 },
 "negatives": {
@@ -69,7 +69,7 @@
 "count": 18,
 "matrix_accepted": 0,
 "problems": [],
-"seconds": 42,
+"seconds": 41,
 "summary": "negatives: rules refuse 18/18 and accept 18/18 controls; matrix refuses 18/18 and accepts 15/18 controls"
 },
 "np": {
@@ -325,7 +325,7 @@
 "torch": {
 "diverging": 0,
 "dtype": "float32",
-"seconds": 275.0,
+"seconds": 264.7,
 "sentences": 995,
 "steps": 55767,
 "summary": "torch 2.15.0+cpu: 995 sentences, 55767 steps compared, 0 diverging",
@@ -3824,5 +3824,5 @@
 }
 ]
 },
-"taken": "2026-11-09 at 37f3f28"
+"taken": "2026-11-09 at 043a038"
 }

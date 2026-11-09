@@ -32,11 +32,6 @@ class Stub:
     item = None                    # the TODO.yaml item this stub belongs to
     def _hit(self, name): CALLS[f"{type(self).__name__}.{name}"] += 1; return TODO
 
-class Layer0Lexical(Stub):
-    """the lexical layer as layer 0 of the cell, with the verb block as an input (item lexical-layer0)"""
-    item = "lexical-layer0"
-    def hit_units(self, comp): return self._hit("hit_units")                 # -> the units that compute table hits from the window and the verb block
-
 class Canon(Stub):
     """reduced ordered decision diagrams as the canonical form of the rules (item normal-form)"""
     item = "normal-form"

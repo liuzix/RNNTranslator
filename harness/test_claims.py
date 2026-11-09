@@ -224,6 +224,34 @@ def test_feedback_edges(root):
     comp, mp = small_cell(root)
     assert any(n[0] == "usepair" for n in comp["layers"][0][0].names)
 
+def test_verb_hits_are_layer_zero(root):
+    """the table rows that join the frame's verb with the window — the idiom tails, the particle after a verb, the use nouns — are
+    units of the cell: one AND unit per row at layer 1 over the verb's unit and the window's table keys (threshold the number of
+    keys), ORed at layer 2 into the hit predicates the rules read; the input carries no hit the verb decides, so the runner hands
+    the cell the window alone and the cell still reads `she took a rest` as the rules do"""
+    comp, mp = small_cell(root); S, X = comp["S"], comp["X"]; L1, L2 = comp["layers"][0][0], comp["layers"][1][0]
+    rows = [n for n in L1.names if n[0] == "hitrow"]; hits = {n[1] for n in L2.names if n[0] == "pred" and PM.verb_hit(n[1])}
+    assert rows and "hit=use" in hits and not any(n[0] == "pred" and PM.verb_hit(n[1]) for n in X.names)
+    assert set(rows) <= set(PM.Layer0Lexical().hit_units(comp))
+    W1, b1 = comp["layers"][0][1], comp["layers"][0][2]; W2 = comp["layers"][1][1]
+    into = collections.defaultdict(list)
+    for u, ref, w in W1: into[u].append((ref, w))
+    for n in rows:
+        refs = into[L1[n]]
+        assert all(w == 1.0 for ref, w in refs) and sum(1 for ref, w in refs if ref[0] == "S" and S.names[ref[1]][:2] == ("slot", "verb")) == 1
+        keys = [ref for ref, w in refs if ref[0] == "X"]
+        assert keys and b1[L1[n]] == -len(keys) and all(X.names[j][1].split("=")[0].endswith((".tbl", ".prole")) for _, j in keys)
+    rows_of = collections.defaultdict(set)
+    for u, ref, w in W2:
+        if L2.names[u][0] == "pred" and PM.verb_hit(L2.names[u][1]): assert ref[0] == "L1" and L1.names[ref[1]][0] == "hitrow" and w == 1.0; rows_of[L2.names[u][1]].add(ref[1])
+    assert rows_of["hit=use"] == {L1[n] for n in rows if n[1] == "hit=use"}
+    assert any(n[0] == "pred" and n[1] == "w0.tbl=rest" for n in X.names)
+    saved = PM.table_hits
+    try:
+        PM.table_hits = lambda toks, i, verb: []
+        assert mp.translate(R.merge_multiword("she took a rest .".split())) == "彼女は休んだ。"
+    finally: PM.table_hits = saved
+
 def test_corpus_pinned(root):
     lock = json.load(open(os.path.join(root, "harness", "corpus.lock.json"), encoding="utf-8"))
     assert re.fullmatch(r"[0-9a-f]{40}", lock["commit"]) and set(lock["files"]) == {"dev.en", "dev.ja", "test.en", "test.ja"}

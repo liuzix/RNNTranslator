@@ -76,7 +76,7 @@ class TorchMatrixParser:
             if ctrl == ("P", "DONE"): raise PM.ParseFail("TORCH: the print head finished the sentence while reading", i)
             printing = ctrl[0] in PM.PRINT_CTRL
             if not printing and i > len(toks): raise PM.ParseFail("TORCH: ran past the end", i)
-            s = self.step(s, mp.empty_input() if printing else mp.input_vector(toks, i, frame.get("verb")))
+            s = self.step(s, mp.empty_input() if printing else mp.input_vector(toks, i))
             if printing: out += mp.emitted(s)
             elif mp.shift_unit is None or s[mp.shift_unit] > 0.5: i += 1
         raise PM.ParseFail("TORCH: did not reach DONE", i)
@@ -109,7 +109,7 @@ def states_agree(mp, toks, bound_per_token=12):
         ctrl, frame = mp.read_state(s)
         printing = ctrl == ("DONE",) or (ctrl is not None and ctrl[0] in PM.PRINT_CTRL)       # a step that reads no token: the print head, the clause flush
         if ctrl in (PM.FAIL, None, ("P", "DONE")) or ctrl[0] == "MULTI" or (not printing and i > len(toks)): return step, None
-        x = mp.empty_input() if printing else mp.input_vector(toks, i, frame.get("verb"))
+        x = mp.empty_input() if printing else mp.input_vector(toks, i)
         s_np = mp.step(s, x); s_t = tmp.step(s, x)
         if not np.array_equal(s_np.astype(np.float32), s_t): return step, step
         s = s_np

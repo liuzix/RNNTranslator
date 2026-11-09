@@ -97,15 +97,17 @@ items:
   touches: [parser_matrix.py, parser_rules.py, gen_module.py, cell_torch.py]
 
 - id: lexical-layer0
-  title: "The lexical layer as layer 0: verb-conditioned readings inside the cell"
-  status: open
+  title: 'The lexical layer as layer 0: verb-conditioned readings inside the cell'
+  status: done
   round: 3
   context:
-  - text: Two feedback edges cross the layers — the noun's use-verb rewrites the verb, and the parser's state decides which reading of a token is used.
-    pinned_by: test_feedback_edges
-  - text: The second edge is computed outside the matrices today, by table_hits reading the verb from the state before each step.
-    hypothesis: true
-  stubs: [Layer0Lexical]
+    - text: Two feedback edges cross the layers — the noun's use-verb rewrites the verb, and the parser's state decides which
+        reading of a token is used.
+      pinned_by: test_feedback_edges
+    - text: The second edge is inside the cell — the table rows that join the frame's verb with the window (the idiom tails, the
+        particle after a verb, the use nouns) are AND units over the verb block and the window's table keys, ORed into the hit
+        predicates the rules read — so the runner hands the cell the window alone and reads nothing from the state.
+      pinned_by: test_verb_hits_are_layer_zero
   acceptance: test_lexical_hits_inside_cell
   touches: [parser_matrix.py, cell_torch.py]
 

@@ -105,7 +105,7 @@ def test_inner_clause_sentence_agrees(root):
 def test_lexical_hits_inside_cell(root):
     """the table hits are computed inside the cell from the window and the verb block, so the matrix no longer needs table_hits at run time"""
     comp, mp, sents = small_cell(root)
-    units = ST.Layer0Lexical().hit_units(comp)
+    units = PM.Layer0Lexical().hit_units(comp)
     assert units, "no hit units in the cell"
     saved = PM.table_hits
     try:

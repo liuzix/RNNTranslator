@@ -107,6 +107,24 @@ def table_hits(toks, i, verb):
     if i + 1 < len(toks) and (t0, toks[i + 1]) in R.ADJ_PREP: hits.append(("adjprep",))
     return tuple(sorted(set(hits)))
 
+VERB_HITS = ("hit=tail,", "hit=pafter", "hit=use")     # the hits the frame's verb decides: computed inside the cell (hit_rows), not handed to it
+def verb_hit(q): return q.startswith(VERB_HITS)
+def window_hits(toks, i):
+    """the hits the window alone decides (idiom, phrasal, softener, adjprep): the lexical layer's part of the input"""
+    return table_hits(toks, i, None)
+
+def hit_rows(lemma):
+    """the table rows of one verb lemma that the cell joins with the window: (hit predicate, ((slot, (kind, value)), ...)) — the
+    idiom tails over slots 0..k-1 (a reflexive pronoun as prole=r), the particle after the verb and the use nouns in slot 0"""
+    rows = []
+    for (lem, tt) in R.IDIOM_TAIL:
+        if lem == lemma: rows.append((f"hit=tail,{len(tt)}", tuple((j, ("prole", "r") if t == "SELF" else ("tbl", t)) for j, t in enumerate(tt))))
+    for (lem, t0) in R.PARTICLE_AFTER:
+        if lem == lemma: rows.append(("hit=pafter", ((0, ("tbl", t0)),)))
+    for t0, d in R.USE.items():
+        if lemma in d: rows.append(("hit=use", ((0, ("tbl", t0)),)))
+    return rows
+
 # ----------------------------------------------------------------------------------------------- frame as slots
 def snapshot(c, skip=()):
     """the frame's registers as a flat dict of slot -> value (strings/ids), raising OutOfScope for a register the cell has no
@@ -1215,7 +1233,7 @@ def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None, decoder
     def slot_units(slot): return [S[("slot", slot, v)] for v in slot_vocab.get(slot, [])]
     # ---- input index: window predicates, copy sources, prep-surface of slot 0
     X = Index()
-    def is_window(q): return q.startswith("w") and q[1].isdigit() or q.startswith("hit=")
+    def is_window(q): return q.startswith("w") and q[1].isdigit() or (q.startswith("hit=") and not verb_hit(q))     # a verb hit is a unit of the cell
     for prev, lits, out in rules:
         for q, truth in lits:
             if is_window(q): X.add(("pred", q))
@@ -1304,6 +1322,7 @@ def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None, decoder
                 pos, neg_, ok = [], [], True
                 for l in conj:
                     neg = l.startswith("¬"); q = l[1:] if neg else l
+                    if verb_hit(q): raise ValueError(f"{name}: a hit the verb decides is a layer-2 unit and cannot enter a layer-1 conjunction")
                     es = base_edges(q)
                     if es is None:
                         if not neg: ok = False; break            # a positive literal the cell cannot see: the conjunction is never true
@@ -1339,7 +1358,16 @@ def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None, decoder
                 u = L1.add(("usepair", role, "noun", ja, vv)); W1.append((u, ("S", S[("slot", "verb", vv)]), 1.0)); W1.append((u, ("S", S[("slot", f"{role}.noun", ja)]), 1.0)); b1[u] = -1.0
                 if ("slot", f"{role}.compound", True) in S: W1.append((u, ("S", S[("slot", f"{role}.compound", True)]), -1.0))   # the head is noun2 then
                 use_pairs[role].append(u); pair_units[role].append((u, ja, vv))
-    # ---- layer 2: pp.count, NOT-derived (1 - sum of the conjunctions), use.<role> (OR of pairs)
+    # layer 0 inside the cell: the table rows that join the frame's verb with the window — one AND unit per row over the verb's
+    # unit and the window's table keys (w<j>.tbl=<token>, w<j>.prole=r), ORed at layer 2 into hit=tail,k / hit=pafter / hit=use
+    hit_units = collections.defaultdict(list)
+    for vv in sorted(slot_vocab.get("verb", []), key=str):
+        if "+" in vv[0]: continue                                               # a use-rewritten verb is past its tables
+        for hit, keys in hit_rows(vv[0]):
+            u = L1.add(("hitrow", hit, vv, keys)); W1.append((u, ("S", S[("slot", "verb", vv)]), 1.0))
+            for j, (kind, val) in keys: W1.append((u, ("X", X.add(("pred", f"w{j}.{kind}={val}"))), 1.0))
+            b1[u] = -float(len(keys)); hit_units[hit].append(u)
+    # ---- layer 2: pp.count, NOT-derived (1 - sum of the conjunctions), use.<role> (OR of pairs), the verb hits (OR of rows)
     L2 = Index(); W2 = []; b2 = {}
     u = L2.add(("pred", "pp.count=0")); b2[u] = 1.0
     for k in range(3): W2.append((u, ("L1", f[k]), -1.0))
@@ -1351,6 +1379,9 @@ def compile_matrices(trees, vocab_hint=(), extra_rules=(), derived=None, decoder
         for t in derived_terms.get(name, []): W2.append((u, ("L1", t), -1.0))
     for role, units in use_pairs.items():
         u = L2.add(("pred", f"use.{role}"))
+        for t in units: W2.append((u, ("L1", t), 1.0))
+    for hit, units in sorted(hit_units.items()):
+        u = L2.add(("pred", hit))
         for t in units: W2.append((u, ("L1", t), 1.0))
     # ---- layer 3: rules = AND(control, literals)
     L3 = Index(); W3 = []; b3 = {}
@@ -1582,12 +1613,15 @@ class MatrixParser:
                 qs = [f"w{k}.vc={c}" for c in e[1]] if e[0] == "vc" else [f"w{k}.{e[0]}={e[1]}"]
                 for q in qs:
                     if ("pred", q) in X: x[X[("pred", q)]] = 1
+            tok = toks[i + k] if i + k < len(toks) else None                                 # the token as a table key, for the hit rows
+            if tok is not None and ("pred", f"w{k}.tbl={tok}") in X: x[X[("pred", f"w{k}.tbl={tok}")]] = 1
         return x
-    def input_vector(self, toks, i, verb_value):
-        """the whole input of one reading step: the window's readings, the table hits joined with the frame's verb, the copy
-        sources of slot 0, the preposition in slot 0, and the constant"""
+    def input_vector(self, toks, i):
+        """the whole input of one reading step: the window's readings and table keys, the hits the window alone decides, the copy
+        sources of slot 0, the preposition in slot 0, and the constant — nothing read from the state: the hits the frame's verb
+        decides are units of the cell"""
         X = self.c["X"]; x = self.lexical_input(toks, i)
-        for h in table_hits(toks, i, verb_value):
+        for h in window_hits(toks, i):
             q = "hit=" + ",".join(map(str, h))
             if ("pred", q) in X: x[X[("pred", q)]] = 1
         tok = toks[i] if i < len(toks) else None
@@ -1637,7 +1671,7 @@ class MatrixParser:
             if ctrl == ("P", "DONE"): raise ParseFail("MATRIX: the print head finished the sentence while reading", i)
             printing = ctrl[0] in PRINT_CTRL
             if not printing and i > len(toks): raise ParseFail("MATRIX: ran past the end", i)
-            s = self.step(s, self.empty_input() if printing else self.input_vector(toks, i, frame.get("verb")))
+            s = self.step(s, self.empty_input() if printing else self.input_vector(toks, i))
             if printing: out += self.emitted(s)
             elif self.shift_unit is None or s[self.shift_unit] > 0.5: i += 1
         raise ParseFail("MATRIX: did not reach DONE", i)
@@ -1722,6 +1756,13 @@ class MatrixParser:
     def decode(self, frame):
         """the print head on a frame placed in the state: -> the output units"""
         return self.print_out(self.load_frame(frame))
+
+class Layer0Lexical:
+    """the lexical layer as layer 0 of the cell: the units that compute the verb-conditioned table hits from the window's table
+    keys and the verb block (the row units of layer 1 and the hit predicates of layer 2)"""
+    def hit_units(self, comp):
+        L1, L2 = comp["layers"][0][0], comp["layers"][1][0]
+        return [n for n in L1.names if n[0] == "hitrow"] + [n for n in L2.names if n[0] == "pred" and verb_hit(n[1])]
 
 class HandModules:
     """the three clause-level machines translated by hand (pp_module.py, predicate_module.py), in the module rule format"""
