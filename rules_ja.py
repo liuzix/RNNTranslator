@@ -342,7 +342,7 @@ def predicate_form(c, polite):
             p = Pred("v1", "い") if c.subj_cls in ("h", "a") else make_pred("ある", "aru")
         elif kind == "adv":
             p = Pred("v1", "い") if c.subj_cls in ("h", "a") else make_pred("ある", "aru")
-        if c.modal == "must": return p_must(p, c, polite)
+        if c.modal == "must": return p_must(p, c, polite, noun=(kind == "np"))
         return p.finite(c.past, c.neg, polite)
     if c.verb is None:
         return ""
@@ -388,6 +388,8 @@ def predicate_form(c, polite):
     if c.please and c.verb and not c.imp:
         return p.te() + "ください"
     past = c.past and not (c.modal == "will")
+    if c.modal == "will" and c.past and not c.question and not c.want:                       # would (conjecture): 言わないだろう
+        return p.finite(False, c.neg, False) + ("でしょう" if polite else "だろう")
     return p.finite(past, c.neg, polite)
 
 class _Forms(dict):
@@ -433,10 +435,12 @@ def lemma_of(verb):
 STATIVE = VC["stative"]
 GA_VERBS = VC["ga"]
 COMPLEMENTS = tables.build_complements()     # tables/complements.tbl: verb -> (template, class)
-def p_must(p, c, polite):
+def p_must(p, c, polite, noun=False):
+    """must: obligation on a verb (〜なければならない), inference on a predicate (〜はずだ: 優しいはずだ, ばかなはずだ, 医者のはずだ)"""
     if p.kind in ("v1", "v5", "suru", "kuru"):
         if c.neg: return p.te() + "はいけない" + ("です" if polite else "")
         return p.nai_stem() + "なければならない" + ("です" if polite else "")
+    if p.kind == "na": return p.stem + ("の" if noun else "な") + "はずだ"
     return p.finite(False, False, False) + "はずだ"
 
 def generate(c, polite=None, embedded=False):
@@ -452,6 +456,7 @@ def generate(c, polite=None, embedded=False):
         return c.howabout + "はどうですか。"
     if c.exclaim is not None:
         return (c.subj + "は" if c.subj else "") + "なんと" + c.exclaim + "なのだろう。"
+    if c.adv and "決して" in c.adv: c.neg = True                                              # never: the adverb carries the negation (決して〜ない)
     if c.front: out.append(c.front)
     if c.pre_clause: out.append(c.pre_clause)
     if c.time: out.append(c.time)

@@ -58,6 +58,9 @@ class Clause:
         self.so_that = None        # so ADJ that S: S becomes the main clause, the adjective clause its ので-reason
         self.from_seen = False     # a from-PP was parsed: the next to-PP is まで
 
+QUANTIFIERS = ("such", "all", "both")                                   # determiners that may precede an article (mirrored in np_module)
+INDEFINITES = ("something", "anything", "nothing", "everything")        # pronouns an adjective may follow (mirrored in np_module)
+
 class Parser:
     """parser layer: a left-to-right machine over the token buffer; every decision it cannot make from the
     buffer and its own state is a fork handed to the oracle (`choose`), and the driver above enforces the budget"""
@@ -117,12 +120,16 @@ class Parser:
         elif "det" in r and (next_is_nominal or "pron" not in r):
             det = r["det"]; self.i += 1
             if tok == "no": self.c.neg = True                                   # no obligation / no money -> ...ない
+            if tok in QUANTIFIERS and self.peek() in ("a", "an", "the"): self.i += 1          # such a thing / all the windows: the article is dropped (suite F)
         elif "pron" in r:
             self.i += 1
             ja, prole = r["pron"]
             if prole == "p": self.fail("possessive pronoun without noun")
             if role == "subj" and prole in ("o", "r", "op"): self.fail("subject case")      # *me went, *himself saw john
             self.last_head = None; self.np_number = number_of(tok)
+            if tok in INDEFINITES and self.peek() and self.has(self.peek(), "adj") and not self.has(self.peek(), "noun") and not self.has(self.peek(), "verb"):   # something new -> 何か新しいもの (suite F)
+                aja, ak = dict(self.readings(self.peek()))["adj"]; self.i += 1
+                return ja + aja + ("な" if ak == "na" and not aja.endswith("な") else "") + "もの", "t"
             if self.peek() == "'s" and tok not in ("it", "he", "she", "i", "you", "we", "they", "this", "that", "who", "what", "somebody", "someone", "everybody", "everyone", "nobody", "anybody", "anyone", "one", "there", "here"):
                 if self.peek(1) and (self.has(self.peek(1), "noun") or self.has(self.peek(1), "adj")):
                     self.i += 1; return self.parse_np_rest_after_poss(ja + "の")
@@ -595,7 +602,8 @@ class Parser:
             if c.neg and self.peek() == "but" and self.peek(1) and self.starts_np(self.peek(1)):                      # not a lawyer but a doctor
                 self.i += 1; ja2, cls2 = self.parse_np(); c.copula = ("np", ja + "ではなく" + ja2, cls2); c.neg = False
                 self.tail_pp_adv(); return
-            if self.peek() == "to" and self.peek(1) and self.has(self.peek(1), "verb") and self.verb_form(self.peek(1)) == "base":   # a long time to wait
+            if self.peek() == "to" and self.peek(1) and self.has(self.peek(1), "verb") and self.verb_form(self.peek(1)) == "base":   # (it is) a long time to wait -> 待つのには
+                if c.subj_cls == "h" and c.subj not in ("それ", None): self.fail("copula infinitive")   # you must be a fool to do that: a judgment (〜するとは), not rendered
                 self.i += 1; inner = Clause(); saved = self.c; self.c = inner
                 self.verb_phrase(expect_base=True, from_copula=True); self.c = saved
                 c.copula = ("np", generate(inner, polite=False, embedded=True)[:-1] + "のには" + ja, cls)
@@ -611,6 +619,7 @@ class Parser:
     def verb_phrase(self, expect_base=False, expect_pp=False, expect_ing=False, from_copula=False):
         c = self.c; tok = self.peek(); r = dict(self.readings(tok))
         if "verb" not in r: self.fail("verb")
+        if expect_pp and tok == "been" and self.peek(1) == "to" and self.peek(2) and self.starts_np(self.peek(2)): self.fail("have been to")   # the experiential perfect (行ったことがある) is not rendered
         readings = [p for cc, p in self.readings(tok) if cc == "verb"]
         lemma, form, ja, conj = readings[0]
         if not (expect_base or expect_pp or expect_ing) and c.subj_num and not any(agrees(f, c.subj_num) for _, f, _, _ in readings):

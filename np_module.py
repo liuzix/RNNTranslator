@@ -14,6 +14,8 @@ reg.verb, reg.cop_kind, reg.subj, subj.sore, pend_prep=<w>.
 """
 PERSONAL = ("it", "he", "she", "i", "you", "we", "they", "this", "that", "who", "what", "somebody", "someone", "everybody", "everyone", "nobody", "anybody", "anyone", "one", "there", "here")
 CLOSED = ("aux_be", "aux_do", "aux_have", "modal", "prep", "adv", "det", "pron", "adj", "time", "conj", "num")
+QUANTIFIERS = ("such", "all", "both")                                   # determiners that may precede an article (parser_rules.QUANTIFIERS)
+INDEFINITES = ("something", "anything", "nothing", "everything")        # pronouns an adjective may follow (parser_rules.INDEFINITES)
 TIME_PREPS = ("before", "after", "at", "until", "till", "around", "by")
 VERBAL = ("verb", "aux_be", "aux_have", "modal")
 
@@ -34,6 +36,8 @@ def derived(role):
     D["d.pend_time"] = [[f"pend_prep={w}"] for w in TIME_PREPS]
     D["d.personal0"] = [[f"w0.surf={w}"] for w in PERSONAL]
     D["d.posspron0"] = [["w0.class=pron", "w0.prole=p"], ["w0.class=pron", "w0.prole=op"]]
+    D["d.quantart"] = [[f"w0.surf={q}", f"w1.surf={a}"] for q in QUANTIFIERS for a in ("a", "an", "the")]            # such a / all the: the article is dropped
+    D["d.indefadj"] = [[f"w0.surf={w}", "w1.class=adj", "¬w1.class=noun", "¬w1.class=verb"] for w in INDEFINITES]   # something new -> 何か新しいもの
     D["d.lotof"] = [["w0.surf=a lot", "w1.surf=of"], ["w0.surf=lots", "w1.surf=of"], ["w0.surf=a", "w1.surf=lot", "w2.surf=of"]]
     D["d.one_pronoun"] = [["w0.surf=one", "slot." + role + ".det", "¬w1.class=noun"], ["w0.surf=one", "slot." + role + ".poss", "¬w1.class=noun"]]
     return D
@@ -53,7 +57,8 @@ def rules_for(role):
               R("NP0", ["¬slot." + s("det"), "¬slot." + s("poss"), "w0.surf=a", "w1.surf=lot", "w2.surf=of"], "NP1", 3, [(s("det"), "たくさんの", ("const",))]),
               R("NP0", ["¬slot." + s("det"), "¬slot." + s("poss"), "¬d.lotof", "d.posspron0", "d.nominal1"], "NP1", 1, [poss_copy]),
               R("NP0", ["¬d.lotof", "w0.class=pron", "w0.prole=p", "¬d.nominal1"], "FAIL:possessive pronoun without noun", 0),
-              R("NP0", ["¬slot." + s("det"), "¬slot." + s("poss"), "¬d.lotof", "¬d.posspron0", "w0.class=det", "¬w0.class=pron", "¬w0.surf=no"], "NP1", 1, [det_copy]),
+              R("NP0", ["¬slot." + s("det"), "¬slot." + s("poss"), "¬d.lotof", "¬d.posspron0", "w0.class=det", "¬w0.class=pron", "¬w0.surf=no", "¬d.quantart"], "NP1", 1, [det_copy]),
+              R("NP0", ["¬slot." + s("det"), "¬slot." + s("poss"), "¬d.lotof", "¬d.posspron0", "w0.class=det", "¬w0.class=pron", "¬w0.surf=no", "d.quantart"], "NP1", 2, [det_copy]),
               R("NP0", ["¬slot." + s("det"), "¬slot." + s("poss"), "¬d.lotof", "¬d.posspron0", "w0.class=det", "¬w0.class=pron", "w0.surf=no"], "NP1", 1, [det_copy, ("neg", True, ("const",))]),
               R("NP0", ["¬slot." + s("det"), "¬slot." + s("poss"), "¬d.lotof", "¬d.posspron0", "w0.class=det", "w0.class=pron", "d.nominal1"], "NP1", 1, [det_copy])]
     # pronoun head: a non-possessive pronoun (or an 'op' pronoun / a det-pronoun) with nothing nominal after it
@@ -67,7 +72,8 @@ def rules_for(role):
         rules.append(R("NP0", head_ctx[2], "FAIL:subject case", 0))
         head_ctx = [hc + ["¬w0.prole=o", "¬w0.prole=r"] for hc in head_ctx[:2]]
     for hc in head_ctx:
-        rules += [R("NP0", hc + ["¬w1.surf='s"], "RET", 1, pron_head),
+        rules += [R("NP0", hc + ["¬w1.surf='s", "¬d.indefadj"], "RET", 1, pron_head),
+                  R("NP0", hc + ["¬w1.surf='s", "d.indefadj"], "NPM", 1, pron_head),
                   R("NP0", hc + ["w1.surf='s", "d.personal0"], "RET", 1, pron_head),
                   R("NP0", hc + ["w1.surf='s", "¬d.personal0", "w2.class=noun"], "NP0", 2, [poss_copy]),
                   R("NP0", hc + ["w1.surf='s", "¬d.personal0", "¬w2.class=noun", "w2.class=adj"], "NP0", 2, [poss_copy]),
@@ -75,6 +81,8 @@ def rules_for(role):
                     [(s("noun"), None, ("copy", "pron")), (s("cls"), "t", ("const",)), (s("mono"), "のもの", ("const",))])]
     rules += [
               R("NP0", ["¬d.lotof", "¬w0.class=det", "¬w0.class=pron"], "NP1", 0)]
+    # NPM — the adjective after an indefinite pronoun: something new -> 何か新しいもの
+    rules += [R("NPM", ["w0.class=adj"], "RET", 1, [(s("mono"), None, ("copy", "adj_mono"))])]
     # a second determiner or possessive after "name 's": the rule parser concatenates, the slots cannot
     for filled in (["slot." + s("det")], ["¬slot." + s("det"), "slot." + s("poss")]):
         rules += [R("NP0", filled + ["d.lotof"], "FAIL:possessive noun phrase", 0),

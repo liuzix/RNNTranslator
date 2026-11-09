@@ -342,6 +342,102 @@
    "verdict": "right",
    "output": "彼は彼の英語のクラスで遅れた。",
    "reason": "英語のクラス for 'English class' is also current; acceptable."
+  },
+  {
+   "citation": "dev 168: they clearly have something different in mind .",
+   "verdict": "right",
+   "output": "彼らは何か違うものを明らかに考えている。",
+   "reason": "'have something different in mind' as 何か違うものを考えている, with 明らかに: correct (the reference says 違うこと)."
+  },
+  {
+   "citation": "dev 193: i 'll never do this again .",
+   "verdict": "wrong",
+   "output": "私はこれを決してまたする。",
+   "reason": "'never' lost its negation: 決してまたする is affirmative."
+  },
+  {
+   "citation": "dev 193: i 'll never do this again .",
+   "verdict": "right",
+   "output": "私はこれを決してまたしない。",
+   "reason": "決して〜しない with また: acceptable (二度としない would be idiomatic)."
+  },
+  {
+   "citation": "dev 449: a child today would not do that .",
+   "verdict": "wrong",
+   "output": "今日子供はそれをしない。",
+   "reason": "'a child today' is 今日の子供 / いまどきの子供, not the time adverb 今日; and 'would' (conjecture) is lost."
+  },
+  {
+   "citation": "dev 449: a child today would not do that .",
+   "verdict": "wrong",
+   "output": "今日子供はそれをしないだろう。",
+   "reason": "だろう is right for 'would', but 'a child today' is still read as the time adverb 今日."
+  },
+  {
+   "citation": "dev 484: he never breaks his promise .",
+   "verdict": "wrong",
+   "output": "彼は約束を決して破る。",
+   "reason": "'never' lost its negation: 決して破る is affirmative."
+  },
+  {
+   "citation": "dev 484: he never breaks his promise .",
+   "verdict": "right",
+   "output": "彼は約束を決して破らない。",
+   "reason": "決して〜破らない: correct, the reference's word order differs only."
+  },
+  {
+   "citation": "dev 59: he has been to london three times .",
+   "verdict": "wrong",
+   "output": "彼はロンドンに３回いた。",
+   "reason": "'has been to' is the experiential 行ったことがある; ロンドンにいた is 'was in London'."
+  },
+  {
+   "citation": "test 260: my father boasts of the fact that he has never had a traffic accident .",
+   "verdict": "wrong",
+   "output": "私の父は彼が交通の事故に決して遭ったという事実を自慢する。",
+   "reason": "'never' lost its negation, and 'has never had' is 一度も遭ったことがない."
+  },
+  {
+   "citation": "test 260: my father boasts of the fact that he has never had a traffic accident .",
+   "verdict": "wrong",
+   "output": "私の父は彼が交通の事故に決して遭っていなかったという事実を自慢する。",
+   "reason": "The negation is back but the tense is wrong: 遭っていなかった is a past perfect; the present perfect of experience is 遭ったことがない."
+  },
+  {
+   "citation": "test 351: i 'll never forget what you told me .",
+   "verdict": "wrong",
+   "output": "私はあなたが私に何を話したか決して忘れる。",
+   "reason": "'never' lost its negation, and 'what you told me' is the free relative 言ったこと, not the question 何を話したか."
+  },
+  {
+   "citation": "test 351: i 'll never forget what you told me .",
+   "verdict": "wrong",
+   "output": "私はあなたが私に何を話したか決して忘れない。",
+   "reason": "The negation is back, but 'what you told me' is still read as an indirect question (何を話したか) instead of 言ったこと."
+  },
+  {
+   "citation": "test 355: it would rain just when i wanted to go out .",
+   "verdict": "wrong",
+   "output": "私が出かけたかったときちょうど雨が降る。",
+   "reason": "Narrative 'would rain' is a past habitual/past event (雨が降った / 降ったものだ); the present 降る is wrong."
+  },
+  {
+   "citation": "test 355: it would rain just when i wanted to go out .",
+   "verdict": "wrong",
+   "output": "私が出かけたかったときちょうど雨が降るだろう。",
+   "reason": "だろう reads 'would' as a conjecture; here it is the narrative past (雨が降った)."
+  },
+  {
+   "citation": "test 483: i have been to the station .",
+   "verdict": "wrong",
+   "output": "私は駅にいた。",
+   "reason": "'have been to the station' is 駅に行ってきた / 行ったことがある; 駅にいた is 'was at the station'."
+  },
+  {
+   "citation": "test 497: you ought not to say such a thing .",
+   "verdict": "right",
+   "output": "あなたはそんなことを言うべきではない。",
+   "reason": "'ought not to say such a thing' as そんなことを言うべきではない: correct."
   }
  ]
 }
