@@ -20,10 +20,12 @@
 #   ni_where     where -> どこに (where do you live)
 #   stative      plain form reads as ている (have -> 持っている)
 #   ga           the object takes が (like -> が好き)
+#   ni_obj       the object takes に (answer the question -> 質問に答える, enter the house -> 家に入る)
 advise | control
 afford | to_comp
 agree | to_comp,comitative
 allow | control
+answer | ni_obj
 arrive | ni_location
 ask | not_to,wh_comp,if_comp,control
 be | comitative,ni_location,ni_where
@@ -41,6 +43,7 @@ dare say | that_comp
 decide | to_comp,not_to,wh_comp
 eat | comitative
 enjoy | to_comp,ing_comp
+enter | ni_obj
 expect | to_comp,that_comp,control
 explain | wh_comp,dative
 fail | to_comp
@@ -124,7 +127,6 @@ try | to_comp,not_to
 turn | copular
 understand | wh_comp,ga
 wait | posture
-walk | motion,posture
 want | not_to,control,ga
 watch | perception
 wear | stative

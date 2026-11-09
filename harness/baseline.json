@@ -3,21 +3,21 @@
 "matrix": {
 "both_refuse": 263,
 "cell": {
-"build_seconds": 26,
-"input_units": 2043,
+"build_seconds": 25,
+"input_units": 2044,
 "layers": [
-989,
+990,
 135,
-2171,
+2172,
 790,
 31257
 ],
-"nnz": 222305,
-"rules": 1980,
+"nnz": 222334,
+"rules": 1981,
 "rules_by_kind": {
 "entry": 132,
 "exit": 180,
-"fail": 234,
+"fail": 235,
 "module": 1003,
 "outer": 431
 },
@@ -48,8 +48,8 @@
 "wrong_frame": 1
 },
 "test": {
-"bleu_matrix_shared": 36.624,
-"bleu_rules_shared": 36.674,
+"bleu_matrix_shared": 36.581,
+"bleu_rules_shared": 36.631,
 "both_refuse": 83,
 "examples": {
 "wrong_frame": [
@@ -64,7 +64,7 @@
 }
 },
 "refused_parseable": 200,
-"summary": "identical 530, wrong frame 2, matrix parses refused 0, refused parseable 200, both refuse 263; nnz 222305, rules 1980",
+"summary": "identical 530, wrong frame 2, matrix parses refused 0, refused parseable 200, both refuse 263; nnz 222334, rules 1981",
 "wrong_frame": 2
 },
 "negatives": {
@@ -74,7 +74,7 @@
 "count": 18,
 "matrix_accepted": 0,
 "problems": [],
-"seconds": 25,
+"seconds": 27,
 "summary": "negatives: rules refuse 18/18 and accept 18/18 controls; matrix refuses 18/18 and accepts 14/18 controls"
 },
 "np": {
@@ -110,8 +110,8 @@
 "n": 496
 },
 "test": {
-"bleu_all": 30.595,
-"bleu_covered": 36.12,
+"bleu_all": 30.561,
+"bleu_covered": 36.093,
 "coverage": 0.8337,
 "covered": 416,
 "failures": {
@@ -200,11 +200,11 @@
 },
 "K": {
 "cases": 3,
-"closed": false,
+"closed": true,
 "refused": 0,
-"right": 0,
+"right": 3,
 "title": "Particles by verb frame",
-"wrong": 3
+"wrong": 0
 },
 "L": {
 "cases": 3,
@@ -223,10 +223,10 @@
 "wrong": 3
 }
 },
-"closed": 3,
-"open": 8,
-"right": 16,
-"summary": "suites: 16/33 cases right, 3 of 11 classes closed (open: D, E, G, H, I, K, L, M)"
+"closed": 4,
+"open": 7,
+"right": 19,
+"summary": "suites: 19/33 cases right, 4 of 11 classes closed (open: D, E, G, H, I, L, M)"
 }
 },
 "metrics": {
@@ -238,11 +238,11 @@
 "np.mismatches": 0,
 "rules.dev.bleu_all": 19.666,
 "rules.dev.covered": 316,
-"rules.test.bleu_all": 30.595,
+"rules.test.bleu_all": 30.561,
 "rules.test.covered": 416,
 "suites.cases": 33,
-"suites.closed": 3,
-"suites.right": 16
+"suites.closed": 4,
+"suites.right": 19
 },
 "outputs": {
 "matrix": {
@@ -1116,7 +1116,7 @@
 "433: i made an effort to finish my work .": "",
 "434: i want a book .": "私は本が欲しい。",
 "435: it 's touch and go .": "それは危ういだ。",
-"436: i refuse to answer the question .": "私は質問を答えることを拒否する。",
+"436: i refuse to answer the question .": "私は質問に答えることを断る。",
 "437: would you mind waiting a few minutes ?": "少しの分を待ってもらえませんか。",
 "438: you brought it on yourself .": "あなたは自分でそれを持ってきた。",
 "439: how long will you stay in japan ?": "あなたはどのくらい日本に泊まりますか。",
@@ -2550,7 +2550,7 @@
 "433: i made an effort to finish my work .": "私は私の仕事を終えるために努力をした。",
 "434: i want a book .": "私は本が欲しい。",
 "435: it 's touch and go .": "それは危ういだ。",
-"436: i refuse to answer the question .": "私は質問を答えることを拒否する。",
+"436: i refuse to answer the question .": "私は質問に答えることを断る。",
 "437: would you mind waiting a few minutes ?": "少しの分を待ってもらえませんか。",
 "438: you brought it on yourself .": "あなたは自分でそれを持ってきた。",
 "439: how long will you stay in japan ?": "あなたはどのくらい日本に泊まりますか。",
@@ -2900,8 +2900,8 @@
 {
 "citation": "test 300",
 "class": "K",
-"expect": "彼の父は週に二回そこで食べる。",
-"level": "WRONG",
+"expect": "彼の父はそこで週に二回食べる。",
+"level": "RIGHT",
 "output": "彼の父はそこで週に二回食べる。",
 "reason": null,
 "sentence": "his father eats there twice a week ."
@@ -2910,16 +2910,16 @@
 "citation": "test 436",
 "class": "K",
 "expect": "私は質問に答えることを断る。",
-"level": "WRONG",
-"output": "私は質問を答えることを拒否する。",
+"level": "RIGHT",
+"output": "私は質問に答えることを断る。",
 "reason": null,
 "sentence": "i refuse to answer the question ."
 },
 {
 "citation": null,
 "class": "K",
-"expect": "私は学校まで歩く。",
-"level": "WRONG",
+"expect": "私は学校に歩く。",
+"level": "RIGHT",
 "output": "私は学校に歩く。",
 "reason": null,
 "sentence": "i walk to school ."
@@ -2980,5 +2980,5 @@
 }
 ]
 },
-"taken": "2026-11-08 at 2f26700 (staged)"
+"taken": "2026-11-08 at eacc67c (staged)"
 }

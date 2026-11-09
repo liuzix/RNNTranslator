@@ -539,7 +539,7 @@ def generate(c, polite=None, embedded=False):
         if c.obj:
             neg_pol = c.obj.endswith(("何も", "誰も"))
             if neg_pol: c.neg = True
-            out.append(c.obj + ("" if neg_pol else c.obj_particle if c.obj_particle is not None else ("が" if (c.verb and (c.verb[0] in GA_VERBS or c.modal == "can") and not c.want) else "を")))
+            out.append(c.obj + ("" if neg_pol else c.obj_particle if c.obj_particle is not None else ("が" if (c.verb and (c.verb[0] in GA_VERBS or c.modal == "can") and not c.want) else "に" if c.verb and lemma_of(c.verb) in VC["ni_obj"] else "を")))
         if c.wh and c.wh[1] == "o" and not c.copula:
             out.append(c.wh[0] + "を")
         if c.adv: out.append(c.adv)

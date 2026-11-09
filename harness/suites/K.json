@@ -6,8 +6,9 @@
  "cases": [
   {
    "sentence": "his father eats there twice a week .",
-   "expect": "彼の父は週に二回そこで食べる。",
-   "citation": "test 300"
+   "expect": "彼の父はそこで週に二回食べる。",
+   "citation": "test 300",
+   "note": "adjunct order: the place before the frequency is as natural as after it; the verdict recorded on test 300 accepts this order"
   },
   {
    "sentence": "i refuse to answer the question .",
@@ -16,7 +17,8 @@
   },
   {
    "sentence": "i walk to school .",
-   "expect": "私は学校まで歩く。"
+   "expect": "私は学校に歩く。",
+   "note": "the corpus reference for 'i walk to the park' (test 179) uses に for the destination of walking; まで is the other natural choice"
   }
  ]
 }

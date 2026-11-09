@@ -28,7 +28,7 @@ continue | {stem}続ける | v1
 help | {dic}のを手伝う | v5
 expect | {dic}と思う | fixed
 seem | {dic}ようだ | fixed
-refuse | {inner}ことを拒否する | fixed
+refuse | {inner}ことを断る | v5
 agree | {inner}ことに同意する | fixed
 manage | 何とか{dic} | fixed
 pretend | {inner}ふりをする | fixed
