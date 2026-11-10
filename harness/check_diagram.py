@@ -1,8 +1,10 @@
 """The rendered diagrams must match their lock: docs/architecture.lock.json records the sha256 of each .puml source and
 of the .svg rendered from it with the pinned PlantUML jar, and of each drawing script under harness/ and the .svg it
 draws with nothing but Python.  A source edited without a re-render, an SVG edited by hand, or an SVG the README does
-not reference fails; a drawing is also re-run and must reproduce the committed SVG byte for byte.  No Java is needed
-here; rendering is harness/render_diagram.py and harness/render_neurons.py.
+not reference fails; a rendered diagram must also show the labels of its source — matching hashes do not make a picture:
+PlantUML without a layout engine draws its error message and exits 0, and such an image was once committed and pinned;
+a drawing is re-run and must reproduce the committed SVG byte for byte.  No Java is needed here; rendering is
+harness/render_diagram.py and harness/render_neurons.py.
 
     uv run python harness/check_diagram.py [--root DIR]
 """
@@ -25,6 +27,7 @@ def main():
     schema = json.load(open(os.path.join(root, "schemas", "diagram-lock.schema.json"), encoding="utf-8"))
     errors += [f"docs/architecture.lock.json: {'/'.join(map(str, e.absolute_path)) or '<root>'}: {e.message[:120]}" for e in Draft202012Validator(schema).iter_errors(lock)]
     readme = open(os.path.join(root, "README.md"), encoding="utf-8").read()
+    RD = load_module(os.path.join(os.path.dirname(os.path.abspath(__file__)), "render_diagram.py"), "render_diagram_for_check")
     for kind, entries in (("diagram", lock.get("diagrams", [])), ("drawing", lock.get("drawings", []))):
         for d in entries:
             for key, fld in (("source", "source_sha256"), ("output", "output_sha256")):
@@ -36,6 +39,9 @@ def main():
             out = os.path.join(root, d["output"])
             svg = open(out, "rb").read() if os.path.exists(out) else b""
             if svg and not svg.startswith(b"<svg"): errors.append(f"{d['output']} is not an SVG")
+            if kind == "diagram" and svg and os.path.exists(os.path.join(root, d["source"])):
+                missing = RD.shows_labels(open(os.path.join(root, d["source"]), encoding="utf-8").read(), svg.decode("utf-8", "replace"))
+                if missing: errors.append(f"{d['output']} is not a picture of {d['source']}: {len(missing)} of its label lines are not in the SVG, e.g. {missing[0]!r}")
             if kind == "drawing" and svg and os.path.exists(os.path.join(root, d["source"])):
                 try:
                     drawn = load_module(os.path.join(root, d["source"]), "drawing_" + os.path.basename(d["source"])[:-3]).render().encode("utf-8")

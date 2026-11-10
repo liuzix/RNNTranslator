@@ -3,20 +3,21 @@
  "plantuml": {
   "version": "1.2025.10",
   "url": "https://github.com/plantuml/plantuml/releases/download/v1.2025.10/plantuml-1.2025.10.jar",
-  "sha256": "4a01ea09b317180fb8e7eef712dfdca725409d2ee1919e4b5adfe9d8362b6fe5"
+  "sha256": "4a01ea09b317180fb8e7eef712dfdca725409d2ee1919e4b5adfe9d8362b6fe5",
+  "layout": "smetana"
  },
  "diagrams": [
   {
    "source": "docs/architecture.puml",
    "output": "docs/architecture.svg",
    "source_sha256": "c5769dc0c2dc53ddb07ff707b783a98a056f7657ac356ba0121b5e941963b192",
-   "output_sha256": "eefdc4115f4ab52d4479fb682935aaea4562d2a478b37f00ce037248182f9bc4"
+   "output_sha256": "6bb7ca2630d2ba66e77d6846d38215d7172d67852efebadbac893585a608288b"
   },
   {
    "source": "docs/cell.puml",
    "output": "docs/cell.svg",
    "source_sha256": "7a626b0774a59381a2abea3f4395275efa54869e4ff70c400b0d532c5630962f",
-   "output_sha256": "b2f38900b2f134bf4ebc2e16b797e2295117906760026a44323b98f49a9a3d8b"
+   "output_sha256": "f7b323e180ea273db904f17f258f0817c4a4a9073b23f8b63ba96a88d4c28cdf"
   }
  ],
  "drawings": [
