@@ -8,133 +8,155 @@
 $schema: schemas/todo.schema.json
 items:
 
-# ---------------------------------------------------------------------------------------------------- round 3
-- id: torch-pinned
-  title: The cell runs under PyTorch, pinned by a `torch` action in the hook
-  status: done
-  round: 3
+# ---------------------------------------------------------------------------------------------------- round 4
+# Inner clauses that generate() folds into a string: each is read in the one frame the way a that-clause is — the outer prefix
+# printed at the boundary, the outer predicate held in the tag slots, the clause printed when it closes in a mode of its own,
+# the slots cleared and the tags restored — and the constructions that slice a generated string print the stem form directly.
+- id: clause-modes
+  title: Print modes that end an inner clause at a stem form, so that no construction slices a generated string
+  status: open
+  round: 4
   context:
-  - text: The compiled cell is five sparse ReLU layers and a readout of zeros and ones whose weights are plus or minus one, except a large negative weight on a literal the cell cannot see, with integer thresholds, so single precision is exact.
-    pinned_by: test_cell_weights_are_named_integers
-  - text: "`cell_torch.py` builds the same matrices as torch sparse CSR buffers, and the `torch` action (`harness/eval_torch.py`) steps the scipy and torch runners side by side on every dev and test sentence and counts the sentences whose states ever differ, an item of the lattice (torch.exact) whose top is zero."
-    pinned_by: torch
-  - text: torch comes from the PyTorch CPU index, declared as an explicit index in pyproject.toml and locked by sha256 like every other dependency, in a dependency group the hook's sync installs by default.
-    pinned_by: test_dependencies_hash_pinned
-  acceptance: test_torch_action_in_hook
-  touches: [pyproject.toml, uv.lock, harness/run.py, harness/lattice.py, harness/baseline.json, docs/README.tmpl.md]
-
-- id: print-rules
-  title: Printing rules in normal form for single-clause frames, checked against generate()
-  status: done
-  round: 3
-  context:
-  - text: The semantic layer generates the Japanese from the frame, and the frame never looks at the English again.
-    pinned_by: test_layers_roundtrip
-  - text: "`gen_module.py` holds the printing rules in the normal form of np_module — per position, an ordered decision over slot predicates (base literals and derived DNFs, every one a test on the flat frame) whose terminals emit one token: a constant morpheme, a slot's value, or a form of the verb or the copula's adjective from the morphology table."
-    pinned_by: test_print_rules_normal_form
-  - text: The `printer` action steps the rules on every sentence the rule parser parses and on a sweep of frames over the predicates they test; the rules agree with generate() wherever they print and refuse the frames that hold a register the cell has no block for, as the lattice items printer and printer.sweep record.
-    pinned_by: printer
-  - text: generate() still contains string surgery that slices the inner predicate off a printed string for inner clauses, infinitives and control, which the rules do not cover and the frame cannot hold.
-    hypothesis: true
-  acceptance: test_print_rules_match_generate
-  touches: [gen_module.py, harness/eval_printer.py, harness/test_claims.py, harness/lattice.py]
-
-- id: decoder-compile
-  title: "Compile the printing rules into the cell: emit, read gates, form gates, y(t)"
-  status: done
-  round: 3
-  depends_on: [print-rules]
-  context:
-  - text: The state is six kinds of one-hot block — control, slots, the pending preposition, the shift and emit units, and the output morpheme — and the printing positions are control states of the one control block, entered from DONE.
-    pinned_by: test_matrix_cell_shape
-  - text: A slot write is a gated copy — a block gate and a source gate in one layer, write and keep units in the next, the readout summing them into the block — and a slot read is the same circuit with the arrows reversed, a read gate ORed from the printing rules and one read unit per value summed into the output; a read with nothing in the block fires into FAIL as a copy with no source does.
-    pinned_by: test_decoder_mirrors_encoder
-  - text: The cell's own print head, not generate() on the frame, is what the matrix action compares with the rule transducer, and the torch action steps both runners through the printing too.
-    pinned_by: test_decoder_is_the_cell_run_backwards
-  acceptance: test_decoder_emits_japanese
-  touches: [parser_matrix.py, cell_torch.py, parser.py, harness/eval_matrix.py, harness/render_neurons.py, docs/cell.puml]
-
-- id: hand-modules
-  title: Translate the PP machine, predicate and copula_predicate by hand into modules with complete guards
-  status: done
-  round: 3
-  context:
-  - text: np_module, translated by hand from parse_np, agrees with it on every window of at most two tokens over the token classes, of-phrases included.
-    pinned_by: np
-  - text: "The PP machine, predicate and copula_predicate are hand-translated modules with complete guards (`pp_module.py`, `predicate_module.py`): per position an ordered decision whose last rule is the refusal, spliced into the cell at every activation of those methods in place of the rules extracted for them; what is still extracted is the start of the sentence, the question paths, the verb phrase, its objects and the end."
-    pinned_by: test_clause_modules_replace_extraction
-  - text: The cell misfires on no sentence of the corpus, and refuses the sentences the rules parse that its scope does not hold.
-    pinned_by: matrix
-  - text: The gaps that remain are inner clauses, folded frames and the paths still extracted; translating pre, the question paths, verb_phrase and tail by hand would leave the cell no induced guard.
-    hypothesis: true
-  acceptance: test_hand_modules_agree
-  touches: [pp_module.py, predicate_module.py, parser_matrix.py, np_module.py, parser_rules.py, gen_module.py]
-
-- id: inner-clauses
-  title: Inner clauses in one frame — printing at clause end, clearing, the outer predicate in tag slots
-  status: done
-  round: 3
-  depends_on: [decoder-compile, hand-modules]
-  context:
-    - text: The rule parser is a bounded transducer with a frame stack of depth at most two, and the matrix state has no second bank
-        of slots for an inner clause.
-      pinned_by: test_rule_parser_bounds
-    - text: A that-clause is read in the one frame — at the boundary the print head emits the outer prefix and OPEN moves the outer
-        predicate into the tag slots, exactly the registers the suffix positions read, clearing every other slot by its own gate;
-        the clause is read into the cleared slots, flushed at CLOSE (printed in embedded mode, then と) and cleared again at
-        RESTORE, which moves the tags back for the outer predicate; a frame whose tags are in use, or whose predicate the tags
-        cannot hold, is refused at OPEN.
+    - text: A that-clause is read in the one frame — the outer prefix printed at the boundary, the outer predicate held in the tag
+        slots, the clause printed in mode embedded when it closes (が on its subject, plain forms, と), the tags restored for the suffix.
       pinned_by: test_inner_clause_in_one_frame
-    - text: The printing rules print a that-clause as generate() does on every parsed sentence of the corpus and on the sweep,
-        under a reporting verb and around a fixed inner clause.
+    - text: The printing rules end a clause at a finite form of its predicate, in every mode they have — the sentence, the prefix
+        before a that-clause, the clause itself and the suffix after it.
       pinned_by: printer
-    - text: The cell translates the corpus sentences whose that-clause follows a verb as the rules do; a that-clause after a
-        copula (I am sure that S) opens inside the copula module, which refuses it.
+    - text: generate() builds the Japanese of a purpose clause, a manner clause, a control clause and an adjective's infinitive by
+        slicing the string of the inner clause and appending a stem form of its predicate — the masu stem with に or ながら, the te
+        form, the causative conjugated with the outer tense — which no slot read gives.
+      hypothesis: true
+    - text: An inner clause needs print modes that end at the stem form its construction asks for — te, the masu stem, the plain form,
+        the causative taking the outer predicate's tense from the tags — so that every construction prints by slot reads, constant
+        morphemes and form lookups, the stem forms being columns of the morphology table the form gates already read.
+      hypothesis: true
+  stubs: [ClauseModes]
+  acceptance: test_clause_modes_end_at_stem_forms
+  touches: [gen_module.py, parser_matrix.py]
+
+- id: coordination
+  title: Coordinated clauses — the first clause flushed at the conjunction in the link's mode
+  status: open
+  round: 4
+  depends_on: [clause-modes]
+  context:
+    - text: A coordinated sentence folds the clause before the conjunction into a string — its te form for and, が for but, ので for
+        so — that the frame carries as pre_clause, a register the cell has no block for, so the cell refuses every coordinated
+        sentence the rules translate.
       pinned_by: matrix
-    - text: A that-clause inside a that-clause, a folded frame and the paths still extracted are the gaps that remain.
+    - text: The first clause ends at the conjunction, where the English order is the Japanese order, so the flush that prints a
+        that-clause prints it — in the mode ending at the te form for and, at the finite form with が or ので for but and so — its
+        slots cleared for the second clause, whose dropped subject is the first's.
       hypothesis: true
-  acceptance: test_inner_clause_sentence_agrees
-  touches: [parser_matrix.py, parser_rules.py, gen_module.py, cell_torch.py]
+  stubs: [Coordination]
+  acceptance: test_coordinated_clauses_agree
+  touches: [parser_matrix.py, gen_module.py, parser_rules.py]
 
-- id: lexical-layer0
-  title: 'The lexical layer as layer 0: verb-conditioned readings inside the cell'
-  status: done
-  round: 3
+- id: subordinate-clauses
+  title: Subordinate clauses — when, if, because, although — flushed at the comma with their conjunction
+  status: open
+  round: 4
+  depends_on: [clause-modes]
   context:
-    - text: Two feedback edges cross the layers — the noun's use-verb rewrites the verb, and the parser's state decides which
-        reading of a token is used.
-      pinned_by: test_feedback_edges
-    - text: The second edge is inside the cell — the table rows that join the frame's verb with the window (the idiom tails, the
-        particle after a verb, the use nouns) are AND units over the verb block and the window's table keys, ORed into the hit
-        predicates the rules read — so the runner hands the cell the window alone and reads nothing from the state.
-      pinned_by: test_verb_hits_are_layer_zero
-  acceptance: test_lexical_hits_inside_cell
-  touches: [parser_matrix.py, cell_torch.py]
-
-- id: normal-form
-  title: Reduced ordered decision diagrams as the canonical form of the rules
-  status: done
-  round: 3
-  depends_on: [hand-modules]
-  context:
-    - text: A control point's rules have one reduced ordered decision diagram over the cell's variables, the same whatever order the rules
-        came in, whose paths are the rules with no redundant literal; `canon.py` builds it, and its text form reads back to the same
-        diagram.
-      pinned_by: test_canon_is_canonical
-    - text: The diagram ranges over feasible inputs — the lexicon's tokens in the window, the values a slot can hold or nothing, the PP
-        slots filling in order, and derived predicates, counts, table hits and the USE pair expanded into base literals — so it has no
-        path that no input can take.
-      pinned_by: test_canon_over_feasible_inputs
-    - text: Every control point of the cell is complete and consistent — the hand-written modules by their otherwise-rules, the induced
-        control points by the refusals the compiler materialises where a guard fails or the traces disagreed, the return states by
-        its closing refusal for an address no caller serves.
-      pinned_by: test_canon_control_points_total
-    - text: With every control point total, "module equals induced" is diagram equality, so a hand translation of an extracted path is
-        checked by comparing its diagram with the induced one.
+    - text: A subordinate clause is folded into pre_clause as a string ending in its conjunction's Japanese — とき, なら, ので, が —
+        and the cell refuses every sentence the rules translate that has one.
+      pinned_by: matrix
+    - text: generate() prints the subordinate clause before the main clause whatever its English position, so a clause that comes
+        first is a flush at the comma in a mode ending with its conjunction, nothing of the main clause read yet; a clause that
+        follows its main clause needs the main clause held whole while the subordinate one is read and printed first — a second
+        bank of slots, or an output register the clause is printed into ahead of the main clause's output — which the one-frame
+        design does not have.
       hypothesis: true
-  acceptance: test_canonical_diagrams
-  touches: [canon.py, parser_matrix.py, np_module.py, pp_module.py, predicate_module.py, gen_module.py]
+  stubs: [SubordinateClause]
+  acceptance: test_subordinate_clause_first_agrees
+  touches: [parser_matrix.py, gen_module.py, parser_rules.py]
 
+- id: relative-clauses
+  title: Relative clauses — the modified noun phrase held while the clause is read and printed before it
+  status: open
+  round: 4
+  depends_on: [clause-modes]
+  context:
+    - text: A relative clause is folded into the noun phrase it modifies as a string, the frame is marked folded, and the cell
+        refuses it.
+      pinned_by: test_np_of_phrase
+    - text: Japanese puts the clause before its head noun (医者である息子), so at the relative pronoun the outer prefix up to the
+        modified noun phrase is printed, the noun phrase's slots are held beside the tags, the clause is read and printed in a mode
+        ending at the plain form, and the held noun phrase follows with its particle; a clause that writes a slot the hold already
+        has is refused.
+      hypothesis: true
+  stubs: [RelativeClause]
+  acceptance: test_relative_clause_agrees
+  touches: [parser_matrix.py, gen_module.py, np_module.py]
+
+- id: infinitives
+  title: Infinitive complements of a copula — te before the adjective, のは and のには before it
+  status: open
+  round: 4
+  depends_on: [clause-modes]
+  context:
+    - text: The infinitive register holds an inner clause printed around the copula's adjective — the te form before it (difficult
+        to solve → 解いて難しい), the clause with のは before an extraposed one (it is definite that S), a noun-phrase infinitive with
+        のには — and the cell refuses it.
+      pinned_by: matrix
+    - text: Each is a flush in its own mode at the boundary — te, のは, のには — with the copula held in the tags, the dummy subject
+        それ of an extraposed clause dropped as the weather rule drops it.
+      hypothesis: true
+  stubs: [Infinitive]
+  acceptance: test_infinitive_clauses_agree
+  touches: [parser_matrix.py, gen_module.py, predicate_module.py]
+
+- id: purpose-clauses
+  title: Purpose clauses — the masu stem with に, or the plain form with ために, before the main verb
+  status: open
+  round: 4
+  depends_on: [clause-modes]
+  context:
+    - text: A purpose infinitive after a verb (come to talk, go to see) is folded as purpose_clause and printed before the main verb
+        as the masu stem with に, or the plain form with ために; the cell refuses it.
+      pinned_by: matrix
+    - text: The main verb is already in the verb slot when the purpose clause opens, so the tags hold it as they hold a reporting
+        verb, and the clause prints in a mode ending at the masu stem with に, or at the plain form with ために.
+      hypothesis: true
+  stubs: [PurposeClause]
+  acceptance: test_purpose_clauses_agree
+  touches: [parser_matrix.py, gen_module.py, pp_module.py]
+
+- id: gerunds
+  title: Gerund and manner clauses — the plain form with のを or こと, the masu stem with ながら
+  status: open
+  round: 4
+  depends_on: [clause-modes]
+  context:
+    - text: A gerund clause — the object of a preposition or a verb (thinking of going, insisted on going) — or a manner clause
+        (stood looking) is folded into the frame as a string, and the cell refuses it.
+      pinned_by: matrix
+    - text: The verb before the gerund is already in the verb slot, so the tags hold it, and the clause prints in a mode ending at the
+        plain form with のを or こと, or at the masu stem with ながら.
+      hypothesis: true
+  stubs: [Gerund]
+  acceptance: test_gerund_clauses_agree
+  touches: [parser_matrix.py, gen_module.py, pp_module.py]
+
+- id: control-clauses
+  title: Object-control clauses — the object as the inner subject, ように or the causative with the outer tense
+  status: open
+  round: 4
+  depends_on: [clause-modes]
+  context:
+    - text: An object-control clause (asked him to open the window, made him change his plan) is folded as control — its subject
+        takes に, its predicate the plain form with ように, or the causative conjugated with the outer clause's tense — and the cell
+        refuses it.
+      pinned_by: matrix
+    - text: The object becomes the inner subject by a move, not a copy, the outer verb waits in the tags, and the clause prints in a
+        mode ending at the plain form with ように, or at the causative form whose finite suffix reads the tags' tense.
+      hypothesis: true
+  stubs: [ControlClause]
+  acceptance: test_control_clauses_agree
+  touches: [parser_matrix.py, gen_module.py, predicate_module.py]
+
+# ---------------------------------------------------------------------------------------------------- round 2, carried over
 - id: matrix-chain-scope
   title: Matrix items only for sentences the rules parse
   status: open

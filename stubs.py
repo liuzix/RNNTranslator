@@ -31,3 +31,44 @@ TODO = _Todo()
 class Stub:
     item = None                    # the TODO.yaml item this stub belongs to
     def _hit(self, name): CALLS[f"{type(self).__name__}.{name}"] += 1; return TODO
+
+class ClauseModes(Stub):
+    """print modes that end an inner clause at a stem form instead of a finite form (item clause-modes)"""
+    item = "clause-modes"
+    def modes(self): return self._hit("modes")                               # -> the names of the modes: te, the masu stem, the plain form, the causative with the outer tense
+    def stem_rules(self): return self._hit("stem_rules")                     # -> the printing rules of those modes: the predicate's stem form, then the construction's morpheme
+
+class Coordination(Stub):
+    """the clause before a conjunction flushed in the link's mode (item coordination)"""
+    item = "coordination"
+    def link_rules(self): return self._hit("link_rules")                     # -> the rules at the conjunction: flush the first clause, clear, read the second
+
+class SubordinateClause(Stub):
+    """a sentence-initial subordinate clause flushed at the comma with its conjunction (item subordinate-clauses)"""
+    item = "subordinate-clauses"
+    def order_rules(self): return self._hit("order_rules")                   # -> the rules at the comma: flush the clause with とき / なら / ので / が, clear, read the main clause
+
+class RelativeClause(Stub):
+    """the modified noun phrase held while the relative clause is read and printed before it (item relative-clauses)"""
+    item = "relative-clauses"
+    def hold_rules(self): return self._hit("hold_rules")                     # -> the rules that hold the noun phrase, flush the clause in the plain form and print the phrase after it
+
+class Infinitive(Stub):
+    """an infinitive complement of a copula flushed in its mode (item infinitives)"""
+    item = "infinitives"
+    def mode_rules(self): return self._hit("mode_rules")                     # -> the flush rules per mode: te before the adjective, のは, のには
+
+class PurposeClause(Stub):
+    """a purpose clause flushed before the main verb held in the tags (item purpose-clauses)"""
+    item = "purpose-clauses"
+    def purpose_rules(self): return self._hit("purpose_rules")               # -> the flush rules: the masu stem with に, the plain form with ために
+
+class Gerund(Stub):
+    """a gerund or manner clause flushed before the verb held in the tags (item gerunds)"""
+    item = "gerunds"
+    def gerund_rules(self): return self._hit("gerund_rules")                 # -> the flush rules: the plain form with のを or こと, the masu stem with ながら
+
+class ControlClause(Stub):
+    """an object-control clause: the object moved into the inner subject, the clause flushed (item control-clauses)"""
+    item = "control-clauses"
+    def control_rules(self): return self._hit("control_rules")               # -> the move of the object and the flush rules: ように, or the causative with the outer tense

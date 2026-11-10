@@ -32,7 +32,13 @@ def load_module(path, name):
 def small_cell(root):
     """the hybrid cell compiled on a few dev sentences plus the sentences the tests below need"""
     if "comp" not in _cache:
-        extra = ("she took a rest .", "i like the big dog .", "he said that he was tired .", "he gave me a book .")
+        extra = ("she took a rest .", "i like the big dog .", "he said that he was tired .", "he gave me a book .",
+                 # round 4: one anchor sentence per construction, each translated by the rules and refused by the cell while its item is open
+                 "he is poor and could not buy a coat .", "she speaks english and also speaks swahili .", "when i was a child , i loved reading .",
+                 "if it rains tomorrow , i will stay at home .", "she has a son who is a doctor .", "do you know any doctors who speak japanese ?",
+                 "this problem is difficult to solve .", "it is a good idea to read this book .", "it is definite that he will go to america .",
+                 "please come to talk to me .", "he comes to see me nearly every day .", "i am thinking of going to the mountains .",
+                 "she insisted on going there .", "she stood looking at a boat on the river .", "she asked him to open the window .", "i made him change his plan .")
         sents = [R.merge_multiword(en) for en, ja in H.load("dev")[:60]] + [R.merge_multiword(s.split()) for s in extra]
         _cache["comp"] = PM.build_hybrid(sents); _cache["mp"] = PM.MatrixParser(_cache["comp"]); _cache["sents"] = sents
     return _cache["comp"], _cache["mp"], _cache["sents"]
@@ -48,86 +54,61 @@ def suite_closed(root, cls):
         if out != case["expect"]: wrong.append((case["sentence"], out, case["expect"]))
     assert not wrong, f"suite {cls}: {len(wrong)} of {len(suite['cases'])} cases not right: {wrong[0]}"
 
-# ---------------------------------------------------------------- round 3
-def test_torch_action_in_hook(root):
-    """the cell runs under PyTorch and the hook pins it: a `torch` action exists and the baseline records zero divergence"""
-    RUN = load_module(os.path.join(root, "harness", "run.py"), "run_for_acceptance")
-    base = baseline(root)
-    assert "torch" in RUN.ACTIONS, "no `torch` action in harness/run.py"
-    assert base["detail"].get("torch", {}).get("diverging") == 0, "the baseline has no torch result with zero divergence"
+# ---------------------------------------------------------------- round 4: inner clauses folded as strings, read in the one frame
+def agrees(root, sentences):
+    """the cell translates every sentence as the rule transducer does"""
+    comp, mp, sents = small_cell(root); bad = []
+    for s in sentences:
+        toks = R.merge_multiword(s.split()); want = R.generate(PR.parse_bounded(toks))
+        try: got = R.generate(mp.parse(toks))
+        except PR.ParseFail as e: got = f"refused: {str(e)[:60]}"
+        if got != want: bad.append((s, want, got))
+    assert not bad, f"{len(bad)} of {len(sentences)} sentences differ from the rules: {bad[0]}"
 
-def test_print_rules_match_generate(root):
-    """the printing rules, stepped, emit exactly what generate() prints, for frames the rule parser fills"""
-    import gen_module as G
-    pr = G.PrintRules()
-    positions = pr.positions(); rules = pr.rules_for(next(iter(positions), None)); derived = pr.derived()
-    frames = [PR.parse_bounded(R.merge_multiword(s.split())) for s in ("i like the big dog .", "she did not read the book yesterday .", "he gave me a book .")]
-    tokens = [pr.render(f) for f in frames]
-    assert len(list(positions)) > 0 and rules and derived is not None
-    for f, t in zip(frames, tokens): assert "".join(t) == R.generate(f), f"{t} != {R.generate(f)}"
+def test_clause_modes_end_at_stem_forms(root):
+    """the printing rules have modes that end an inner clause at a stem form — te, the masu stem — rendered from the frame by the form
+    gates, not sliced from a generated string"""
+    import gen_module as GM
+    cm = ST.ClauseModes(); modes = cm.modes(); rules = cm.stem_rules()
+    assert modes and rules, "no stem-form print modes"
+    F = GM.flatten(PR.parse_bounded(R.merge_multiword("he opened the window .".split()))); pr = GM.PrintRules()
+    te = "".join(pr.run(dict(F, pmode="te"), "RESTORE")); stem = "".join(pr.run(dict(F, pmode="stem"), "RESTORE"))
+    assert te.startswith("彼") and te.endswith("開けて") and stem.endswith("開け") and "。" not in te + stem
 
-def test_decoder_emits_japanese(root):
-    """the compiled cell has an emit unit and y(t) units, and the print head's output, through the output lexical layer, is generate()'s string"""
-    comp, mp, sents = small_cell(root)
-    d = PM.Decoder()
-    comp2 = d.compile(comp)
-    mp2 = PM.MatrixParser(comp2) if comp2 else mp
-    toks = R.merge_multiword("i like the big dog .".split()); frame = PR.parse_bounded(toks)
-    units = d.decode(mp2, frame); first = d.output_lexicon(next(iter(units), None))
-    assert ("emit",) in comp2["S"], "no emit unit in the state"
-    assert first is not None and len(list(units)) > 0
-    assert "".join(d.output_lexicon(u) for u in units) == R.generate(frame)
+def test_coordinated_clauses_agree(root):
+    """the clause before and / but / so is flushed at the conjunction in the link's mode, and the second clause follows"""
+    assert ST.Coordination().link_rules(), "no rules at the conjunction"
+    agrees(root, ["he is poor and could not buy a coat .", "she speaks english and also speaks swahili ."])
 
-def test_hand_modules_agree(root):
-    """with the PP machine, predicate and copula_predicate translated by hand, the matrix parses every single-clause sentence the rules parse"""
-    hm = PM.HandModules()
-    rules = list(hm.pp_rules()) + list(hm.predicate_rules()) + list(hm.copula_rules())
-    assert rules, "no hand-translated rules for the PP machine, predicate or copula_predicate"
-    comp, mp, sents = small_cell(root); gaps = []
-    for toks in sents:
-        try: frame = PR.parse_bounded(toks)
-        except PR.ParseFail: continue
-        if any(getattr(frame, r, None) for r in PM.UNSUPPORTED_REGS): continue
-        try: out = R.generate(mp.parse(toks))
-        except PR.ParseFail: out = ""
-        if out != R.generate(frame): gaps.append((" ".join(toks), out))
-    assert not gaps, f"{len(gaps)} single-clause sentences the matrix does not parse as the rules do: {gaps[0]}"
+def test_subordinate_clause_first_agrees(root):
+    """a sentence-initial subordinate clause is flushed at the comma with its conjunction, and the main clause follows"""
+    assert ST.SubordinateClause().order_rules(), "no rules at the comma"
+    agrees(root, ["when i was a child , i loved reading .", "if it rains tomorrow , i will stay at home ."])
 
-def test_inner_clause_sentence_agrees(root):
-    """a sentence with an inner clause is parsed identically by the matrix, through flushing at clause end and tag slots"""
-    cf = PM.ClauseFlush(); tags = cf.tag_slots(); flush = cf.flush_rules()
-    assert tags and flush, "no tag slots or flush rules"
-    comp, mp, sents = small_cell(root)
-    toks = R.merge_multiword("he said that he was tired .".split())
-    expect = R.generate(PR.parse_bounded(toks))
-    assert R.generate(mp.parse(toks)) == expect
+def test_relative_clause_agrees(root):
+    """the modified noun phrase is held while the relative clause is read and printed before it"""
+    assert ST.RelativeClause().hold_rules(), "no hold of the noun phrase"
+    agrees(root, ["she has a son who is a doctor .", "do you know any doctors who speak japanese ?"])
 
-def test_lexical_hits_inside_cell(root):
-    """the table hits are computed inside the cell from the window and the verb block, so the matrix no longer needs table_hits at run time"""
-    comp, mp, sents = small_cell(root)
-    units = PM.Layer0Lexical().hit_units(comp)
-    assert units, "no hit units in the cell"
-    saved = PM.table_hits
-    try:
-        PM.table_hits = lambda toks, i, verb: []
-        toks = R.merge_multiword("she took a rest .".split())
-        assert R.generate(mp.parse(toks)) == "彼女は休んだ。"
-    finally: PM.table_hits = saved
+def test_infinitive_clauses_agree(root):
+    """an infinitive complement of a copula is flushed in its mode: te before the adjective, のは, のには"""
+    assert ST.Infinitive().mode_rules(), "no infinitive modes"
+    agrees(root, ["this problem is difficult to solve .", "it is a good idea to read this book .", "it is definite that he will go to america ."])
 
-def test_canonical_diagrams(root):
-    """every control point's canonical diagram (canon.py) is complete and consistent: no gap and no conflict — which, for the
-    induced clause-level rules and the noun-phrase entry state, needs the diagram built over the feasible inputs of the
-    token model rather than over literals treated as independent"""
-    import canon as C
-    comp, mp, sents = small_cell(root)
-    by_prev = {}
-    for p, l, o in comp["rules"]: by_prev.setdefault(p, []).append((l, o))
-    tab = C.Table(); bad = []
-    for prev, rs in by_prev.items():
-        d = C.diagram(rs, table=tab)
-        assert C.diagram(C.shuffled(rs, 1), table=tab) is d
-        if not (C.complete(d) and C.consistent(d)): bad.append(prev)
-    assert not bad, f"{len(bad)} of {len(by_prev)} control points have a gap or a conflict, e.g. {bad[0]}"
+def test_purpose_clauses_agree(root):
+    """a purpose clause is flushed before the main verb held in the tags: the masu stem with に"""
+    assert ST.PurposeClause().purpose_rules(), "no purpose-clause rules"
+    agrees(root, ["please come to talk to me .", "he comes to see me nearly every day ."])
+
+def test_gerund_clauses_agree(root):
+    """a gerund clause is flushed before the verb held in the tags with のを, a manner clause with ながら"""
+    assert ST.Gerund().gerund_rules(), "no gerund rules"
+    agrees(root, ["i am thinking of going to the mountains .", "she insisted on going there .", "she stood looking at a boat on the river ."])
+
+def test_control_clauses_agree(root):
+    """the object of a control verb becomes the inner subject, and the clause is flushed with ように or in the causative with the outer tense"""
+    assert ST.ControlClause().control_rules(), "no control-clause rules"
+    agrees(root, ["she asked him to open the window .", "i made him change his plan ."])
 
 # ---------------------------------------------------------------- carried over from round 2
 def test_matrix_items_scope(root):
