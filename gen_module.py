@@ -13,11 +13,20 @@ predicate d.* defined as a DNF over base literals, as in np_module.
 
 The rules print from a context of frames, one per clause, with the attention on one frame at a time; a token ("h", "down")
 or ("h", "up") moves the attention to the next or the previous frame instead of emitting.  A frame says what it is to the
-others in two slots: `link`, the kind of inner clause spliced into it (that: a that-clause, the next frame), and `clause`, the
-kind of inner clause it is itself (embedded).  A that-clause (c.embedded) is two frames: at the splice, after the outer
-clause's arguments and adverbs, the attention goes down, the inner frame prints from P0 (が on its subject, no politeness)
-and at its END emits と and goes back up, and the outer frame continues at its tail.  The sentence's question mark is read
-after a that-clause, when the outer frame has left the encoder: it arrives as the register sent.question, not in a frame.
+others in its marks: `link`, the kind of inner clause spliced into it (that: a that-clause, the next frame); `sublink`, where
+its subordinate clause is (before: the frame before it, after: the frame after it); `clause`, the kind of inner clause it is
+itself (embedded, or a subordinate clause that came before / after its main clause); and `conj`, a subordinate clause's
+conjunction.  A that-clause (c.embedded) is two frames: at the splice, after the outer clause's arguments and adverbs, the
+attention goes down, the inner frame prints from P0 (が on its subject, no politeness) and at its END emits と and goes back
+up, and the outer frame continues at its tail.  A subordinate clause (when, if, because …) is a frame beside its main
+clause's, in the order the two were read, and is printed first either way, after the main clause's front adverb: printing
+starts on the first frame, steps over a subordinate clause that came first to its main clause, and from the main clause's
+P_PRE the attention goes to the subordinate frame — up or down, as `sublink` says — which prints to its END, emits its
+conjunction's ending (とき, ので, たら's ら …) and gives the attention back for the main clause to go on at its time adverb.
+What its conjunction changes in a clause (rules_ja.subord_adjust: the past of if) is in the frame already; unless, and while
+with a bare -ing clause, slice the predicate's string in generate() and are refused here.  The sentence's question mark is
+read after a that-clause or a subordinate clause, when the main frame has left the encoder: it arrives as the register
+sent.question, not in a frame.
 What generate() does with infinitives, control, fixed sentences and the idiom copula is out of scope
 (parser_matrix.UNSUPPORTED_REGS): the frame cannot hold it, so render() refuses there.  Inside the scope the rules must
 print exactly what generate() prints — pinned by the `printer` action (harness/eval_printer.py) on every sentence the rule
@@ -25,6 +34,7 @@ parser parses and on a sweep over the predicates the rules test, embedded under 
 
     uv run python -c "import gen_module, rules_ja as R, parser_rules as PR; print(gen_module.PrintRules().render(PR.parse_bounded('i like the big dog .'.split())))"
 """
+import copy
 import rules_ja as R
 from rules_ja import Pred, make_pred, adj_pred
 
@@ -35,7 +45,8 @@ UNSUPPORTED = ("infinitive", "control", "embedded", "purpose_clause", "pre_claus
 # (a `folded` frame — one whose string came from an inner clause — prints like any other: the string is opaque to the rules; only the cell cannot hold it)
 PRON6 = ("私", "彼", "彼女", "私たち", "彼ら", "あなた")            # generate(): a possessive coreferent with one of these subjects is dropped
 LINK_KINDS = ("that",)             # slot `link` of a frame: the kind of inner clause spliced into it — the next frame of the context
-CLAUSE_KINDS = ("embedded",)       # slot `clause` of a frame: the kind of inner clause it is (the main clause has none)
+SUBLINK_KINDS = ("before", "after")   # slot `sublink` of a main clause's frame: its subordinate clause is the frame before / after it
+CLAUSE_KINDS = ("embedded", "before", "after")   # slot `clause` of a frame: the kind of inner clause it is (the main clause has none) — a that-clause, a subordinate clause read before / after its main clause
 NOPART = "∅"                                                      # an explicit empty object particle (generate's ""), a value a slot can hold
 EMPTY = (None, "", False)
 
@@ -176,14 +187,26 @@ def eval_lit(lit, F, D):
 
 def frames_of(c):
     """a Clause -> the context its sentence prints from: one flat frame per clause in the order the encoder flushes them — the
-    main clause, marked with the link where its that-clause is spliced, then that clause, marked embedded, and so on down"""
-    frames = []; kind = None
-    while c is not None:
-        F = flatten(c, skip=("embedded",))
-        if kind: F["clause"] = kind
-        if c.embedded is not None: F["link"] = "that"
-        frames.append(F); kind = "embedded"; c = c.embedded
-    return frames
+    main clause, marked with the link where its that-clause is spliced, then that clause, marked embedded, and so on down; and
+    a subordinate clause (the one clause Clause.subords holds, when pre_clause is exactly its string) with its conjunction's
+    changes made (rules_ja.subord_adjust), marked before or after and put on that side of the main clause, whose frame gets
+    the sublink.  Any other pre_clause — a coordinated clause, two subordinate clauses — is a register the frames cannot hold"""
+    def chain(c, kind, skip):
+        frames = []
+        while c is not None:
+            F = flatten(c, skip=skip); skip = ("embedded",)
+            if kind: F["clause"] = kind
+            if c.embedded is not None: F["link"] = "that"
+            frames.append(F); kind = "embedded"; c = c.embedded
+        return frames
+    if not filled(c.pre_clause): return chain(c, None, ("embedded",))
+    subs = getattr(c, "subords", [])
+    if len(subs) != 1 or R.subord_form(subs[0][2], subs[0][1]) != c.pre_clause: raise Refuse("register pre_clause")
+    order, conj, inner = subs[0]
+    inner = copy.deepcopy(inner); R.subord_adjust(inner, conj)
+    main = chain(c, None, ("embedded", "pre_clause")); sub = chain(inner, order, ("embedded",))
+    main[0]["sublink"] = order; sub[0]["conj"] = conj
+    return sub + main if order == "before" else main + sub
 
 def derived():
     """the derived predicates: name -> DNF (a list of conjunctions of base literals)"""
@@ -192,21 +215,23 @@ def derived():
     D["d.whcop"] = [["slot.wh", "slot.cop_kind=wh"]]
     D["d.weather"] = [["subj.sore", "verb.weather"]]
     # the sentence is a question by a flag of the main clause's frame (the inversion) or by the question mark read after a
-    # that-clause (sent.question); an inner clause is never polite, and takes か only on a question flag of its own
-    D["d.polite"] = [["flag.question", "¬slot.clause=embedded"], ["slot.sent.question", "¬slot.clause=embedded"]]
-    D["d.q"] = [["flag.question"], ["slot.sent.question", "¬slot.clause=embedded"]]
+    # that-clause or a subordinate clause (sent.question); an inner clause — a frame with a `clause` mark of any kind — is never
+    # polite, and takes か only on a question flag of its own
+    D["d.polite"] = [["flag.question", "¬slot.clause"], ["slot.sent.question", "¬slot.clause"]]
+    D["d.q"] = [["flag.question"], ["slot.sent.question", "¬slot.clause"]]
     NEGS = ["flag.neg", "adv.never", "adv2.never", "subj.negpol", "obj.negpol"]; NOT_NEG = ["¬" + n for n in NEGS]
     # the tense generate() prints: c.past, except that a negative perfect takes the tense of its auxiliary (perf_had), and will takes none
     past_eff = [["flag.past", "¬flag.perf"], ["flag.past", "flag.perf"] + NOT_NEG] + [["flag.perf", "flag.perf_had", n] for n in NEGS]
     D["d.past_eff"] = [conj + ["¬slot.modal=will"] for conj in past_eff]
     D["d.past_raw"] = [["flag.past", "¬slot.modal=will"]]                                   # had better: the tense before the perfect correction
     D["d.will_conj"] = [conj + ["slot.modal=will", "¬flag.question", "¬slot.want", sent] for conj in past_eff
-                        for sent in ("¬slot.sent.question", "slot.clause=embedded")]                # would: 〜だろう, unless the clause is a question
+                        for sent in ("¬slot.sent.question", "slot.clause")]                         # would: 〜だろう, unless the clause is a question
     D["d.verbkind"] = [[f"verb.conj={c}"] for c in ("g", "i", "s", "k")]
     D["d.pp_state"] = [["slot.cop_kind=pp"], ["verb.vc=ni_location"]]                   # the PP takes its existence particle
     D["d.stative_prog"] = [["verb.stative", "¬verb.use", "¬slot.want", "¬flag.imp", "¬flag.lets", "¬slot.modal=can", "¬flag.perf"]]
     D["d.obj_default_ga"] = [["verb.ga", "¬slot.want"], ["slot.modal=can", "¬slot.want"]]
     D["d.obj_default_ni"] = [["verb.vc=ni_obj"]]
+    D["d.while_ing"] = [["slot.conj=while", "¬slot.subj.noun", "slot.verb", "¬slot.cop_kind"]]       # while walking: generate() slices the predicate for 〜ながら
     for role in ("obj", "cmp"):                                                           # the possessive coreferent with the subject is dropped
         D[f"d.{role}_coref"] = [[f"slot.subj.noun={p}", "¬slot.subj.det", "¬slot.subj.poss", "¬slot.subj.num", "¬slot.subj.adj1", "¬slot.subj.noun2", "¬slot.subj.mono",
                                  f"slot.{role}.poss={p}の", f"¬slot.{role}.det"] for p in PRON6]
@@ -252,8 +277,18 @@ def godan_suffixes(kana):
 def build_rules():
     """every printing rule, in the order of generate()'s template"""
     B = Build()
-    # ---- the clause: front, time, then the there-template or the main template; the there-template has no that-clause
-    B.rule("P0", ["slot.front"], "P_TIME", [S("front")]); B.rule("P0", ["¬slot.front"], "P_TIME")
+    # ---- the clause: front, the subordinate clause, time, then the there-template or the main template; the there-template has
+    #      no that-clause.  Printing starts on the first frame: a subordinate clause that was read first is stepped over to its main
+    #      clause, the next frame (a that-clause inside it would lie between the two: refused)
+    B.rule("P0", ["slot.clause=before", "slot.link"], "FAIL:a that-clause inside a subordinate clause that comes first")
+    B.rule("P0", ["slot.clause=before", "¬slot.link"], "P0", [H("down")])
+    B.rule("P0", ["¬slot.clause=before", "slot.front"], "P_PRE", [S("front")]); B.rule("P0", ["¬slot.clause=before", "¬slot.front"], "P_PRE")
+    # ---- the subordinate clause prints here, whichever side of its main clause it was read on: the attention goes to its frame,
+    #      which prints from its own front to its END, emits its conjunction's ending and gives the attention back (S_END)
+    B.rule("P_PRE", ["slot.sublink=before"], "S_IN_B", [H("up")]); B.rule("P_PRE", ["slot.sublink=after"], "S_IN_A", [H("down")]); B.rule("P_PRE", ["¬slot.sublink"], "P_TIME")
+    for st, kind in (("S_IN_B", "before"), ("S_IN_A", "after")):
+        B.rule(st, [f"slot.clause={kind}", "slot.front"], "P_TIME", [S("front")]); B.rule(st, [f"slot.clause={kind}", "¬slot.front"], "P_TIME")
+        B.rule(st, [f"¬slot.clause={kind}"], "FAIL:the frame on that side of the main clause is not its subordinate clause")
     B.rule("P_TIME", ["slot.time"], "P_BRANCH", [S("time")]); B.rule("P_TIME", ["¬slot.time"], "P_BRANCH")
     B.rule("P_BRANCH", ["flag.there", "slot.link"], "FAIL:there-clause with a that-clause")
     B.rule("P_BRANCH", ["flag.there", "¬slot.link"], "T_PP1"); B.rule("P_BRANCH", ["¬flag.there"], "M_SUBJ0")
@@ -304,8 +339,8 @@ def build_rules():
     B.rule("M_SUBJ1", ["d.whcop", "wh.text=何時", "¬subj.sore", "slot.subj.noun", "subj.negpol"], np("subj", "M_WH_T"))
     B.rule("M_SUBJ1", ["d.whcop", "wh.text=何時", "¬subj.sore", "slot.subj.noun", "¬subj.negpol"], np("subj", "M_SUBJ_WA"))
     B.rule("M_SUBJ1", ["d.whcop", "wh.text=何時", "¬subj.sore", "¬slot.subj.noun"], "M_WH_T")
-    B.rule("M_SUBJ_WA", ["slot.clause=embedded", "¬flag.coord"], "M_WH_T", [C("が")])            # the subject of a that-clause
-    B.rule("M_SUBJ_WA", ["slot.clause=embedded", "flag.coord"], "M_WH_T", [C("は")]); B.rule("M_SUBJ_WA", ["¬slot.clause=embedded"], "M_WH_T", [C("は")])
+    B.rule("M_SUBJ_WA", ["slot.clause", "¬flag.coord"], "M_WH_T", [C("が")])                     # the subject of an inner clause
+    B.rule("M_SUBJ_WA", ["slot.clause", "flag.coord"], "M_WH_T", [C("は")]); B.rule("M_SUBJ_WA", ["¬slot.clause"], "M_WH_T", [C("は")])
     # ---- question words before the arguments
     B.rule("M_WH_T", ["¬d.whcop", "wh.kind=t", "wh.text=何時"], "M_WH_LOC", [S("wh", 0), C("に")])
     B.rule("M_WH_T", ["¬d.whcop", "wh.kind=t", "¬wh.text=何時"], "M_WH_LOC", [S("wh", 0)])
@@ -350,8 +385,8 @@ def build_rules():
     # ---- the tail: a question-word copula (何ですか; inside a that-clause 何か / 何だったか), or the copula adverb, the degree and the predicate
     whk = ["o", "s", "adv", "loc", "t", "count"]
     for k in whk:
-        B.rule("M_TAIL", ["d.whcop", f"wh.kind={k}", "¬slot.clause=embedded"], ("FIN", "NA", "whcop"), [S("wh", 0)])
-        B.rule("M_TAIL", ["d.whcop", f"wh.kind={k}", "slot.clause=embedded"], ("FIN", "NA", "whcop_emb"), [S("wh", 0)])
+        B.rule("M_TAIL", ["d.whcop", f"wh.kind={k}", "¬slot.clause"], ("FIN", "NA", "whcop"), [S("wh", 0)])
+        B.rule("M_TAIL", ["d.whcop", f"wh.kind={k}", "slot.clause"], ("FIN", "NA", "whcop_emb"), [S("wh", 0)])
     B.rule(("FIN", "NA", "whcop_emb"), ["flag.past"], "END", [C("だった"), C("か")]); B.rule(("FIN", "NA", "whcop_emb"), ["¬flag.past"], "END", [C("か")])
     B.rule("M_TAIL", ["d.whcop"] + [f"¬wh.kind={k}" for k in whk], "M_COPADV"); B.rule("M_TAIL", ["¬d.whcop"], "M_COPADV")
     B.rule("M_COPADV", ["slot.cop_kind=adv"], "M_DEGREE", [S("cop_adv")]); B.rule("M_COPADV", ["¬slot.cop_kind=adv"], "M_DEGREE")
@@ -363,7 +398,20 @@ def build_rules():
     B.rule("Q", ["¬flag.there", "flag.tag"], "END", [C("ね")]); B.rule("Q", ["¬flag.there", "¬flag.tag", "d.q"], "END", [C("か")])
     B.rule("Q", ["¬flag.there", "¬flag.tag", "¬d.q"], "END")
     B.rule("END", ["slot.clause=embedded"], "M_BACK", [C("と"), H("up")])       # the that-clause closes: と, and back up to the clause it was spliced into
-    B.rule("END", ["¬slot.clause=embedded"], "DONE", [C("。")])
+    B.rule("END", ["slot.clause=before"], "S_END_B"); B.rule("END", ["slot.clause=after"], "S_END_A")
+    B.rule("END", ["¬slot.clause"], "DONE", [C("。")])
+    # ---- a subordinate clause closes: its conjunction's ending, and the attention back to the main clause — down when the clause
+    #      was read before it, up when after — which goes on at its time adverb.  The ending follows the clause's finite form
+    #      (if and once: ら after the past the frame holds); unless and while with a bare -ing clause slice that form: refused
+    for st, move in (("S_END_B", "down"), ("S_END_A", "up")):
+        for conj in sorted(R.SUBORD):
+            if conj == "unless": B.rule(st, ["slot.conj=unless"], "FAIL:unless takes the negative stem of its clause's predicate"); continue
+            ending = [C("ら" if conj in ("if", "once") else R.SUBORD[conj]), H(move)]
+            if conj == "while":
+                B.rule(st, ["slot.conj=while", "d.while_ing"], "FAIL:while with a bare -ing clause takes the stem of its predicate")
+                B.rule(st, ["slot.conj=while", "¬d.while_ing"], "P_TIME", ending)
+            else: B.rule(st, [f"slot.conj={conj}"], "P_TIME", ending)
+        B.rule(st, [f"¬slot.conj={conj}" for conj in sorted(R.SUBORD)], "FAIL:a subordinate clause without a conjunction the table has")
     build_predicate(B, np)
     return reachable(B.rules)
 

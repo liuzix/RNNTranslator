@@ -54,6 +54,7 @@ class Model:
         table_lemmas = {a for (a, tt) in R.VERB_IDIOM} | {a for (a, t) in R.PHRASAL}
         toks = set(R.LEX) | set(R.PRONOUNS) | set(R.DETS) | set(R.NUMBERS) | set(R.WH) | set(R.MODALS) | set(R.VERB_FORMS) | set(R.PREPS) | set(R.DURATION)
         toks |= set(PM.IDENTITY_WORDS) | set(R.CONTRACTED) | {".", "?", "!", ",", "not", "n't", "'t", "'s", "'m", "'re", "'ve", "to", "there", "that"} | set(R.HEARSAY) | table_toks
+        toks |= set(R.SUBORD) | set(R.COORD)
         feats = {}
         for t in sorted(toks) + [None, OTHER]:
             surface, classes, extra = PM.window_features([t] if t is not None else [], 0)[0]
@@ -74,7 +75,7 @@ class Model:
         for role in PM.NP_ROLES:
             for r in (role, NPM.of_role(role)):
                 for name, conjs in NPM.derived(r).items(): D[f"{name}@{r}"] = [list(conj) for conj in conjs]
-        D.update(PM.clause_module_rules()[1]); D.update(GM.derived()); D["agree.bad"] = PM.AGREE_DNF
+        D.update(PM.clause_module_rules()[1]); D.update(PM.clause_rules(())[1]); D.update(GM.derived()); D["agree.bad"] = PM.AGREE_DNF
         return D
 
     def universe(self, var):

@@ -25,7 +25,9 @@ def setup(root, corpus=None):
 def small_cell(root):
     """the machine compiled on a few dev sentences (seconds), shared by the cell tests: -> (the compiled encoder and decoder, the runner)"""
     if "comp" not in _cell:
-        extra = ("she took a rest .", "i like the big dog .", "he said that he was tired .", "he said that he was tired ?", "he said that she thought that he was tired .")
+        extra = ("she took a rest .", "i like the big dog .", "he said that he was tired .", "he said that he was tired ?", "he said that she thought that he was tired .",
+                 "when i was a child , i loved reading .", "i loved reading when i was a child .", "i went out although it was raining .", "i went out when it was raining ?",
+                 "if it rains tomorrow , i will stay at home .", "unless it rains , i will go , too .", "speak clearly so that everyone may hear you .", "in fact , i like the big dog .")
         sents = [R.merge_multiword(en) for en, ja in H.load("dev")[:60]] + [R.merge_multiword(s.split()) for s in extra]
         _cell["comp"] = PM.build_hybrid(sents); _cell["mp"] = PM.MatrixParser(_cell["comp"])
     return _cell["comp"], _cell["mp"]
@@ -80,7 +82,7 @@ def test_matrix_cell_shape(root):
     kinds = {"module": 0, "outer": 0, "clause": 0, "flush": 0}
     for prev, lits, out in enc["rules"]:
         assert prev[0] != "P", "a printing rule in the encoder"
-        if prev[0] in ("OPEN", "CLOSE"): kinds["flush"] += 1
+        if prev[0] in ("OPEN", "TURN", "CLOSE"): kinds["flush"] += 1
         elif prev[0] in ("M", "RETM") or (prev[0] == "RET" and out[0][0] == "M"): kinds["clause"] += 1
         elif isinstance(prev[0], str) and prev[0].startswith("NP"): kinds["module"] += 1
         elif not (prev[0] == "RET" or out[0][0] == "NP0" or out[0] == PM.FAIL): kinds["outer"] += 1
@@ -419,17 +421,18 @@ def test_context_is_one_frame_per_clause(root):
     one more frame under the same rules; a that-clause after a copula opens inside the copula module, which refuses it; and an
     attention that leaves the context is a refusal"""
     comp, mp = small_cell(root); enc = comp["encoder"]; V = comp["slot_vocab"]
-    opening = [r for r in enc["rules"] if r[2][0][0] == "OPEN"]; sites = {r[2][0][1] for r in opening}
+    opening = [r for r in enc["rules"] if r[2][0][:2] == ("OPEN", "that")]; sites = {r[2][0][2] for r in opening}
     assert len(sites) >= 2 and all(("link", "that", ("const",)) in out[2] and PM.FLUSH in out[2] and out[1] == 0 for prev, lits, out in opening)
     for sid in sites:
-        opens = [r for r in enc["rules"] if r[0] == ("OPEN", sid)]; inner = [r for r in opens if r[2][0] == ("INNER", sid)]
-        assert len(inner) == 2 and len(opens) == 3 and {dict(lits)["flag.question"] for _, lits, _ in inner} == {True, False}
+        opens = [r for r in enc["rules"] if r[0] == ("OPEN", "that", sid)]; inner = [r for r in opens if r[2][0] == ("INNER", sid)]
+        assert len(inner) == 2 and len(opens) == 5 and {dict(lits)["flag.question"] for _, lits, _ in inner} == {True, False}
         for prev, lits, (cp, k, acts) in inner:
             assert dict(lits)["slot.link=that"] is True and ("clause", "embedded", ("const",)) in acts
             assert (("sent.question", True, ("const",)) in acts) == dict(lits)["flag.question"]
             assert {sl for sl, v, src in acts if src[0] == "clear"} == {sl for sl in V if sl != "clause" and sl not in PM.SENT_SLOTS}, "OPEN does not clear exactly the frame"
         assert [out for _, lits, out in opens if dict(lits)["slot.link=that"] is False] == [(PM.FAIL, 0, ())]
-    assert (("CLOSE",), (), (("DONE",), 0, (PM.FLUSH,))) in enc["rules"]
+        assert all(out == (PM.FAIL, 0, ()) for _, lits, out in opens if any(t and q in ("slot.clause=before", "slot.clause=after") for q, t in lits)), "a that-clause opened inside a subordinate clause"
+    assert (("CLOSE",), (("slot.clause=after", False), ("slot.clause=before", False)), (("DONE",), 0, (PM.FLUSH,))) in enc["rules"]
     def walk(sentence):
         toks = R.merge_multiword(sentence.split()); frames, final = mp.encode(toks); path = []; at = [0]
         def on_step(which, s, x, s2):
@@ -451,6 +454,151 @@ def test_context_is_one_frame_per_clause(root):
     toks = R.merge_multiword("he said that he was tired .".split()); frames, final = mp.encode(toks)
     try: mp.decode(frames[:1], final); assert False, "the decoder printed a link with no frame under it"
     except PR.ParseFail as e: assert "attention" in str(e)
+
+def test_subordinate_clause_in_both_orders(root):
+    """a subordinate clause is a frame of its own beside its main clause's, in the order the two were read, and is printed first
+    either way.  Read first, it opens on its conjunction — OPEN reads the conjunction into the frame and marks it, nothing is
+    flushed — and closes where the main clause begins: OPEN flushes it, TURN clears and marks the main clause's frame.  Read
+    second, it opens where the PP machine of the main clause returns at the conjunction (its second exit): OPEN marks the main
+    frame and flushes it, TURN clears, reads the conjunction and marks the new frame, keeping the sentence block.  The decoder
+    starts on the first frame, steps over a subordinate clause that came first, prints the main clause's front adverb, moves to
+    the subordinate frame — up or down — prints it with が on its subject, plain forms and its conjunction's ending, and moves
+    back for the rest of the main clause.  A question mark read after the subordinate clause reaches the decoder in the sentence
+    block.  What the frames cannot hold is refused by the encoder: a second subordinate clause, one that opens when the main
+    clause has begun with an adverb; unless is read but not printed"""
+    comp, mp = small_cell(root); enc = comp["encoder"]; V = comp["slot_vocab"]
+    def walk(sentence):
+        toks = R.merge_multiword(sentence.split()); frames, final = mp.encode(toks); path = []; at = [0]
+        def on_step(which, s, x, s2):
+            if not path or path[-1] != at[0]: path.append(at[0])
+            at[0] += int(s2[mp.down_unit] > 0.5) - int(s2[mp.up_unit] > 0.5)
+        out = "".join(PM.output_lexicon(u) for u in mp.decode(frames, final, on_step=on_step))
+        assert out == R.translate(sentence.split()) == mp.translate(toks) == R.generate(mp.parse(toks)), (sentence, out)
+        return [mp.frame_dict(f) for f in frames], final, path, out
+    marks = lambda F: {k: F[k] for k in PM.MARKS if k in F}
+    frames, final, path, out = walk("when i was a child , i loved reading .")
+    assert out == "私が子供だったとき私は読むのが好きだった。" and path == [0, 1, 0, 1], path
+    assert [marks(F) for F in frames] == [{"clause": "before", "conj": "when"}, {"sublink": "before"}] and frames[0]["cop_kind"] == "np" and frames[1]["want"] == "love"
+    frames, final, path, out = walk("i loved reading when i was a child .")
+    assert out == "私が子供だったとき私は読むのが好きだった。" and path == [0, 1, 0], path
+    assert [marks(F) for F in frames] == [{"sublink": "after"}, {"clause": "after", "conj": "when"}] and frames[1]["cop_kind"] == "np" and frames[0]["want"] == "love"
+    frames, final, path, out = walk("if it rains tomorrow , i will stay at home .")
+    assert out == "明日雨が降ったら私は家に泊まる。" and frames[0]["conj"] == "if" and frames[0].get("past") is True and "past" not in frames[1]
+    frames, final, path, out = walk("i went out although it was raining .")
+    assert out == "雨が降っていたが、私は出かけた。" and path == [0, 1, 0]
+    frames, final, path, out = walk("i went out when it was raining ?")            # the question mark comes after the main frame has left
+    assert out.endswith("出かけましたか。") and "question" not in frames[0] and frames[1].get("sent.question") is True and all(final[e] > 0.5 for d, e in mp.handoff)
+    # the clause rules, per kind of boundary
+    by_kind = collections.defaultdict(set)
+    for prev, lits, out in enc["rules"]:
+        if out[0][0] == "OPEN": by_kind[out[0][1]].add(out[0][2]); assert out[1] == 0 and (out[2] == () or out[0][1] == "that"), "an induced boundary row that writes"
+    assert by_kind["before"] and by_kind["main"] and by_kind["after"]
+    rules_at = lambda st: [(lits, out) for prev, lits, out in enc["rules"] if prev == st]
+    for sid in by_kind["before"]:
+        (lits, (cp, k, acts)), = [r for r in rules_at(("OPEN", "before", sid)) if r[1][0] != PM.FAIL]
+        assert lits == (("d.clause.lead", True),) and cp == ("INNER", sid) and k == 1 and PM.FLUSH not in acts
+        assert set(acts) == {("clause", "before", ("const",)), ("conj", None, ("copy", "conj")), ("sub", True, ("const",))}
+    import numpy as np
+    def step_from(state, frame, window):
+        """the control point the encoder reaches in one step from `state` with `frame` as its working frame and `window` ahead"""
+        E = mp.enc; s = np.zeros(E.nS); s[E.S[("ctrl", state)]] = 1.0
+        for slot, v in frame.items(): s[E.S[("slot", slot, v)]] = 1.0
+        return E.control(mp.step_encoder(s, mp.input_vector(window, 0)))
+    for sid in by_kind["main"]:
+        opens = rules_at(("OPEN", "main", sid)); go = [r for r in opens if r[1][0] != PM.FAIL]
+        assert go and all(dict(lits)["slot.clause=before"] is True and dict(lits)["d.clause.close"] is True and cp == ("TURN", sid) and k == 0 and PM.FLUSH in acts for lits, (cp, k, acts) in go)
+        # the clause closes at a comma, or at the `or not` of whether, and nowhere else: the rule parser's tail refuses any other token there
+        sub = {"clause": "before", "conj": "when"}
+        assert step_from(("OPEN", "main", sid), sub, [",", "i"]) == ("TURN", sid) and step_from(("OPEN", "main", sid), sub, ["painted", ","]) == PM.FAIL
+        assert step_from(("OPEN", "main", sid), dict(sub, conj="whether"), ["or", "not", ","]) == ("TURN", sid) and step_from(("OPEN", "main", sid), sub, ["or", "not", ","]) == PM.FAIL
+        (lits, (cp, k, acts)), = rules_at(("TURN", sid))
+        assert lits == () and cp == ("INNER", sid) and k == 0 and ("sublink", "before", ("const",)) in acts
+        assert {sl for sl, v, src in acts if src[0] == "clear"} == set(V) - {"sublink"}, "TURN does not clear exactly the frame"
+    for sid in by_kind["after"]:
+        (lits, (cp, k, acts)), = [r for r in rules_at(("OPEN", "after", sid)) if r[1][0] != PM.FAIL]
+        assert lits == (("d.clause.trail", True),) and cp == ("TURN", sid) and k == 0 and set(acts) == {("sublink", "after", ("const",)), PM.FLUSH}
+        turns = rules_at(("TURN", sid)); assert len(turns) == 2 and {dict(lits)["flag.question"] for lits, _ in turns} == {True, False}
+        for lits, (cp, k, acts) in turns:
+            assert cp == ("INNER", sid) and k == 1 and {("clause", "after", ("const",)), ("conj", None, ("copy", "conj")), ("sub", True, ("const",))} <= set(acts)
+            assert (("sent.question", True, ("const",)) in acts) == dict(lits)["flag.question"]
+            assert {sl for sl, v, src in acts if src[0] == "clear"} == set(V) - {"clause", "conj", "sub"} - set(PM.SENT_SLOTS)
+        # the boundary is reached from the PP machine's second exit and nowhere else, by its return address alone
+        into = [(prev, lits) for prev, lits, out in enc["rules"] if out[0] == ("OPEN", "after", sid)]
+        assert into and all(prev[0] == "MRET" and prev[1] == "pp" and prev[3] == "sub" and lits == () for prev, lits in into)
+    exits = [(lits, out) for prev, lits, out in enc["rules"] if prev == ("RETM", "pp", "sub") and out[0] != PM.FAIL]
+    assert exits and all(lits and all(PM.is_return_key(q) for q, t in lits) for lits, out in exits)
+    import pp_module as PPM
+    assert sum(1 for st, lits, out in PPM.rules() if out[0] == "RETSUB") == 1 and any(st == "PP0" and out[0] == "RET" and any("flag.sub" in c for l in lits if not l.startswith("¬") for c in PPM.derived().get(l, [])) for st, lits, out in PPM.rules())
+    assert set(PM.SUBORD_TRAIL) == {w for w in R.SUBORD if w not in R.PREPS and w not in R.COORD} and "while" not in PM.SUBORD_TRAIL and "if" in PM.SUBORD_TRAIL
+    # the PP machine on a main clause's frame: its second exit at a conjunction with one reading; before reads as the preposition
+    # (and the clause's verb is then refused), while as a coordinator; in a subordinate clause's frame it returns at the comma
+    went = {"verb": ("go", "行く", "g"), "subj.noun": "彼", "subj.cls": "h", "past": True}
+    sim = lambda window, frame: PM.simulate_module("pp", window, 0, frame, None)
+    assert sim(["when", "it", "rained", "."], went)[::3] == (0, "sub") and sim(["if", "it", "rained", "."], went)[::3] == (0, "sub")
+    assert sim(["before", "the", "rain", "started", "."], went) is None and sim(["while", "it", "rained", "."], went) is None
+    assert sim(["when", "it", "rained", "."], dict(went, sublink="before")) is None and sim(["when", "it", "rained", "."], dict(went, clause="embedded")) is None
+    assert sim([",", "he", "came", "."], dict(went, sub=True, clause="before", conj="when"))[::3] == (0, "") and sim(["when", "he", "came", "."], dict(went, sub=True, clause="after", conj="if"))[::3] == (0, "")
+    # the front adverb of the main clause comes before the subordinate clause, whichever side its frame is on
+    import copy
+    main = PR.Clause(); main.subj, main.subj_cls = "彼", "h"; main.verb = ("come", "来る", "k"); main.past = True; main.front = "実は、"
+    sub = PR.Clause(); sub.subj, sub.subj_cls = "私", "h"; sub.copula = ("np", "子供", "h"); sub.past = True
+    for order in ("before", "after"):
+        m = copy.deepcopy(main); m.subords = [(order, "when", sub)]; m.pre_clause = R.subord_form(sub, "when")
+        assert "".join(GM.PrintRules().render(m)) == R.generate(copy.deepcopy(m)) == "実は、私が子供だったとき彼は来た。"
+    for sid in by_kind["before"]:                                                                  # a clause that opens when its main clause has begun; when before an auxiliary is the question word
+        assert step_from(("OPEN", "before", sid), {}, ["when", "i", "was"]) == ("INNER", sid) and step_from(("OPEN", "before", sid), {}, ["when", "did", "he"]) == PM.FAIL
+        assert step_from(("OPEN", "before", sid), {"time": sorted(V["time"])[0]}, ["when", "i", "was"]) == PM.FAIL and step_from(("OPEN", "before", sid), {"front": sorted(V["front"])[0]}, ["when", "i", "was"]) == PM.FAIL
+        assert step_from(("OPEN", "before", sid), {"sublink": "before"}, ["when", "i", "was"]) == PM.FAIL and step_from(("OPEN", "before", sid), {}, ["and", "i", "was"]) == PM.FAIL
+    for sid in {out[0][2] for prev, lits, out in enc["rules"] if out[0][:2] == ("OPEN", "that")}:      # a that-clause inside a subordinate clause
+        assert step_from(("OPEN", "that", sid), {"link": "that"}, ["he"]) == ("INNER", sid)
+        assert step_from(("OPEN", "that", sid), {"link": "that", "clause": "before", "conj": "when"}, ["he"]) == PM.FAIL and step_from(("OPEN", "that", sid), {"link": "that", "clause": "after", "conj": "when"}, ["he"]) == PM.FAIL
+    # refusals: a second subordinate clause; a main clause that began before its subordinate clause; unless is read, not printed
+    for s in ("when i was a child , i loved reading when it was raining .", "yesterday when i was a child , i loved reading ."):
+        toks = R.merge_multiword(s.split())
+        try: mp.translate(toks); assert False, f"translated: {s}"
+        except PR.ParseFail: pass
+    toks = R.merge_multiword("unless it rains , i will go , too .".split())
+    assert R.generate(mp.parse(toks)) == R.translate(toks) and mp.frame_dict(mp.encode(toks)[0][0]).get("neg") is True
+    try: mp.translate(toks); assert False, "unless was printed"
+    except PR.ParseFail as e: assert "PRINT" in str(e)
+    # a context out of order is a refusal: the subordinate frame on the other side of its main clause
+    toks = R.merge_multiword("i loved reading when i was a child .".split()); frames, final = mp.encode(toks)
+    try: mp.decode(frames[::-1], final); assert False, "printed frames in the wrong order"
+    except PR.ParseFail: pass
+
+def test_subordinate_frame_holds_its_conjunction(root):
+    """what a conjunction changes in its clause (rules_ja.subord_adjust: the past of if, once and after, the negative of unless, the
+    potential for may and no will under so that) is written into the frame by the rule that flushes it — adjust_rules mirrors
+    subord_adjust for every conjunction of the table and every modal — so the frame the decoder reads is the clause generate()
+    prints; and the printing rules give every conjunction its ending after the clause's finite form, as subord_form does, refusing
+    the two cases that slice the predicate's string"""
+    import copy
+    modals = sorted(set(R.MODALS.values()))
+    rules = PM.adjust_rules(("X",), (("slot.clause=after", True),), ("Y",), [PM.FLUSH]); pr = GM.PrintRules(); n = 0
+    for conj in sorted(R.SUBORD):
+        for modal in [None] + modals:
+            for past in (False, True):
+                for neg in (False, True):
+                    c = PR.Clause(); c.subj, c.subj_cls = "彼", "h"; c.verb = ("go", "行く", "g"); c.modal, c.past, c.neg = modal, past, neg
+                    F = GM.flatten(c); F.update({"clause": "after", "conj": conj}); frame = dict(F)
+                    P = PM.slot_predicates(frame)
+                    hits = [out for st, lits, out in rules if all((q in P) == t for q, t in lits)]
+                    assert len(hits) == 1 and hits[0][0] == ("Y",) and PM.FLUSH in hits[0][2], (conj, modal, hits)
+                    PM.apply_actions(frame, hits[0][2], [], 0)
+                    want = copy.deepcopy(c); R.subord_adjust(want, conj); W = GM.flatten(want); W.update({"clause": "after", "conj": conj})
+                    assert frame == W, (conj, modal, past, neg, frame, W)
+                    # the two clauses as a context: the main clause 彼は来た with this one after it
+                    main = PR.Clause(); main.subj, main.subj_cls = "彼", "h"; main.verb = ("come", "来る", "k"); main.past = True
+                    main.subords = [("after", conj, c)]; main.pre_clause = R.subord_form(c, conj)
+                    try: got = "".join(pr.render(main))
+                    except GM.Refuse: assert conj == "unless", conj; continue
+                    assert got == R.generate(copy.deepcopy(main)), (conj, modal, past, neg, got); n += 1
+    assert n > 500
+    c = PR.Clause(); c.verb = ("walk", "歩く", "g"); main = PR.Clause(); main.subj, main.subj_cls = "彼", "h"; main.verb = ("come", "来る", "k")
+    main.subords = [("before", "while", c)]; main.pre_clause = R.subord_form(c, "while")
+    assert main.pre_clause.endswith("ながら")
+    try: pr.render(main); assert False, "while walking was printed"
+    except GM.Refuse as e: assert "while" in str(e)
 
 def test_np_of_phrase(root):
     """an of-phrase is the noun-phrase module run once more on the role's of-phrase slots, printing before the head with の, and a

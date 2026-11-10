@@ -17,8 +17,10 @@ slot) and clear.  Whatever the encoder cannot represent (a register with no bloc
 becomes a FAIL row, so the machine refuses there instead of guessing; inside its scope it must agree with the rule parser.
 
 The context is one frame per clause, in the order the clauses closed, and the sentence block of the encoder's final state.
-A clause boundary (a that-clause opening) writes a link into the frame, flushes it, and clears the slots for the clause to
-be read into (clause_rules); the end of the sentence flushes the last frame.
+A clause boundary writes a mark into the frame, flushes it, and clears the slots for the next clause to be read into
+(clause_rules): a that-clause opening (link), a subordinate clause opening after its main clause or closing before it
+(sublink; the subordinate frame carries its conjunction and what the conjunction changes in it); the end of the sentence
+flushes the last frame.
 
 The decoder prints (compile_decoder).  Its input is the frame under the attention head; its state holds the printing
 position, the sentence block, and what a step puts out.  The printing rules of gen_module are its rules: one emits a token
@@ -34,6 +36,7 @@ import numpy as np
 import scipy.sparse as sp
 import rules_ja as R
 import gen_module as GM
+import parser_rules as PRM
 from parser_rules import Parser, Clause, ParseFail, Overflow, parse_bounded
 
 WINDOW = 4
@@ -164,24 +167,56 @@ def snapshot(c, skip=()):
 FLUSH = ("flush", None, ("flush",))    # the action of a rule that hands the working frame to the context: the flush unit, as shift is for a token
 SENT_SLOTS = ("sent.question",)        # the sentence block: registers that outlive a clause boundary and reach the decoder with the encoder's final state
 
-def view_clause(p):
-    """the clause whose registers the encoder's working frame holds: the main clause until a that-clause (Clause.inner_of ==
-    "embedded") opens, then that clause, and from then on the innermost one — nothing of an outer clause is read after its
-    that-clause.  Raises OutOfScope for any other inner frame (control, purpose, a subordinate or coordinated clause, a
-    question clause)"""
-    c = p.c
-    if c is not p.main and getattr(c, "inner_of", None) != "embedded": raise OutOfScope("inner frame")
+INNER_KINDS = ("embedded", "before", "after")      # Clause.inner_of of the inner clauses that get a frame of their own
+MARKS = ("clause", "conj", "link", "sublink")      # the slots that say what a frame is to its neighbours in the context
+
+def view_clause(p, st):
+    """the clause whose registers the encoder's working frame holds (st: the trace's state).  The main clause until an inner
+    clause with a frame of its own opens: a that-clause (Clause.inner_of == "embedded"), then that clause and from then on the
+    innermost one — nothing of an outer clause is read after its that-clause; a subordinate clause before its main clause
+    ("before"), until the parser is back in the main clause; a subordinate clause after it ("after"), and from then on that
+    clause — the main clause's frame has left.  Raises OutOfScope for any other inner frame (control, purpose, a coordinated
+    clause, a question clause)"""
+    c = p.c; kind = getattr(c, "inner_of", None)
+    if c is not p.main and kind not in INNER_KINDS: raise OutOfScope("inner frame")
+    if kind == "after": st["sticky"] = c
+    if c is p.main and st.get("sticky") is not None: c = st["sticky"]
     while c.embedded is not None: c = c.embedded
     return c
 
-def clause_view(p, c, skip=()):
-    """the working frame as the trace sees it: the registers of the clause in view and, for a that-clause, its kind (`clause`)
-    and the sentence block — sent.question, the main clause's question flag: the frame of the main clause took its own copy
-    with it into the context, and the question mark is read after it left"""
+def clause_view(p, c, st, left=False):
+    """the working frame as the trace sees it: the registers of the clause in view and its marks — for an inner clause its kind
+    (`clause`) and, for a subordinate one, its conjunction (`conj`); for a main clause whose subordinate clause has closed
+    before it, `sublink` — and the sentence block: sent.question, the main clause's question flag, in a frame read after the
+    main clause's (the main frame took its own copy with it into the context, and the question mark is read after it left).
+    left: the clause as it is left behind at a boundary (its that-clause is the next frame, not a register).  A main clause's
+    pre_clause is no register when it is exactly the string of the one subordinate clause the trace saw closed (st["subord"])"""
+    skip = ("embedded",) if left else ()
+    if c is p.main and c.pre_clause and c.pre_clause == st.get("subord"): skip += ("pre_clause",)
     s = snapshot(c, skip)
-    s["clause"] = None if c is p.main else "embedded"
+    kind = getattr(c, "inner_of", None) if c is not p.main else None
+    s["clause"] = kind
+    s["conj"] = c.conj if kind in ("before", "after") else None
+    s["sublink"] = "before" if c is p.main and any(o == "before" for o, _, _ in c.subords) else None
     s["sent.question"] = bool(p.main.question) if c is not p.main else False
     return s
+
+def edge_kind(p, old, new, st):
+    """the kind of clause boundary between two clauses in view: "that" (a that-clause opens in `old`), "before" / "after" (a
+    subordinate clause opens before / after the main clause `old`), "main" (the subordinate clause that came first has closed
+    and the main clause begins).  Raises OutOfScope for a boundary the frames cannot hold: a that-clause inside a subordinate
+    clause, a second subordinate clause, one that opens when the main clause has already begun"""
+    k_old, k_new = getattr(old, "inner_of", None), getattr(new, "inner_of", None)
+    if k_new == "embedded":
+        if k_old in ("before", "after"): raise OutOfScope("a that-clause inside a subordinate clause")
+        return "that"
+    if k_new in ("before", "after"):
+        if old is not p.main: raise OutOfScope("a subordinate clause inside a clause")
+        if p.main.subords: raise OutOfScope("a second subordinate clause")
+        if k_new == "before" and clause_view(p, p.main, st) != st["initial"]: raise OutOfScope("a subordinate clause after the start of its main clause")
+        return k_new
+    if new is p.main and k_old == "before": return "main"
+    raise OutOfScope("clause boundary")
 
 # ----------------------------------------------------------------------------------------------- tracing the rule parser
 PMETH = set(n for n in dir(Parser) if callable(getattr(Parser, n)) and not n.startswith("__"))
@@ -191,7 +226,7 @@ def trace(toks, choices=()):
     p = Parser(list(toks), list(choices))
     events = []            # dicts: i (token index consumed), k (how many), cp, snap_before, np spans
     np_spans = []          # (i0, i1, ja, cls, depth_of_c)
-    st = {"last_i": 0, "line": 0, "cp": None, "frames": ()}
+    st = {"last_i": 0, "line": 0, "cp": None, "frames": (), "sticky": None, "subord": None, "left": None, "edge": None}
     def chain_of(frame):
         """the Parser-method frames on the stack, outermost first, as (method, current line)"""
         names = []; f = frame
@@ -214,20 +249,30 @@ def trace(toks, choices=()):
             if p.i != st["last_i"]:
                 # the consumption happened in the code of the previous line event: that frame's module owns it (the change is noticed
                 # one statement later, which may already be inside a method called on the same line)
-                events.append({"i": st["last_i"], "k": p.i - st["last_i"], "cp": (stack_of(frame), st["line"]), "snap": st["snap"], "outer": st["outer"],
+                # a conjunction consumed by sub_clause, noticed before the method has made the clause it opens: the event is the
+                # opening of a subordinate clause, before or after its main clause as the caller said
+                opens = frame.f_locals.get("order") if frame.f_code.co_name == "sub_clause" and "inner" not in frame.f_locals else None
+                events.append({"i": st["last_i"], "k": p.i - st["last_i"], "cp": (stack_of(frame), st["line"]), "snap": st["snap"], "outer": st["outer"], "edge": st["edge"], "opens": opens,
                                "chain": chain_of(frame), "owner": owner_of(st["frames"]), "frames": st["frames"], "win_reads": set(reads["win"]), "reg_reads": set(reads["reg"])})
                 reads["win"].clear(); reads["reg"].clear()
                 st["last_i"] = p.i; st["event_vc"] = st["vc"]
             st["line"] = frame.f_lineno; st["frames"] = frames_of(frame)
             if type(p.c) is Clause: p.c.__class__ = TracedClause           # an inner clause's register reads count like the main clause's
             try:
-                vc = view_clause(p); st["snap"] = clause_view(p, vc)
-                # the clause in view is not the one the last event was read into: a clause boundary, and `outer` is the clause left
-                # behind as it stands now — the frame the encoder flushes
-                st["outer"] = clause_view(p, st["event_vc"], skip=("embedded",)) if vc is not st["event_vc"] else None
+                vc = view_clause(p, st); st["snap"] = clause_view(p, vc, st)
+                # the clause in view is not the one the last event was read into: a clause boundary of kind `edge`, and `outer` is the
+                # clause left behind as it stands now — the frame the encoder flushes
+                if vc is not st["event_vc"]:
+                    st["edge"] = edge_kind(p, st["event_vc"], vc, st); st["outer"] = clause_view(p, st["event_vc"], st, left=True)
+                    if st["edge"] == "after" and st["left"] is None: st["left"] = left_view(p, st)
+                else: st["outer"] = st["edge"] = None
+                if st["left"] is not None and left_view(p, st) != st["left"]: raise OutOfScope("the main clause changes after its subordinate clause")
                 st["vc"] = vc
-            except OutOfScope as e: st["snap"], st["outer"] = e, None
+            except OutOfScope as e: st["snap"], st["outer"], st["edge"] = e, None, None
         return tracer
+    def left_view(p, st):
+        """the main clause a subordinate clause follows, as its frame left: nothing but the question mark may reach it afterwards"""
+        return {k: v for k, v in clause_view(p, p.main, st, left=True).items() if k != "question"}
     reads = {"win": set(), "reg": set()}
     orig_peek = Parser.peek
     def peek_wrapped(self, k=0):
@@ -242,19 +287,30 @@ def trace(toks, choices=()):
     def np_wrapped(self, role=None):
         i0 = self.i
         ja, cls = orig_np(self, role=role)
-        np_spans.append((i0, self.i, ja, cls, self.c is self.main or getattr(self.c, "inner_of", None) == "embedded"))      # in the clause in view
+        np_spans.append((i0, self.i, ja, cls, self.c is self.main or getattr(self.c, "inner_of", None) in INNER_KINDS))      # in a clause with a frame
         heads.append((i0, self.i, self.last_head))
         return ja, cls
     heads = []
     Parser.parse_np = np_wrapped
-    st["vc"] = st["event_vc"] = p.main; st["snap"] = initial = clause_view(p, p.main); st["outer"] = None
+    orig_subord = PRM.subord_form
+    def subord_wrapped(inner, conj):
+        """the string of a subordinate clause, noted for the views (st["subord"]); what generate() reads of the clause on the way
+        is no read of the parser's"""
+        saved = (set(reads["win"]), set(reads["reg"]))
+        try: out = orig_subord(inner, conj)
+        finally:
+            for key, old in zip(("win", "reg"), saved): reads[key].clear(); reads[key].update(old)
+        st["subord"] = out
+        return out
+    PRM.subord_form = subord_wrapped
+    st["vc"] = st["event_vc"] = p.main; st["snap"] = st["initial"] = initial = clause_view(p, p.main, st); st["outer"] = None
     sys.settrace(tracer); err = None
     try:
         frame = p.parse()
     except ParseFail as e:
         err = e; frame = None
     finally:
-        sys.settrace(None); Parser.parse_np = orig_np; Parser.peek = orig_peek
+        sys.settrace(None); Parser.parse_np = orig_np; Parser.peek = orig_peek; PRM.subord_form = orig_subord
     p.fail_info = None; _last_parser[0] = p
     p.last_cp = events[-1]["cp"] if events else ("START",)
     p.events_ok = all(not isinstance(e["snap"], (OutOfScope, type(None))) for e in events)
@@ -263,7 +319,7 @@ def trace(toks, choices=()):
     for j in range(p.i):
         if j < len(p.toks) and "prep" in dict(readings_of(p.toks[j])): p.pend_at_end = p.toks[j]
     if err is not None:
-        try: fs = clause_view(p, view_clause(p))          # the view where the parser refused: inside a that-clause, the inner clause's
+        try: fs = clause_view(p, view_clause(p, st), st)          # the view where the parser refused: inside an inner clause, that clause's
         except OutOfScope as e2: fs = e2
         p.fail_info = (err, fs, set(reads["win"]), set(reads["reg"]), p.i)
         tb = err.__traceback__; p.fail_stack = []; p.fail_frames = []
@@ -274,7 +330,9 @@ def trace(toks, choices=()):
         raise err
     if events: events[-1]["win_reads"] |= reads["win"]; events[-1]["reg_reads"] |= reads["reg"]
     if events: events[0]["snap"] = initial          # writes made before the first consumption belong to the first step
-    try: final = clause_view(p, view_clause(p))        # with a that-clause: the last frame, the innermost clause's, with the sentence block
+    try:
+        final = clause_view(p, view_clause(p, st), st)        # with an inner clause read last: the last frame, that clause's, with the sentence block
+        if st["left"] is not None and left_view(p, st) != st["left"]: raise OutOfScope("the main clause changes after its subordinate clause")
     except OutOfScope as e: final = e                 # the finished frame holds a register the cell has no block for
     return events, final, np_spans, p
 
@@ -319,6 +377,7 @@ def clause_module_rules():
             if isinstance(nxt, tuple): tgt = nxt
             elif nxt == "RET": tgt = ("RETM", mod, "")                               # (not ("RET", mod): "cop" is also a noun-phrase role)
             elif nxt == "RETCOP": tgt = ("RETM", mod, "cop")                         # the predicate module's second exit: the copula follows
+            elif nxt == "RETSUB": tgt = ("RETM", mod, "sub")                         # the PP machine's second exit: a subordinate clause follows
             elif nxt.startswith("FAIL:"): tgt = FAIL
             else: tgt = ("M", mod, nxt)
             rules.append((prev, tuple((l[1:], False) if l.startswith("¬") else (l, True) for l in lits), (tgt, k, norm_actions(acts))))
@@ -337,7 +396,7 @@ def snapshot_to_frame(snap, classes):
         s = snap.get(role)
         if s: frame[f"{role}.noun"] = s; frame[f"{role}.cls"] = snap.get("subj_cls") if role == "subj" else classes.get(role, "t")
     if snap.get("subj_num") and snap.get("subj"): frame["subj.number"] = snap["subj_num"]
-    for k in ("clause",) + SENT_SLOTS:                                            # the clause's kind and the sentence block, as they are
+    for k in MARKS + SENT_SLOTS:                                                  # the frame's marks and the sentence block, as they are
         if snap.get(k) not in (None, "", False): frame[k] = snap[k]
     return frame
 
@@ -351,10 +410,16 @@ def step_rules(by_prev, derived, state, toks, i, frame, pend):
 
 def exit_kind(mod, events, last):
     """which exit the parser took from a module activation, from the trace: the predicate module returns to the copula ("cop") or to
-    the verb phrase (""); the other modules have one exit"""
-    if mod != "pred" or last + 1 >= len(events): return ""
+    the verb phrase ("") — by what the innermost predicate frame of the next event called (an outer clause's predicate is on the
+    stack of every event of a clause opened inside it); the PP machine returns at a subordinating conjunction ("sub": the next
+    event is the conjunction, consumed by sub_clause called from the tail) or at the end of its clause (""); the copula module
+    has one exit"""
+    if last + 1 >= len(events): return ""
+    if mod == "pp": return "sub" if events[last + 1]["cp"][0][-2:] == ("tail_pp_adv", "sub_clause") else ""
+    if mod != "pred": return ""
     chain = [n for n, _ in events[last + 1]["chain"]]
-    return "cop" if any(chain[j] == "predicate" and chain[j + 1] == "copula_predicate" for j in range(len(chain) - 1)) else ""
+    inner = max((j for j, n in enumerate(chain) if n == "predicate"), default=None)
+    return "cop" if inner is not None and chain[inner + 1:inner + 2] == ["copula_predicate"] else ""
 
 def simulate_module(mod, toks, i0, frame, pend, bound=400):
     """step a module's rules (and the noun-phrase module's, when it hands over) from its start on a flat frame; -> (i, frame, pend,
@@ -494,9 +559,9 @@ def site_id(site):
     return ">".join(site[0][1:] or ("parse",)) + ":" + str(site[1])
 
 def views_of(events, snaps):
-    """(befores, afters): the view before and after each event.  afters[k] is the view before event k+1, except at the clause
-    boundary: the view after the event before a that-clause's first event is the outer clause's own (the inner view begins with
-    the boundary row, which the cell takes before that event)"""
+    """(befores, afters): the view before and after each event.  afters[k] is the view before event k+1, except at a clause
+    boundary: the view after the event before the first event of the next clause is the view of the clause left behind (the
+    next view begins with the boundary row, which the cell takes before that event)"""
     befores = snaps[:len(events)]; afters = list(snaps[1:len(events) + 1])
     for k, e in enumerate(events):
         if e.get("outer") is not None and k > 0: afters[k - 1] = e["outer"]
@@ -637,26 +702,38 @@ def transition_rows(toks, events, snaps, np_spans, final):
     rows = []; roles = set(); prev = ("START",); pend = None
     if not hasattr(hybrid_rows, "module_log"): hybrid_rows.module_log = collections.Counter()
     noreads = {"win_reads": set(), "reg_reads": set()}
-    boundaries = {k for k, x in enumerate(events) if x.get("outer") is not None}; opened = set()     # the first event of each that-clause
+    # the clause boundaries: event index of the boundary row -> (kind, the view of the clause left behind, whether the clause rules
+    # consume the event themselves).  A boundary is noticed at the first event of the next clause; a subordinate clause opens one
+    # event earlier, at its conjunction, which the clause rules read (clause_rules): that event has no row of its own, and it is a
+    # boundary by itself — also in a parse that dies on the token after it
+    edges = {}; opened = set()
+    for k, x in enumerate(events):
+        if x.get("opens"): edges[k] = (x["opens"], befores[k], True)
+        elif x.get("outer") is not None and x["edge"] not in ("before", "after"): edges[k] = (x["edge"], x["outer"], False)
     ei = 0
     while ei < len(events):
         e = events[ei]
         in_mod = ei in in_mspan or (ei in empty_before and empty_before[ei] not in emitted_empty)
-        if in_mod and boundaries:
+        if in_mod and edges:
             first, last = (mspans[in_mspan[ei]] if ei in in_mspan else mspans[empty_before[ei]])[:2]
-            if any(first < b <= last for b in boundaries):    # the clause opened inside a module activation (the copula's that-clause): the module refuses it
+            if any(first < b <= last for b in edges):         # the clause opened inside a module activation (the copula's that-clause): the module refuses it
                 hybrid_rows.module_log["that-clause inside a module"] += 1
                 return rows, roles, None, pend
-        if ei in boundaries and ei not in opened:
-            # the clause boundary: the frame of the clause left behind gets its link — a that-clause is spliced here — and is flushed
-            # to the context; OPEN then clears the working frame, and the that-clause is read into it from INNER
-            opened.add(ei)
+        if ei in edges and ei not in opened and not (edges[ei][2] and in_mod):       # (at a conjunction, the PP machine the main clause is in returns first)
+            # the clause boundary, at a site of its own: the row from the traces only goes to the site's OPEN state, and the clause
+            # rules do the rest by hand — mark and flush the frame of the clause left behind, clear the working frame, mark the new one
+            # — down to the site's INNER state, where the next clause is read.  A that-clause's row writes the link and flushes itself
+            opened.add(ei); kind, left, absorbed = edges[ei]
             site = np_site(e["chain"]); sid = site_id(site) if site else ">".join(e["cp"][0][1:]) + ":" + str(e["cp"][1])    # where the clause opens: its rows are that site's own
             e2 = events[ei + 1] if ei + 1 < len(events) else noreads
-            P_read = frozenset(predicates(toks, e["i"], e["outer"], set(e["win_reads"]) | set(e2["win_reads"]), set(e["reg_reads"]) | set(e2["reg_reads"]), pend))
-            P_all = frozenset(predicates(toks, e["i"], e["outer"], set(range(e["i"], e["i"] + WINDOW)), ALL_REGS, pend))
-            rows.append((prev, P_all, P_read, (("OPEN", sid), 0, norm_actions([("link", "that", ("const",)), FLUSH]))))
+            P_read = frozenset(predicates(toks, e["i"], left, set(e["win_reads"]) | set(e2["win_reads"]), set(e["reg_reads"]) | set(e2["reg_reads"]), pend))
+            P_all = frozenset(predicates(toks, e["i"], left, set(range(e["i"], e["i"] + WINDOW)), ALL_REGS, pend))
+            if kind == "after": P_read = frozenset()          # reached from the PP machine's second exit alone, and OPEN reads the conjunction itself (d.clause.trail)
+            rows.append((prev, P_all, P_read, (("OPEN", kind, sid), 0, norm_actions([("link", "that", ("const",)), FLUSH] if kind == "that" else []))))
             prev = ("INNER", sid)
+            if absorbed:                                      # the conjunction: read by the clause rule on the way to INNER
+                if "prep" in dict(readings_of(toks[e["i"]])): pend = toks[e["i"]]
+                ei += 1; continue
         if in_mod:
             empty = ei not in in_mspan
             if empty: emitted_empty.add(empty_before[ei])
@@ -688,6 +765,7 @@ def transition_rows(toks, events, snaps, np_spans, final):
             P_read = frozenset(predicates(toks, i1, exit_view, set(en["win_reads"]), set(en["reg_reads"]) | {"mret"}, pend, heads))
             P_all = frozenset(predicates(toks, i1, exit_view, set(range(i1, i1 + WINDOW)), ALL_REGS | {"mret"}, pend, heads))
             post_state = ("MRET", mod, sid, kind)
+            if kind == "sub": P_read = frozenset(q for q in P_read if is_return_key(q))       # the module read the conjunction itself: the hand-over is keyed by its return address alone
             rows.append((("RETM", mod, kind), P_all, P_read, (post_state, 0, norm_actions(post))))
             prev = post_state; ei = last + 1
             continue                                    # (an empty span: ei = first, the event that follows the activation, is next)
@@ -983,7 +1061,7 @@ def frame_to_snapshot(frame):
         s[role] = np_string(frame, role)
     s["subj_cls"] = frame.get("subj.cls") if s["subj"] else None
     s["subj_num"] = (frame.get("subj.number") if frame.get("subj.number") != "none" else None) if s["subj"] else None
-    s["clause"] = frame.get("clause")
+    for k in MARKS: s[k] = frame.get(k)
     for k in SENT_SLOTS: s[k] = bool(frame.get(k))
     return s
 
@@ -1058,6 +1136,7 @@ def apply_actions(frame, actions, toks, i):
             elif cls == "loc": frame[slot] = rs["loc"][-1]
             elif cls == "wh": frame[slot] = rs["wh"][-1]
             elif cls == "modal": frame[slot] = rs["modal"][-1][0]
+            elif cls == "conj": frame[slot] = rs["conj"][0]
             elif cls == "nnum": frame[slot] = R.number_of(tok) or "none"
             elif cls == "verb":
                 lem, form, ja, conj = rs["verb"][0]; frame[slot] = (lem, ja, conj)
@@ -1082,12 +1161,26 @@ def frame_to_clause(frame):
     return c
 
 def frames_to_clause(frames):
-    """the frames of a context -> the rule parser's Clause: the first frame is the main clause, each next one the that-clause of
-    the one before it, and the sentence block of the last frame — the question mark — belongs to the main clause"""
-    clauses = [frame_to_clause(F) for F in frames]
-    for outer, inner in zip(clauses, clauses[1:]): outer.embedded = inner; inner.inner_of = "embedded"
-    if frames[-1].get("sent.question"): clauses[0].question = True
-    return clauses[0]
+    """the frames of a context -> the rule parser's Clause.  A frame marked embedded is the that-clause of the frame before it;
+    of the others one is the main clause and at most one a subordinate clause, on the side its mark says, which the main clause
+    holds as the rule parser does — the clause in subords and its string in pre_clause (rules_ja.subord_form: what the
+    conjunction changes is in the frame already, and changing it again changes nothing); the sentence block of the last frame
+    — the question mark — belongs to the main clause"""
+    clauses = [frame_to_clause(F) for F in frames]; tops = []
+    for k, (F, c) in enumerate(zip(frames, clauses)):
+        if F.get("clause") == "embedded":
+            if k == 0: raise ParseFail("MATRIX: a that-clause with no clause before it")
+            clauses[k - 1].embedded = c; c.inner_of = "embedded"
+        else: tops.append((F, c))
+    mains = [c for F, c in tops if not F.get("clause")]; subs = [(F, c) for F, c in tops if F.get("clause")]
+    if len(mains) != 1 or len(subs) > 1: raise ParseFail(f"MATRIX: {len(mains)} main clauses and {len(subs)} subordinate clauses in the context")
+    main = mains[0]
+    for F, c in subs:
+        order, conj = F["clause"], F.get("conj")
+        if conj not in R.SUBORD or tops.index((F, c)) != (0 if order == "before" else 1): raise ParseFail(f"MATRIX: a subordinate frame out of place or without its conjunction ({conj!r})")
+        c.inner_of, c.conj = order, conj; main.subords.append((order, conj, c)); main.pre_clause = R.subord_form(c, conj)
+    if frames[-1].get("sent.question"): main.question = True
+    return main
 
 # ============================================================================================== the matrices
 class Index:
@@ -1100,7 +1193,7 @@ class Index:
     def __contains__(self, name): return name in self.pos
     def __getitem__(self, name): return self.pos[name]
 
-COPY_SOURCES = ("noun", "ncls", "pron", "pron_poss", "det", "num", "num_time", "adj", "adj_pair", "adj_pair_plain", "adj_mono", "adj_caus", "adv", "adv_front", "adv_too", "time", "wh", "modal", "verb", "nnum", "loc", "dur", "dur_in")
+COPY_SOURCES = ("noun", "ncls", "pron", "pron_poss", "det", "num", "num_time", "adj", "adj_pair", "adj_pair_plain", "adj_mono", "adj_caus", "adv", "adv_front", "adv_too", "time", "wh", "modal", "verb", "nnum", "loc", "dur", "dur_in", "conj")
 
 def source_values(tok):
     """the copy-source readings of a token, as (source, value) pairs — what the lexical layer emits for window slot 0"""
@@ -1119,6 +1212,7 @@ def source_values(tok):
         elif c == "time": out.append(("time", v))
         elif c == "wh": out.append(("wh", v))
         elif c == "modal": out.append(("modal", v[0]))
+        elif c == "conj": out.append(("conj", v))
         elif c == "verb": out.append(("verb", (v[0], v[2], v[3])))
     if any(c in ("noun", "pron") for c, v in readings_of(tok)): out.append(("nnum", R.number_of(tok) or "none"))   # the head's grammatical number
     # the rule parser takes the LAST reading of a class (dict() semantics) for noun/adj/adv/time/wh, the FIRST for pron/det/num/verb
@@ -1135,22 +1229,78 @@ def print_state(pos):
     """a printing position as a control state of the decoder; a FAIL:<reason> exit is the cell's FAIL"""
     return FAIL if isinstance(pos, str) and pos.startswith("FAIL:") else ("P", pos)
 
+SUBORD_LEAD = sorted(R.SUBORD)                                                             # the conjunctions that open a clause before the main clause (parser_rules.pre)
+SUBORD_TRAIL = sorted(w for w in R.SUBORD if w not in R.PREPS and w not in R.COORD)        # … and after it: the PP machine's second exit (pp_module: a preposition or while reads otherwise)
+
+def adjust_rules(state, guard, target, acts):
+    """the rules that close a subordinate clause's frame at `state`, under the literals `guard`: what its conjunction changes in
+    the clause (rules_ja.subord_adjust, mirrored: the past of if, once and after, the negative of unless, the potential for may
+    and no will under so that) is written in the step that does `acts`; one rule per case, exclusive by the one-hot of conj and
+    of modal (pinned by test_subordinate_frame_holds_its_conjunction)"""
+    G = tuple(guard); acts = list(acts); lit = lambda q, t=True: (q, t)
+    cases = [((lit(f"slot.conj={c}"),), [("past", True, ("const",))]) for c in ("if", "once", "after")]
+    cases += [((lit("slot.conj=unless"),), [("neg", True, ("const",))]),
+              ((lit("slot.conj=so that"), lit("slot.modal=may")), [("modal", "can", ("const",))]),
+              ((lit("slot.conj=so that"), lit("slot.modal=will")), [("modal", None, ("clear",))]),
+              ((lit("slot.conj=so that"), lit("slot.modal=may", False), lit("slot.modal=will", False)), []),
+              (tuple(lit(f"slot.conj={c}", False) for c in ("if", "once", "after", "unless", "so that")), [])]
+    return [(state, G + lits, (target, 0, norm_actions(extra + acts))) for lits, extra in cases]
+
 def clause_rules(slots, sites=()):
-    """the encoder's fixed rules at the edges of a clause, over `slots` (every slot of its frame) and the `sites` where the traces
-    open a clause.  A that-clause opens with a boundary row induced from the traces, which writes the link into the frame and
-    raises the flush unit: the frame of the clause left behind is in the context.  OPEN — one state per site, as a noun
-    phrase's return has one — then clears every slot by its own gate for the clause to be read into, marks the new frame
-    embedded, and keeps the sentence block: a question flag of the clause left behind stays as sent.question, since the
-    question mark is read after its frame has gone.  The clause is read from the site's INNER state.  CLOSE, at the end of every
-    sentence, flushes the last frame and is DONE"""
-    clears = [(sl, None, ("clear",)) for sl in slots if sl != "clause" and sl not in SENT_SLOTS]
-    opened = clears + [("clause", "embedded", ("const",))]
-    rules = [(("CLOSE",), (), (("DONE",), 0, (FLUSH,)))]
-    for sid in sorted(sites):
-        rules += [(("OPEN", sid), (("slot.link=that", True), ("flag.question", True)), (("INNER", sid), 0, norm_actions(opened + [("sent.question", True, ("const",))]))),
-                  (("OPEN", sid), (("slot.link=that", True), ("flag.question", False)), (("INNER", sid), 0, norm_actions(opened))),
-                  (("OPEN", sid), (("slot.link=that", False),), (FAIL, 0, ()))]
-    return rules
+    """the encoder's fixed rules at the edges of a clause, over `slots` (every slot of its frame) and the `sites` — (kind, site) —
+    where the traces open a clause: -> (rules, the derived predicates they read).  The row induced from the traces only says
+    that a boundary of that kind is taken there, into the site's OPEN state — one state per site, as a noun phrase's return has
+    one; these rules mark and flush the frame of the clause left behind, clear every slot by its own gate for the next clause
+    to be read into, mark the new frame, and arrive at the site's INNER state, where that clause is read.
+      that    a that-clause opens: the induced row has written the link and raised the flush unit; OPEN clears, marks the new
+              frame embedded and keeps the sentence block — a question flag of the clause left behind stays as sent.question,
+              since the question mark is read after its frame has gone.  Inside a subordinate clause it is refused (its frame
+              would leave without what its conjunction changes, and lie between the two frames the decoder walks)
+      before  a subordinate clause opens before its main clause, on its conjunction (d.clause.lead: a subordinator, not the
+              question word when, the working frame still empty — parser_rules.pre): OPEN reads the conjunction into conj and
+              marks the frame; nothing is flushed
+      main    that clause has closed, where the rule parser's tail leaves a subordinate clause and its main clause may begin
+              (d.clause.close: at a comma, or at the `or not` of whether — the tail's return there consumes nothing, so no
+              trace shows the PP machine deciding it): OPEN writes what its conjunction changes and flushes the frame; TURN
+              clears everything and marks the main clause's frame with sublink = before
+      after   a subordinate clause opens after its main clause, on its conjunction (d.clause.trail): OPEN marks the main
+              clause's frame with sublink = after and flushes it; TURN clears, reads the conjunction and marks the new frame,
+              keeping the sentence block
+    CLOSE, at the end of every sentence, flushes the last frame — a subordinate clause read after its main clause with what
+    its conjunction changes — and is DONE; a subordinate clause with no main clause after it is refused"""
+    slots = sorted(set(slots) | set(MARKS) | {"sub"} | set(SENT_SLOTS))
+    def clears(keep): return [(sl, None, ("clear",)) for sl in slots if sl not in keep]
+    def subord(w, lead): return [f"w0.class=conj", f"w0.surf={w}"] + ([f"¬w1.class={c}" for c in ("aux_be", "aux_do", "aux_have", "modal")] if lead and w == "when" else [])
+    derived = {"d.clause.lead": [subord(w, True) + ["¬w0.class=time", "¬w0.class=int", "¬w0.class=yesno", "¬slot.front", "¬slot.time", "¬flag.please", "¬slot.clause", "¬slot.sublink"] for w in SUBORD_LEAD],
+               "d.clause.trail": [subord(w, False) + ["¬slot.clause", "¬slot.sublink"] for w in SUBORD_TRAIL],
+               "d.clause.close": [["w0.surf=,"], ["slot.conj=whether", "w0.surf=or", "w1.class=not"]]}
+    T = lambda q: (q, True); F = lambda q: (q, False)
+    read_conj = [("conj", None, ("copy", "conj")), ("sub", True, ("const",))]
+    rules = adjust_rules(("CLOSE",), (T("slot.clause=after"),), ("DONE",), [FLUSH])
+    rules += [(("CLOSE",), (T("slot.clause=before"),), (FAIL, 0, ())),
+              (("CLOSE",), (F("slot.clause=after"), F("slot.clause=before")), (("DONE",), 0, (FLUSH,)))]
+    for kind, sid in sorted(sites):
+        O, U, I = ("OPEN", kind, sid), ("TURN", sid), ("INNER", sid)
+        if kind == "that":
+            opened = clears(("clause",) + SENT_SLOTS) + [("clause", "embedded", ("const",))]
+            main = (T("slot.link=that"), F("slot.clause=before"), F("slot.clause=after"))
+            rules += [(O, main + (T("flag.question"),), (I, 0, norm_actions(opened + [("sent.question", True, ("const",))]))),
+                      (O, main + (F("flag.question"),), (I, 0, norm_actions(opened))),
+                      (O, (T("slot.link=that"), T("slot.clause=before")), (FAIL, 0, ())), (O, (T("slot.link=that"), T("slot.clause=after")), (FAIL, 0, ())),
+                      (O, (F("slot.link=that"),), (FAIL, 0, ()))]
+        elif kind == "before":
+            rules += [(O, (T("d.clause.lead"),), (I, 1, norm_actions([("clause", "before", ("const",))] + read_conj))), (O, (F("d.clause.lead"),), (FAIL, 0, ()))]
+        elif kind == "main":
+            rules += adjust_rules(O, (T("slot.clause=before"), T("d.clause.close")), U, [FLUSH])
+            rules += [(O, (F("slot.clause=before"),), (FAIL, 0, ())), (O, (T("slot.clause=before"), F("d.clause.close")), (FAIL, 0, ()))]
+            rules += [(U, (), (I, 0, norm_actions(clears(("sublink",)) + [("sublink", "before", ("const",))])))]
+        elif kind == "after":
+            rules += [(O, (T("d.clause.trail"),), (U, 0, norm_actions([("sublink", "after", ("const",)), FLUSH]))), (O, (F("d.clause.trail"),), (FAIL, 0, ()))]
+            opened = clears(("clause", "conj", "sub") + SENT_SLOTS) + [("clause", "after", ("const",))] + read_conj
+            rules += [(U, (T("flag.question"),), (I, 1, norm_actions(opened + [("sent.question", True, ("const",))]))),
+                      (U, (F("flag.question"),), (I, 1, norm_actions(opened)))]
+        else: raise ValueError(f"no clause rules for a boundary of kind {kind}")
+    return rules, derived
 
 def decoder_rules():
     """gen_module's printing rules in the compiler's rule format — a token to emit as the action ("out", token, PRINT_SRC), a move
@@ -1218,7 +1368,7 @@ def vocabulary(rules):
         for slot, v, src in actions:
             if src[0] == "const" and v is not None: slot_vocab[slot].add(v)
     src_vocab = collections.defaultdict(set)
-    for tok in list(R.LEX) + list(R.PRONOUNS) + list(R.DETS) + list(R.NUMBERS) + list(R.WH) + list(R.MODALS) + list(R.VERB_FORMS):
+    for tok in list(R.LEX) + list(R.PRONOUNS) + list(R.DETS) + list(R.NUMBERS) + list(R.WH) + list(R.MODALS) + list(R.VERB_FORMS) + list(R.SUBORD) + list(R.COORD):
         for s, v in source_values(tok).items(): src_vocab[s].add(v)
     for s, vals in window_source_vocab().items(): src_vocab[s] |= set(vals)
     for s in src_vocab: src_vocab[s] = sorted(src_vocab[s], key=str)
@@ -1247,7 +1397,7 @@ def universal_vocabulary():
     """every slot's values over the hand-written rules of every module — the noun-phrase module for every role, the clause modules,
     the clause rules — and the lexicon's copy sources: the universe a diagram (canon.py) ranges over when it has no particular cell"""
     rules = module_rules(set(NP_ROLES))[0] + clause_module_rules()[0]
-    rules += clause_rules(sorted(vocabulary(rules)[0]))
+    rules += clause_rules(sorted(vocabulary(rules)[0]))[0]
     return vocabulary(rules)[0]
 
 # ---------------------------------------------------------------------------------------------- the layers both cells share
@@ -1351,7 +1501,8 @@ def compile_encoder(trees, extra_rules=(), derived=None):
     rules += close_returns(rules)
     # ---- vocabularies; the clause rules range over every slot the frame has, and what they write joins the vocabulary
     slot_vocab = vocabulary(rules)[0]
-    rules += clause_rules(sorted(slot_vocab), {out[0][1] for _, _, out in rules if out[0][0] == "OPEN"})
+    crules, cderived = clause_rules(sorted(slot_vocab), {out[0][1:] for _, _, out in rules if out[0][0] == "OPEN"})
+    rules += crules; derived.update(cderived)
     slot_vocab, src_vocab, copy_pairs, move_pairs, use_rules = vocabulary(rules)
     # ---- state index: control, slots, pend_prep, shift
     S = Index()
@@ -1493,7 +1644,7 @@ def compile_encoder(trees, extra_rules=(), derived=None):
     def rule_edges(q):
         ref = pred_ref(q)
         return [ref] if ref is not None else base_edges(q)
-    rule_units(rules, derived, rule_edges, lambda prev: ("S", S[("ctrl", prev)]), ("X", X[("one",)]), L2, L3, W3, b3, unresolved, quiet=("M", "OPEN"))
+    rule_units(rules, derived, rule_edges, lambda prev: ("S", S[("ctrl", prev)]), ("X", X[("one",)]), L2, L3, W3, b3, unresolved, quiet=("M", "OPEN", "TURN", "CLOSE"))
     # skip-state rules: SKIP(ri, j) -> SKIP(ri, j-1) or the target
     for ri, (prev, lits, (cp, k, actions)) in enumerate(rules):
         for j in range(1, k):
@@ -1816,7 +1967,7 @@ class MatrixParser:
         for slot, v in F.items():
             if v in (None, False, ""): continue
             if ("slot", slot, v) in self.frame_pos: vec[self.frame_pos[("slot", slot, v)]] = 1.0
-            elif slot in self.c["slot_vocab"]: raise ParseFail(f"PRINT: {v!r} is not a value of {slot} in this cell")
+            elif slot in self.c["slot_vocab"] or slot in MARKS: raise ParseFail(f"PRINT: {v!r} is not a value of {slot} in this cell")     # (a mark the cell has no block for says what the frame is to its neighbours: never dropped)
         return vec
     def emitted(self, s):
         """the output unit a decoder state carries when its emit unit is on: [] when the step emitted nothing, else the one unit"""

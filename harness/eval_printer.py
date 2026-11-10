@@ -5,7 +5,8 @@ Corpus: for each parsed sentence, the rules are stepped on the frame and their t
 <citation>` is AGREE when the string is generate()'s, GAP when the rules refuse (a register the frame cannot hold, or no
 rule), MISFIRE when they print something else.  Sweep: frames are built from a product of the predicates the rules read
 (the kind of predicate, the flags, the modal, the complement; the arguments, the particles, the question words; a
-that-clause under a reporting verb, and around a fixed inner clause) and rendered by both; a frame generate() itself
+that-clause under a reporting verb, and around a fixed inner clause; a subordinate clause under every conjunction of the
+table on either side of a fixed main clause, and a main clause around a fixed subordinate one) and rendered by both; a frame generate() itself
 cannot print (it raises) is skipped; the rules may refuse a frame, but where they print they must print what generate()
 prints — the mismatch count is the item `printer.sweep` (MISMATCHES < MATCH).
 """
@@ -172,9 +173,39 @@ def embedded_frames():
             for f in flags: setattr(outer, f, True)
             yield ("outer", "negpol", subj[0] + adv, flags, None, None), outer
 
+def subordinate_frames():
+    """a subordinate clause beside its main clause, read before it and after it: under every conjunction of the table, each kind of
+    predicate with a few flags and modals as the subordinate clause of `he came` — が on its subject, plain forms, what the
+    conjunction changes, its ending — and a bare -ing clause (while walking); and each predicate frame as the main clause around
+    `when he was tired` and `if he was tired`, with and without a front adverb, whose politeness and question mark are its own"""
+    def sub_fixed(): c = Clause(); c.subj = "彼"; c.subj_cls = "h"; c.copula = ("adj", ("疲れている", "fx")); c.past = True; return c
+    def main_fixed(): c = base_clause(); c.verb = ("come", "来る", "k"); c.past = True; return c
+    def join(main, order, conj, inner): main.subords = [(order, conj, inner)]; main.pre_clause = R.subord_form(inner, conj); return main
+    flags_few = ("past", "neg", "question")
+    for conj in sorted(R.SUBORD):
+        for order in ("before", "after"):
+            for kind, val in predicate_kinds():
+                for bits in itertools.product((False, True), repeat=len(flags_few)):
+                    flags = [f for f, b in zip(flags_few, bits) if b]
+                    for modal in (None, "will", "can", "may"):
+                        yield ("sub", conj, order, kind, str(val), flags, modal), join(main_fixed(), order, conj, make_clause(kind, val, flags, modal, None))
+            for verb in verb_examples():
+                inner = Clause(); inner.verb = verb
+                yield ("sub", conj, order, "ing", str(verb), (), None), join(main_fixed(), order, conj, inner)
+    flags_main = ("past", "neg", "question", "tag")
+    for kind, val in predicate_kinds():
+        for bits in itertools.product((False, True), repeat=len(flags_main)):
+            flags = [f for f, b in zip(flags_main, bits) if b]
+            for modal in (None, "will", "can", "should", "must", "may"):
+                for order in ("before", "after"):
+                    for conj in ("when", "if"):
+                        for front in ("", "実は、"):
+                            main = make_clause(kind, val, flags, modal, None); main.front = front
+                            yield ("main", conj, order, kind, str(val), flags, modal, front), join(main, order, conj, sub_fixed())
+
 def sweep(pr):
     t0 = time.time(); cnt = collections.Counter(); examples = {}; per_group = collections.defaultdict(collections.Counter)
-    for label, c in itertools.chain(predicate_frames(), template_frames(), embedded_frames()):
+    for label, c in itertools.chain(predicate_frames(), template_frames(), embedded_frames(), subordinate_frames()):
         group = label[0]
         try: got = "".join(pr.render(c))
         except G.Refuse as e: got = None; why = str(e)

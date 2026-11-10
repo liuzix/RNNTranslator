@@ -57,25 +57,23 @@ items:
 
 - id: subordinate-clauses
   title: Subordinate clauses — when, if, because, although — a frame each, printed first whichever came first
-  status: open
+  status: done
   round: 4
-  depends_on: [clause-modes]
   context:
-    - text: A subordinate clause is folded into pre_clause as a string ending in its conjunction's Japanese — とき, なら, ので, が —
-        and the encoder refuses every sentence the rules translate that has one.
-      pinned_by: matrix
-    - text: The decoder starts printing only when the encoder is done, from frames it reaches by moving its attention, and a
-        that-clause is already printed in the middle of the frame that was flushed before it.
-      pinned_by: test_context_is_one_frame_per_clause
-    - text: Each clause is a frame, flushed where it closes — the subordinate clause at the comma when it comes first, the main
-        clause at the conjunction when the subordinate clause follows — and marked with its kind; Japanese puts the subordinate
-        clause first either way, and the decoder can, since nothing is printed before it has every frame — when the first frame
-        is a main clause with a subordinate one after it, the attention moves down at once, the clause prints with its
-        conjunction, and the attention comes back up.
+    - text: The encoder reads a subordinate clause into a frame of its own in both orders — it opens on its conjunction, which the
+        clause rules read, and the frame that closes first is flushed first — and the decoder prints the subordinate frame first
+        either way, moving its attention up or down from the main clause's frame and back.
+      pinned_by: test_subordinate_clause_in_both_orders
+    - text: What a conjunction changes in its clause is written into the frame by the rule that flushes it, and every conjunction of
+        the table has its ending after the clause's finite form; unless and while with a bare -ing clause, which slice that form,
+        are refused by the printing rules.
+      pinned_by: test_subordinate_frame_holds_its_conjunction
+    - text: unless and while with a bare -ing clause print once a clause kind can end at a stem form (clause-modes); a conjunction that
+        also reads as a preposition — before, after, since — and while after a main clause stay refused because the cell follows
+        the rule parser's first reading of them, and reading them needs the reading that survives the fork.
       hypothesis: true
-  stubs: [SubordinateClause]
   acceptance: test_subordinate_clauses_agree_in_both_orders
-  touches: [parser_matrix.py, gen_module.py, parser_rules.py]
+  touches: [parser_matrix.py, gen_module.py, parser_rules.py, pp_module.py, rules_ja.py]
 
 - id: relative-clauses
   title: Relative clauses — a frame printed before the noun phrase it modifies

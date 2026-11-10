@@ -9,7 +9,7 @@ template whose every slot is a table lookup over register contents and feature b
 What is NOT here is the point of the experiment: whatever the held-out Tanaka
 sentences need that I could not write down as a rule.
 """
-import re
+import re, copy
 import tables          # the rule tables live in tables/*.tbl, one file per table
 from collections import Counter
 
@@ -213,13 +213,18 @@ MULTIWORD = sorted([w for w in list(LEX) + list(PREPS) + list(DETS) + list(WH) i
 
 SUBORD, COORD, HEARSAY, SOFTENER = tables.build_connectives()   # tables/connectives.tbl
 
-def subord_form(inner, conj):
-    """a parsed subordinate clause -> Japanese clause + connective, Japanese-first order"""
-    if conj in ("if", "once"): inner.past = True
-    if conj == "after": inner.past = True
+def subord_adjust(inner, conj):
+    """the registers a conjunction changes in its clause before the clause is printed: if, once and after take the past
+    (降ったら, 行った後で), unless the negative, so that the potential in place of may and no will"""
+    if conj in ("if", "once", "after"): inner.past = True
     if conj == "unless": inner.neg = True
     if conj == "so that" and inner.modal in ("may", "can"): inner.modal = "can"
     if conj == "so that" and inner.modal == "will": inner.modal = None
+
+def subord_form(inner, conj):
+    """a parsed subordinate clause -> Japanese clause + connective, Japanese-first order; the clause itself is left as it was
+    parsed (the changes are made on a copy), so that it can also be printed as a frame of its own (gen_module.frames_of)"""
+    inner = copy.deepcopy(inner); subord_adjust(inner, conj)
     body = generate(inner, polite=False, embedded=True)[:-1]
     if conj in ("if", "once"): return body + "ら"
     if conj == "unless": return (body[:-2] + "なければ") if body.endswith("ない") else body + "なら"

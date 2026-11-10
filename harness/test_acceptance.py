@@ -85,7 +85,11 @@ def test_coordinated_clauses_agree(root):
 
 def test_subordinate_clauses_agree_in_both_orders(root):
     """a subordinate clause is a frame of its own and is printed first, whether it came before its main clause or after it"""
-    assert ST.SubordinateClause().order_rules(), "no rules for a subordinate clause"
+    import gen_module as GM
+    rules, derived = PM.clause_rules((), {(kind, "site") for kind in ("before", "main", "after")})      # the encoder's rules at the conjunction and at the comma
+    assert {prev[1] for prev, lits, out in rules if prev[0] == "OPEN"} == {"before", "main", "after"} and any(PM.FLUSH in out[2] for prev, lits, out in rules if prev[0] == "OPEN")
+    moves = {tok[1] for pos, lits, (nxt, tok) in GM.PrintRules().rules() if tok and tok[0] == "h" and pos in ("P_PRE", "P0")}          # the decoder's, that put the subordinate frame first
+    assert moves == {"up", "down"}, "the printing rules do not move to a subordinate frame on either side"
     agrees(root, ["when i was a child , i loved reading .", "i loved reading when i was a child .", "if it rains tomorrow , i will stay at home .", "i went out although it was raining ."])
 
 def test_relative_clause_agrees(root):

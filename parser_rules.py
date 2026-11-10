@@ -47,7 +47,9 @@ class Clause:
         self.purpose = None; self.purpose_clause = None; self.control = None; self.relative = False
         self.obj_particle = None; self.infinitive = None; self.pre_clause = ""; self.howabout = None; self.exclaim = None; self.wh_cls = "t"
         self.embedded = None       # another Clause (that-clause / infinitive complement)
-        self.inner_of = None       # for an inner clause: what it is to its outer clause — "embedded" for a that-clause (set where it is created, so a trace can tell it from a control or purpose clause)
+        self.inner_of = None       # for an inner clause: what it is to its outer clause — "embedded" for a that-clause, "before" / "after" for a subordinate clause that comes before / after its main clause (set where it is created, so a trace can tell it from a control or purpose clause)
+        self.conj = None           # for a subordinate clause: its conjunction
+        self.subords = []          # the subordinate clauses folded into pre_clause, in the order they were read: (before | after, conjunction, the clause as parsed)
         self.compare = None        # ("as"|"than"|"noless", np) degree construction
         self.noless = False        # "no less ADJ than": the comparison reads に劣らず
         self.perf_had = False      # the perfect auxiliary was "had": a negative perfect then reads ていなかった, else ていない
@@ -758,11 +760,13 @@ class Parser:
             return
         return self.end()
 
-    def sub_clause(self, conj):
-        """'conj S V ...' -> Japanese subordinate clause string; the reading dies (ParseFail) if the clause does not parse"""
+    def sub_clause(self, conj, order="before"):
+        """'conj S V ...' -> Japanese subordinate clause string; the reading dies (ParseFail) if the clause does not parse.
+        order: the clause comes before its main clause (called from pre) or after it (from the tail); the clause as parsed is
+        kept on the main clause (Clause.subords) beside the string"""
         save = (self.i, self.c, self.phase, self.np_role)
         self.i += 1
-        inner = Clause(); inner.sub = True; self.c = inner
+        inner = Clause(); inner.sub = True; inner.inner_of = order; inner.conj = conj; self.c = inner
         if self.verb_form(self.peek()) == "ing" and conj in ("while", "before", "after", "when", "since", "once"):     # while walking
             inner.subj = None
             self.verb_phrase(expect_ing=True, from_copula=True)
@@ -772,7 +776,7 @@ class Parser:
         else:
             ja, cls = self.parse_np(role="subj"); inner.subj, inner.subj_cls, inner.subj_num = ja, cls, self.np_number
             self.phase = "VP0"; self.predicate()
-        self.c, self.np_role = save[1], save[3]
+        self.c, self.np_role = save[1], save[3]; self.c.subords.append((order, conj, inner))
         if self.phase != "DONE": self.phase = save[2]
         if conj == "whether" and self.peek() == "or" and self.peek(1) == "not": self.i += 2
         if self.peek() == ",": self.i += 1
@@ -960,10 +964,10 @@ class Parser:
                 c.suffix = HEARSAY[self.peek(2)]; self.i += 3; continue
             if "conj" in r and tok in COORD and c is self.main and (tok != "so" or self.peek(1) and self.starts_np(self.peek(1))):
                 if tok == "while" and self.choose("while: subordinate | coordinate") == 0:
-                    c.pre_clause += self.sub_clause(tok); continue
+                    c.pre_clause += self.sub_clause(tok, "after"); continue
                 self.coord(tok); continue
             if "conj" in r and tok in SUBORD and c is self.main and (tok not in PREPS or self.choose(tok + ": PP | clause") == 1):
-                c.pre_clause += self.sub_clause(tok); continue
+                c.pre_clause += self.sub_clause(tok, "after"); continue
             if tok == "," and self.peek(1) and self.has(self.peek(1), "conj"): self.i += 1; continue
             if "time" in r: c.time += r["time"]; self.i += 1; continue
             if tok == "in" and self.peek(1) and "num" in dict(self.readings(self.peek(1))) and self.peek(2) in DURATION and self.peek(2) not in ("times", "time"):   # in 50 minutes -> ５０分で

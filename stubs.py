@@ -43,11 +43,6 @@ class Coordination(Stub):
     item = "coordination"
     def link_rules(self): return self._hit("link_rules")                     # -> the rules at the conjunction: link and flush the first clause's frame, clear, read the second
 
-class SubordinateClause(Stub):
-    """a subordinate clause as a frame of its own, printed first whichever clause came first (item subordinate-clauses)"""
-    item = "subordinate-clauses"
-    def order_rules(self): return self._hit("order_rules")                   # -> the encoder's rules at the comma or the conjunction, and the decoder's that put the subordinate frame first
-
 class RelativeClause(Stub):
     """a relative clause as a frame printed before the noun phrase it modifies (item relative-clauses)"""
     item = "relative-clauses"

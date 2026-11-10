@@ -6,11 +6,15 @@ verb.  Every branch of that loop is here, in the order the parser tests them, as
 (Decision): branch k fires when its condition holds and none of the earlier conditions does, each condition a derived
 predicate (a DNF over base literals, nested definitions expanded), so that at every position exactly one rule fires and
 the decision costs one step.  A branch whose action depends on the token (the particle of a preposition) continues at a
-table position where one rule per value fires.  What the frame cannot hold — a coordinate or subordinate clause, a
-purpose infinitive, the hearsay suffix, an absolute clause — exits with FAIL and says why.
+table position where one rule per value fires.  What the frame cannot hold — a coordinate clause, a purpose infinitive,
+the hearsay suffix, an absolute clause — exits with FAIL and says why.  The machine has two exits: RET at the end of its
+clause (the end of the sentence, or inside a subordinate clause — flag.sub — a comma, `or not` or a conjunction), and
+RETSUB in a main clause at a conjunction that opens a subordinate clause after it, where the clause rules take over
+(parser_matrix.clause_rules); a conjunction that is also a preposition reads as the preposition and while as a coordinator,
+the parser's first choices, and a second subordinate clause is refused.
 
-States are module-local names; parser_matrix.clause_module_rules maps them to control states ("M", "pp", name), "RET" to
-("RET", "pp") and "FAIL:<why>" to the cell's FAIL.  A rule may target ("NP0", role) to hand a noun phrase to np_module,
+States are module-local names; parser_matrix.clause_module_rules maps them to control states ("M", "pp", name), "RET" and
+"RETSUB" to the return states ("RETM", "pp", "") and ("RETM", "pp", "sub"), and "FAIL:<why>" to the cell's FAIL.  A rule may target ("NP0", role) to hand a noun phrase to np_module,
 writing `ret` = "pp" so that the module's own rule at ("RET", role) takes the phrase back.  Base literals are the
 predicates of parser_matrix.predicates() (w{k}.class=, w{k}.surf=, w{k}.vform=, w{k}.akind=, w{k}.dur=1, w{k}.hearsay=1,
 w0=w2, hit=, reg.*, flag.*, pp.count=, pend_prep=, use.<role>, np.<role>.time, slot.<slot>[=value]) and the families of
@@ -130,10 +134,12 @@ def build():
     d = Decision("pp", "PP0", D)
     d.branch(lit("w0.class=END"), "RET")
     d.branch(lit("w0.class=end"), "RET")
+    d.branch(AND(lit("flag.sub"), OR(lit("w0.surf=,"), AND(lit("w0.surf=or"), lit("w1.class=not")), lit("w0.class=conj"))), "RET")   # a subordinate clause ends at a comma, at `or not`, at a conjunction
     d.branch(["w0.surf=,", "w1.class=pron", "w2.hearsay=1", "w3.class=end"], "FAIL:hearsay suffix")
     d.branch(AND(COORD0, lit("¬w0.surf=so")), "FAIL:coordinate clause")
     d.branch(AND(COORD0, lit("w0.surf=so"), SNP[1]), "FAIL:coordinate clause")
-    d.branch(SUBORD0, "FAIL:subordinate clause")
+    d.branch(AND(SUBORD0, lit("¬slot.clause"), lit("¬slot.sublink")), "RETSUB")              # a subordinate clause after the main clause: the clause rules open it
+    d.branch(SUBORD0, "FAIL:subordinate clause inside a clause, or a second one")
     d.branch(["w0.surf=,", "w1.class=conj"], "PP0", 1)
     d.branch(["w0.class=time", "¬slot.time"], "PP0", 1, [("time", None, ("copy", "time"))])
     d.branch(["w0.class=time", "slot.time"], "FAIL:two time adverbs")
