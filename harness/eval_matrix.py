@@ -1,10 +1,10 @@
-"""The matrix parser against the rule parser: compile the hybrid cell on dev+test, cross-tabulate both implementations
-of the parser interface on every sentence, and record the cell's size.
+"""The matrix parser against the rule parser: compile the encoder and the decoder on dev+test, cross-tabulate both
+implementations of the parser interface on every sentence, and record the size of each cell and of what passes between them.
 
-identical               both translate and the Japanese is the same (the cell's is what its print head emits)
+identical               both translate and the Japanese is the same (the matrices' is what the decoder emits)
 wrong_frame             both parse, different Japanese            } silent misfires — the matrix answers where it should
 matrix_parses_refused   the rule parser refuses, the matrix parses } not, or answers wrongly; the baseline guards their sum
-refused_parseable       the rule parser parses, the matrix refuses (out of the cell's scope, or a FAIL row)
+refused_parseable       the rule parser parses, the matrix refuses (out of the encoder's scope, or a FAIL row)
 both_refuse             neither parses
 """
 import sys, os, json, argparse, collections, time
@@ -57,8 +57,8 @@ def main():
     comp = mp.c
     kinds = collections.Counter()
     for prev, lits, out in comp["rules"]:
-        if prev[0] == "P" or prev == ("DONE",): kinds["print"] += 1                 # the decoder: the printing positions, entered from DONE
-        elif prev[0] in ("OPEN", "CLOSE", "RESTORE"): kinds["flush"] += 1           # the clause flush: a that-clause read in the one frame
+        if prev[0] == "P": kinds["print"] += 1                                      # the decoder: the printing positions
+        elif prev[0] in ("OPEN", "CLOSE"): kinds["flush"] += 1                      # the clause rules: a frame flushed to the context, the working frame cleared
         elif prev[0] in ("M", "RETM") or (prev[0] == "RET" and out[0][0] == "M"): kinds["clause"] += 1   # the hand-translated clause modules and their hand-overs
         elif isinstance(prev[0], str) and prev[0].startswith("NP"): kinds["module"] += 1
         elif prev[0] == "RET": kinds["exit"] += 1
@@ -72,7 +72,9 @@ def main():
         for k in ("identical", "wrong_frame", "matrix_parses_refused", "refused_parseable", "both_refuse"): tot[k] += res["per_split"][s][k]
     res.update(tot)
     t0 = time.time(); canon = canon_survey(comp); canon["seconds"] = round(time.time() - t0, 1)
-    res["cell"] = {"state_units": mp.nS, "input_units": mp.nX, "nnz": int(mp.nnz()), "layers": [len(L) for L, _, _ in comp["layers"]], "rules": len(comp["rules"]),
+    def cell_stats(cell): return {"state_units": cell.nS, "input_units": cell.nX, "nnz": int(cell.nnz()), "layers": [len(L) for L, _, _ in cell.c["layers"]], "rules": len(cell.c["rules"])}
+    res["cell"] = {"encoder": cell_stats(mp.enc), "decoder": cell_stats(mp.dec), "frame_units": len(mp.frame_units), "sentence_units": len(mp.handoff),
+                   "output_units": len(mp.out_units), "nnz": int(mp.nnz()), "rules": len(comp["rules"]),
                    "rules_by_kind": dict(kinds), "build_seconds": round(build_s), "scope": dict(comp.get("scope", {})),
                    "unresolved": {q: n for q, n in sorted(comp.get("unresolved", {}).items())},     # positive literals the cell cannot see: those rules can never fire
                    "canon": canon}

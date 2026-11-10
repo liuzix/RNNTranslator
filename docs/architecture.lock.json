@@ -10,22 +10,22 @@
   {
    "source": "docs/architecture.puml",
    "output": "docs/architecture.svg",
-   "source_sha256": "c5769dc0c2dc53ddb07ff707b783a98a056f7657ac356ba0121b5e941963b192",
-   "output_sha256": "6bb7ca2630d2ba66e77d6846d38215d7172d67852efebadbac893585a608288b"
+   "source_sha256": "f237d6d821dd6af8a6fca961d5bb01169fe0dc20790aafb48c18a9101e99f0d3",
+   "output_sha256": "93f22d0213556a2976a17950442f4c8a9c1a723f89681119dbef5be6b7a240f4"
   },
   {
    "source": "docs/cell.puml",
    "output": "docs/cell.svg",
-   "source_sha256": "7a626b0774a59381a2abea3f4395275efa54869e4ff70c400b0d532c5630962f",
-   "output_sha256": "f7b323e180ea273db904f17f258f0817c4a4a9073b23f8b63ba96a88d4c28cdf"
+   "source_sha256": "035171b855de3c59cd235c6f4b8ad96f2c97cf9f1891dc2ee93aa1a1cd1b8e0b",
+   "output_sha256": "c205560110cf2bde2d275485d2c8e28f2d7fdfc2810a8a061d3efee049fce7d8"
   }
  ],
  "drawings": [
   {
    "source": "harness/render_neurons.py",
    "output": "docs/cell_neurons.svg",
-   "source_sha256": "4df4b04a2ce957308b07ca0d1f5d4ca6cbe91ea831192d9304c3c6355eeb5dfe",
-   "output_sha256": "032a03819fee93250936e21b45746b47701cc25be19c82e8443e8fd3eef617fa"
+   "source_sha256": "0631bbc9cc5a2a92597ba9a48f3de391dbad3f12af35061d7f913943d11da596",
+   "output_sha256": "67d1717fe4dc119aff393beba843ec8e3e66629a10bcbda79c7897b7944388a5"
   }
  ]
 }

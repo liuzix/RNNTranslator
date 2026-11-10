@@ -3,42 +3,62 @@
 "matrix": {
 "both_refuse": 263,
 "cell": {
-"build_seconds": 39,
+"build_seconds": 42,
 "canon": {
-"complete": 1039,
-"consistent": 1039,
-"control_points": 1039,
+"complete": 1042,
+"consistent": 1042,
+"control_points": 1042,
 "example": "NP1@cop:\n  w0 ⟨class=num ∧ surf=one⟩:\n      = class=num » #2: → ('NP2', 'cop') k=1 (('cop.num', None, ('copy', 'num')),)\n      = class=num ∧ surf=one » w1 ⟨class=noun⟩:\n          = class=noun » #2\n          * » cop.det ⟨slot.cop.det⟩:\n              = slot.cop.det » #1: → ('NP2', 'cop') k=0 ()\n              * » cop.poss ⟨slot.cop.poss⟩:\n                  = slot.cop.poss » #1\n                  * » #2\n      * » #1\n",
-"nodes": 17483,
+"nodes": 17700,
 "not_total": [],
-"seconds": 80.7
+"seconds": 86.6
 },
+"decoder": {
+"input_units": 31418,
+"layers": [
+54,
+15,
+1289,
+802,
+37193
+],
+"nnz": 290792,
+"rules": 1289,
+"state_units": 37671
+},
+"encoder": {
 "input_units": 2936,
 "layers": [
-2899,
-424,
-10924,
-2069,
-114435
+2854,
+410,
+9630,
+1221,
+74504
 ],
-"nnz": 954059,
-"rules": 10647,
+"nnz": 647824,
+"rules": 9353,
+"state_units": 32155
+},
+"frame_units": 31417,
+"nnz": 938616,
+"output_units": 37030,
+"rules": 10642,
 "rules_by_kind": {
 "clause": 2255,
 "entry": 108,
 "exit": 616,
 "fail": 3704,
-"flush": 13,
+"flush": 7,
 "module": 2328,
 "outer": 335,
-"print": 1288
+"print": 1289
 },
 "scope": {
 "in scope": 576,
 "out of scope": 146,
 "refused": 273
 },
-"state_units": 70730,
+"sentence_units": 1,
 "unresolved": {}
 },
 "identical": 567,
@@ -68,7 +88,7 @@
 }
 },
 "refused_parseable": 165,
-"summary": "identical 567, wrong frame 0, matrix parses refused 0, refused parseable 165, both refuse 263; nnz 954059, rules 10647; canon: 1039 control points, 0 with a gap, 0 with a conflict",
+"summary": "identical 567, wrong frame 0, matrix parses refused 0, refused parseable 165, both refuse 263; nnz 938616, rules 10642; canon: 1042 control points, 0 with a gap, 0 with a conflict",
 "wrong_frame": 0
 },
 "negatives": {
@@ -78,7 +98,7 @@
 "count": 18,
 "matrix_accepted": 0,
 "problems": [],
-"seconds": 43,
+"seconds": 42,
 "summary": "negatives: rules refuse 18/18 and accept 18/18 controls; matrix refuses 18/18 and accepts 15/18 controls"
 },
 "np": {
@@ -93,7 +113,7 @@
 },
 "printer": {
 "agree": 621,
-"derived": 14,
+"derived": 15,
 "gap": 111,
 "misfire": 0,
 "per_split": {
@@ -132,13 +152,13 @@
 }
 }
 },
-"positions": 632,
-"rules": 1287,
-"summary": "printer vs generate: agree 621, gap 111, misfire 0 on the corpus; sweep 167985 frames, 154333 match, 0 mismatches, 2576 refused, 11076 generate() cannot print; 1287 rules at 632 positions",
+"positions": 635,
+"rules": 1289,
+"summary": "printer vs generate: agree 621, gap 111, misfire 0 on the corpus; sweep 167985 frames, 156445 match, 0 mismatches, 464 refused, 11076 generate() cannot print; 1289 rules at 635 positions",
 "sweep": {
 "frames": 167985,
 "generate_crash": 11076,
-"match": 154333,
+"match": 156445,
 "mismatch_examples": [],
 "mismatches": 0,
 "per_group": {
@@ -161,8 +181,8 @@
 },
 "outer": {
 "generate_crash": 68,
-"match": 8005,
-"refused": 2496
+"match": 10117,
+"refused": 384
 },
 "pp": {
 "match": 12096
@@ -181,13 +201,11 @@
 }
 },
 "refusal_reasons": {
-"a that-clause under slot.cop_k": "('outer', 'np', \"('先生', 'h')\", [], None, None)",
-"a that-clause under verb.lemma": "('outer', 'verb', \"('want', '欲しがる', 'g')\", [], None, None)",
 "imperative": "('verb', \"('eat', '食べる', 'i')\", ['neg', 'imp'], None, 'better')",
 "there-clause with a that-claus": "('outer', 'there', 'None', [], None, None)"
 },
-"refused": 2576,
-"seconds": 48.2
+"refused": 464,
+"seconds": 52.4
 }
 },
 "rules": {
@@ -334,10 +352,10 @@
 "torch": {
 "diverging": 0,
 "dtype": "float32",
-"seconds": 283.1,
+"seconds": 188.6,
 "sentences": 995,
-"steps": 55767,
-"summary": "torch 2.15.0+cpu: 995 sentences, 55767 steps compared, 0 diverging",
+"steps": 55691,
+"summary": "torch 2.15.0+cpu: 995 sentences, 55691 steps compared, 0 diverging",
 "torch": "2.15.0+cpu"
 }
 },
@@ -3833,5 +3851,5 @@
 }
 ]
 },
-"taken": "2026-11-09 at 8dd8fa7"
+"taken": "2026-11-10 at 6ee8fad"
 }

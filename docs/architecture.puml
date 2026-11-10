@@ -28,7 +28,7 @@ rectangle "**lexical layer**  rules_ja.py" as LEX {
 
 rectangle "**parser layer**  parser.py — one interface, two implementations" as PARSE {
   rectangle "RuleParser  parser_rules.py\nbounded transducer: frame stack ≤ 2,\n2 live readings × 4 tokens, no rewinds" as RP
-  rectangle "MatrixParser  parser_matrix.py\nfive sparse ReLU layers per step:\nclause control extracted from traces,\nparse_np from np_module.py" as MP
+  rectangle "MatrixParser  parser_matrix.py\nan encoder cell and a decoder cell, five sparse\nReLU layers per step each, a context of frames\nbetween them: clause control from traces,\nmodules and printing rules by hand" as MP
   RP -right[#999999,dashed]-> MP : must agree inside\nthe matrix's scope
 }
 

@@ -23,8 +23,10 @@ def facts(root=ROOT):
     f["matrix.silent_misfires"] = m["wrong_frame"] + m["matrix_parses_refused"]
     f["matrix.sentences"] = sum(m[k] for k in ("identical", "wrong_frame", "matrix_parses_refused", "refused_parseable", "both_refuse"))
     cell = m["cell"]
-    f["cell.rules"] = cell["rules"]; f["cell.nnz"] = cell["nnz"]; f["cell.state_units"] = cell["state_units"]; f["cell.input_units"] = cell["input_units"]
-    f["cell.layers"] = len(cell["layers"])
+    f["cell.rules"] = cell["rules"]; f["cell.nnz"] = cell["nnz"]; f["cell.layers"] = len(cell["encoder"]["layers"])
+    for name in ("encoder", "decoder"):
+        for k in ("state_units", "input_units", "nnz", "rules"): f[f"{name}.{k}"] = cell[name][k]
+    f["context.frame_units"] = cell["frame_units"]; f["context.sentence_units"] = cell["sentence_units"]; f["decoder.output_units"] = cell["output_units"]
     for kind, n in cell["rules_by_kind"].items(): f[f"cell.rules.{kind}"] = n
     cn = cell["canon"]
     f["canon.control_points"] = cn["control_points"]; f["canon.complete"] = cn["complete"]; f["canon.consistent"] = cn["consistent"]

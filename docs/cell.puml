@@ -1,8 +1,8 @@
 @startuml cell
-' The compiled cell as a recurrent network with two heads: a read head over the English (advanced by the shift unit) and a
-' print head over the Japanese (advanced by the emit unit).  One state, one set of layers; reading rules consume a token
-' and write slots, printing rules read slots and emit a token.  Below, one slot write and its mirror, one slot read.
-' The tag slots hold the outer predicate while a that-clause is read in the same slots (parser_matrix.clause_flush_rules).
+' The compiled machine: two recurrent cells and the context between them.  The encoder reads — a read head over the English,
+' advanced by its shift unit — and hands the frame of each clause to the context when its flush unit is on.  The decoder prints —
+' a print head over the Japanese, advanced by its emit unit — from the frame under the attention head, which its down and up
+' units move.  Below, one slot write of the encoder and its mirror, one slot read of the decoder.
 ' Rendered hermetically by `harness/render_diagram.py` with the PlantUML jar pinned in docs/architecture.lock.json.
 skinparam shadowing false
 skinparam defaultFontName sans-serif
@@ -15,32 +15,53 @@ skinparam rectangle {
 }
 left to right direction
 
-rectangle "**x(t)**  lexical input\nthe window under the read head" as X #F7D9D9 {
-  rectangle "window predicates\nw0..w3: class, surface, form" as XP
-  rectangle "copy sources\nnoun · adj · verb · det · …" as XS
-}
-
-rectangle "**s(t)**  state: a register file\nof one-hot blocks" as S #D8ECD4 {
-  rectangle "ctrl\nreading positions, then\nprinting positions" as CTRL
-  rectangle "slots: the frame\nnoun-phrase roles · verb · adv\nfront · time · want · flags" as SLOTS
-  rectangle "tag slots · print mode\nthe outer predicate while\na that-clause is read" as TAGS
-  rectangle "pend · shift · emit" as PEND
-}
-
-rectangle "**one step**: five ReLU layers, weights ±1, integer thresholds" as STEP {
-  rectangle "L1  predicates\nOR over a block\nAND conjunctions" as L1
-  rectangle "L2  NOT\ncounts · USE pairs" as L2
-  rectangle "L3  rules\nAND(ctrl, literals)\nexactly one fires" as L3
-  rectangle "L4  next ctrl · shift · emit\nwrite gates · read gates\nform gates" as L4
-  rectangle "L5  keep · write\nread · lookups · crash" as L5
-}
-
-rectangle "**s(t+1)**" as SN #FDE7C8
-rectangle "**y(t)**  one morpheme\none-hot: slot values · stem forms\nparticles · suffixes · 。" as Y #FDE7C8
-rectangle "**output lexical layer**\nunit → string; the print head\nappends it when emit = 1" as OUT #EEEEEE
 rectangle "**read head**\nadvances when shift = 1" as HEAD #EEEEEE
 
-rectangle "**one slot write**: the layers seen from one block of s(t)" as WRITE #FFFBEA {
+rectangle "**encoder cell**" as ENC #F3F8F1 {
+  rectangle "**x(t)**  lexical input\nthe window under the read head:\nreadings · table keys · copy sources" as X #F7D9D9
+  rectangle "**s(t)**  state: one-hot blocks" as S #D8ECD4 {
+    rectangle "ctrl\nreading positions" as CTRL
+    rectangle "slots: the working frame\nnoun-phrase roles · verb · adv\nfront · time · want · flags\nlink · clause · sentence block" as SLOTS
+    rectangle "pend · shift · flush" as PEND
+  }
+  rectangle "**one step**: five ReLU layers\nweights ±1, integer thresholds" as STEP {
+    rectangle "L1  predicates\nOR over a block\nAND conjunctions · table rows" as L1
+    rectangle "L2  NOT\ncounts · USE pairs · hits" as L2
+    rectangle "L3  rules\nAND(ctrl, literals)\nexactly one fires" as L3
+    rectangle "L4  next ctrl · shift · flush\nwrite gates" as L4
+    rectangle "L5  keep · write\nlookups · crash" as L5
+  }
+  rectangle "**s(t+1)**" as SN #FDE7C8
+}
+
+rectangle "**context**\nwhat passes between the cells" as CTX #FFF6D6 {
+  rectangle "frame 1\nthe slot block when\nflush was on" as F1
+  rectangle "frame 2\none frame per clause,\nin the order they closed" as F2
+  rectangle "sentence block\nof the encoder's\nfinal state" as SB
+}
+
+rectangle "**attention head**\non one frame; moves on down / up" as ATT #EEEEEE
+
+rectangle "**decoder cell**" as DEC #FBF3EA {
+  rectangle "**x(t)**  the frame under\nthe attention head" as DX #FFF6D6
+  rectangle "**s(t)**  state: one-hot blocks" as DS #D8ECD4 {
+    rectangle "ctrl\nprinting positions" as DCTRL
+    rectangle "sentence block" as DSENT
+    rectangle "emit · down · up" as DHEADS
+  }
+  rectangle "**one step**: the same five layers" as DSTEP {
+    rectangle "L1  AND conjunctions\nover the frame" as D1
+    rectangle "L2  NOT" as D2
+    rectangle "L3  rules\nAND(position, literals)" as D3
+    rectangle "L4  next position\nemit · down · up\nread gates · form gates" as D4
+    rectangle "L5  read · lookups\ncrash" as D5
+  }
+  rectangle "**y(t)**  one morpheme\none-hot: slot values · stem forms\nparticles · suffixes · 。" as Y #FDE7C8
+}
+
+rectangle "**output lexical layer**\nunit → string; the print head\nappends it when emit = 1" as OUT #EEEEEE
+
+rectangle "**one slot write** (encoder): the layers seen from one block of s(t)" as WRITE #FFFBEA {
   rectangle "L3  the rules that\nwrite this block" as RULE
   rectangle "x(t)  the source\none-hot over its values" as SRC
   rectangle "s(t)  the block\none-hot over its values" as OLD
@@ -59,10 +80,10 @@ rectangle "**one slot write**: the layers seen from one block of s(t)" as WRITE 
   KEEP --> NEXTB
 }
 
-rectangle "**one slot read**: the same layers seen from the output" as READ #FFFBEA {
+rectangle "**one slot read** (decoder): the same layers seen from the output" as READ #FFFBEA {
   rectangle "L3  the rules that\nprint this block" as RRULE
-  rectangle "s(t)  the block\none-hot over its values" as RBLK
-  rectangle "s(t)  the verb\none-hot over its values" as RFLAGS
+  rectangle "x(t)  the block of the frame\none-hot over its values" as RBLK
+  rectangle "x(t)  the frame's verb\none-hot over its values" as RFLAGS
   rectangle "L4  read gate\nOR of those rules\n(+ emit)" as RGATE
   rectangle "L4  form gate\nOR of the rules asking\nfor this stem form" as RFORM
   rectangle "L5  read units, one per value\nReLU(read gate + block − 1)\nthe gate selects: a mux" as RAND
@@ -86,12 +107,27 @@ L2 --> L3
 L3 --> L4
 L4 --> L5
 L5 --> SN : W6
-L5 --> Y : W6
 SN --> S : one step
-Y --> OUT
 SN .[#777777,norank].> HEAD : shift
+SN --> F1 : flush
+SN --> F2 : flush
+SN --> SB : at the end
+F1 --> ATT
+F2 --> ATT
+ATT --> DX
+SB --> DSENT : initial state
+DX --> D1
+DS --> D1
+D1 --> D2
+D2 --> D3
+D3 --> D4
+D4 --> D5
+D5 --> Y : W6
+D5 --> DS : W6, one step
+DS .[#777777,norank].> ATT : down / up
+Y --> OUT
 
 ' the insets' columns line up with the layers they zoom into
 L2 -[hidden]-> RULE
-L2 -[hidden]-> RRULE
+D2 -[hidden]-> RRULE
 @enduml

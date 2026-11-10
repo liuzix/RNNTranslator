@@ -241,8 +241,11 @@
       "cell": {
        "type": "object",
        "required": [
-        "state_units",
-        "input_units",
+        "encoder",
+        "decoder",
+        "frame_units",
+        "sentence_units",
+        "output_units",
         "nnz",
         "rules",
         "canon"
@@ -250,7 +253,7 @@
        "properties": {
         "canon": {
          "type": "object",
-         "description": "the canonical diagrams of the whole cell (canon.py): how many control points are complete and consistent, the nodes in all, the README's example in text form",
+         "description": "the canonical diagrams of both cells (canon.py): how many control points are complete and consistent, the nodes in all, the README's example in text form",
          "required": [
           "control_points",
           "complete",
@@ -276,8 +279,84 @@
            "type": "string"
           }
          }
+        },
+        "encoder": {
+         "type": "object",
+         "required": [
+          "state_units",
+          "input_units",
+          "nnz",
+          "layers",
+          "rules"
+         ],
+         "properties": {
+          "state_units": {
+           "type": "integer"
+          },
+          "input_units": {
+           "type": "integer"
+          },
+          "nnz": {
+           "type": "integer"
+          },
+          "rules": {
+           "type": "integer"
+          },
+          "layers": {
+           "type": "array",
+           "items": {
+            "type": "integer"
+           }
+          }
+         }
+        },
+        "decoder": {
+         "type": "object",
+         "required": [
+          "state_units",
+          "input_units",
+          "nnz",
+          "layers",
+          "rules"
+         ],
+         "properties": {
+          "state_units": {
+           "type": "integer"
+          },
+          "input_units": {
+           "type": "integer"
+          },
+          "nnz": {
+           "type": "integer"
+          },
+          "rules": {
+           "type": "integer"
+          },
+          "layers": {
+           "type": "array",
+           "items": {
+            "type": "integer"
+           }
+          }
+         }
+        },
+        "frame_units": {
+         "type": "integer"
+        },
+        "sentence_units": {
+         "type": "integer"
+        },
+        "output_units": {
+         "type": "integer"
+        },
+        "nnz": {
+         "type": "integer"
+        },
+        "rules": {
+         "type": "integer"
         }
-       }
+       },
+       "description": "the compiled machine: the encoder cell and the decoder cell, the size of what passes between them (a frame of the context, the sentence block) and of the decoder's output block"
       },
       "per_split": {
        "type": "object"

@@ -23,7 +23,7 @@ Actions (inputs listed in ACTIONS below):
     np       np_module against Parser.parse_np over all windows of length <= 2 (<= 3 with --full)
     negatives  the ungrammatical sentences of harness/negatives.json refused by both parsers, their controls accepted
     suites   the acceptance suites of harness/suites/<class>.json: each case RIGHT / REFUSED / WRONG against its expectation
-    torch    the cell under PyTorch: the scipy and torch runners stepped side by side on dev+test, the states compared at every step
+    torch    the two cells under PyTorch: the scipy and torch runners stepped side by side on dev+test, the states compared at every step
     printer  the printing rules (gen_module) against generate(): every parsed sentence, and a sweep over the predicates they test
 """
 import sys, os, json, hashlib, subprocess, shutil, tempfile, glob, time, argparse

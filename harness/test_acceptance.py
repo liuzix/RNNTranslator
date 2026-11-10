@@ -30,11 +30,12 @@ def load_module(path, name):
     spec = importlib.util.spec_from_file_location(name, path); mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod); return mod
 
 def small_cell(root):
-    """the hybrid cell compiled on a few dev sentences plus the sentences the tests below need"""
+    """the encoder and the decoder compiled on a few dev sentences plus the sentences the tests below need"""
     if "comp" not in _cache:
         extra = ("she took a rest .", "i like the big dog .", "he said that he was tired .", "he gave me a book .",
                  # round 4: one anchor sentence per construction, each translated by the rules and refused by the cell while its item is open
                  "he is poor and could not buy a coat .", "she speaks english and also speaks swahili .", "when i was a child , i loved reading .",
+                 "i loved reading when i was a child .", "i went out although it was raining .",
                  "if it rains tomorrow , i will stay at home .", "she has a son who is a doctor .", "do you know any doctors who speak japanese ?",
                  "this problem is difficult to solve .", "it is a good idea to read this book .", "it is definite that he will go to america .",
                  "please come to talk to me .", "he comes to see me nearly every day .", "i am thinking of going to the mountains .",
@@ -54,7 +55,7 @@ def suite_closed(root, cls):
         if out != case["expect"]: wrong.append((case["sentence"], out, case["expect"]))
     assert not wrong, f"suite {cls}: {len(wrong)} of {len(suite['cases'])} cases not right: {wrong[0]}"
 
-# ---------------------------------------------------------------- round 4: inner clauses folded as strings, read in the one frame
+# ---------------------------------------------------------------- round 4: inner clauses folded as strings, each a frame of the context
 def agrees(root, sentences):
     """the cell translates every sentence as the rule transducer does"""
     comp, mp, sents = small_cell(root); bad = []
@@ -65,48 +66,50 @@ def agrees(root, sentences):
         if got != want: bad.append((s, want, got))
     assert not bad, f"{len(bad)} of {len(sentences)} sentences differ from the rules: {bad[0]}"
 
-def test_clause_modes_end_at_stem_forms(root):
-    """the printing rules have modes that end an inner clause at a stem form — te, the masu stem — rendered from the frame by the form
-    gates, not sliced from a generated string"""
+def test_clause_kinds_end_at_stem_forms(root):
+    """a frame of a stem-form kind — te, the masu stem — prints to that form of its predicate, by the form gates and not by slicing a
+    generated string, and the outer frame it is linked from continues after it"""
     import gen_module as GM
-    cm = ST.ClauseModes(); modes = cm.modes(); rules = cm.stem_rules()
-    assert modes and rules, "no stem-form print modes"
-    F = GM.flatten(PR.parse_bounded(R.merge_multiword("he opened the window .".split()))); pr = GM.PrintRules()
-    te = "".join(pr.run(dict(F, pmode="te"), "RESTORE")); stem = "".join(pr.run(dict(F, pmode="stem"), "RESTORE"))
-    assert te.startswith("彼") and te.endswith("開けて") and stem.endswith("開け") and "。" not in te + stem
+    cm = ST.ClauseModes(); kinds = cm.kinds(); rules = cm.stem_rules()
+    assert kinds and rules, "no clause kinds that end at a stem form"
+    outer = GM.flatten(PR.parse_bounded(R.merge_multiword("he came .".split()))); inner = GM.flatten(PR.parse_bounded(R.merge_multiword("he opened the window .".split())))
+    pr = GM.PrintRules()
+    for kind, ending in (("te", "開けて"), ("stem", "開け")):
+        out = "".join(pr.run([dict(outer, link=kind), dict(inner, clause=kind)]))
+        assert ending in out and out.endswith("来た。") and out.index(ending) < out.index("来た"), (kind, out)
 
 def test_coordinated_clauses_agree(root):
-    """the clause before and / but / so is flushed at the conjunction in the link's mode, and the second clause follows"""
+    """the clause before and / but / so is a frame of its own, printed to its linking form, and the second clause follows"""
     assert ST.Coordination().link_rules(), "no rules at the conjunction"
     agrees(root, ["he is poor and could not buy a coat .", "she speaks english and also speaks swahili ."])
 
-def test_subordinate_clause_first_agrees(root):
-    """a sentence-initial subordinate clause is flushed at the comma with its conjunction, and the main clause follows"""
-    assert ST.SubordinateClause().order_rules(), "no rules at the comma"
-    agrees(root, ["when i was a child , i loved reading .", "if it rains tomorrow , i will stay at home ."])
+def test_subordinate_clauses_agree_in_both_orders(root):
+    """a subordinate clause is a frame of its own and is printed first, whether it came before its main clause or after it"""
+    assert ST.SubordinateClause().order_rules(), "no rules for a subordinate clause"
+    agrees(root, ["when i was a child , i loved reading .", "i loved reading when i was a child .", "if it rains tomorrow , i will stay at home .", "i went out although it was raining ."])
 
 def test_relative_clause_agrees(root):
-    """the modified noun phrase is held while the relative clause is read and printed before it"""
-    assert ST.RelativeClause().hold_rules(), "no hold of the noun phrase"
+    """a relative clause is a frame of its own, printed before the noun phrase it modifies"""
+    assert ST.RelativeClause().splice_rules(), "no splice of a relative clause"
     agrees(root, ["she has a son who is a doctor .", "do you know any doctors who speak japanese ?"])
 
 def test_infinitive_clauses_agree(root):
-    """an infinitive complement of a copula is flushed in its mode: te before the adjective, のは, のには"""
-    assert ST.Infinitive().mode_rules(), "no infinitive modes"
+    """an infinitive complement of a copula is a frame linked to the copula's: te before the adjective, のは, のには"""
+    assert ST.Infinitive().link_rules(), "no infinitive links"
     agrees(root, ["this problem is difficult to solve .", "it is a good idea to read this book .", "it is definite that he will go to america ."])
 
 def test_purpose_clauses_agree(root):
-    """a purpose clause is flushed before the main verb held in the tags: the masu stem with に"""
+    """a purpose clause is a frame printed before the main verb: the masu stem with に"""
     assert ST.PurposeClause().purpose_rules(), "no purpose-clause rules"
     agrees(root, ["please come to talk to me .", "he comes to see me nearly every day ."])
 
 def test_gerund_clauses_agree(root):
-    """a gerund clause is flushed before the verb held in the tags with のを, a manner clause with ながら"""
+    """a gerund clause is a frame printed where the object goes, with のを; a manner clause one printed with ながら"""
     assert ST.Gerund().gerund_rules(), "no gerund rules"
     agrees(root, ["i am thinking of going to the mountains .", "she insisted on going there .", "she stood looking at a boat on the river ."])
 
 def test_control_clauses_agree(root):
-    """the object of a control verb becomes the inner subject, and the clause is flushed with ように or in the causative with the outer tense"""
+    """the object of a control verb becomes the inner clause's subject, and the clause prints with ように or in the causative with the outer tense"""
     assert ST.ControlClause().control_rules(), "no control-clause rules"
     agrees(root, ["she asked him to open the window .", "i made him change his plan ."])
 

@@ -1,5 +1,6 @@
-"""The cell under PyTorch: compile the hybrid cell on dev+test as the `matrix` action does, then step the scipy runner and
-the torch runner (cell_torch.TorchCell) side by side on every sentence and require the same state vector at every step.
+"""The two cells under PyTorch: compile the encoder and the decoder on dev+test as the `matrix` action does, then step the
+scipy cells and the torch cells (cell_torch.TorchCell) side by side on every sentence, the encoder and then the decoder, and
+require the same state vector at every step.
 
 Reported: sentences, steps compared, sentences whose runs diverge (must be 0), the torch version.  A divergence would
 mean the arithmetic is not exact in single precision or the matrices were not transferred faithfully — either way the

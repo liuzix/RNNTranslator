@@ -7,14 +7,17 @@ adj1, adj2, noun, noun2, mono, cls) — and never the English.  A rule is (posit
 the token is None (a silent move), ("c", string) a constant morpheme, ("s", slot[, index]) the value of a slot, ("vf",
 form, alt) a form of the frame's verb from the morphology table (dic, ta, te, a = negative stem, i = masu stem, e =
 potential stem, caus = causative stem, pre = what precedes ある), or ("af", "stem", strip) the stem of the copula's
-adjective (より stripped when a comparison follows).  Literals are the base predicates below ("slot.x", "slot.x=v",
+adjective (より stripped when a comparison follows), or ("h", move) a move of the attention.  Literals are the base predicates below ("slot.x", "slot.x=v",
 "flag.f", and the families verb.*, wh.*, adj.*, subj.*, obj.*, adv.*: each a test on one slot's value) or a derived
 predicate d.* defined as a DNF over base literals, as in np_module.
 
-A that-clause (c.embedded) is printed in three runs of the same rules on one frame, as the cell does it: the outer frame
-in print mode `prefix` up to the clause (subject, arguments, adverbs; the run ends at OPEN), the inner frame in mode
-`embedded` (が on its subject, no politeness, then と; the run ends at RESTORE), then the outer predicate alone — the tag
-slots TAG_KEYS, which is all the suffix positions read — in mode `suffix` (the run starts at the tail and ends at DONE).
+The rules print from a context of frames, one per clause, with the attention on one frame at a time; a token ("h", "down")
+or ("h", "up") moves the attention to the next or the previous frame instead of emitting.  A frame says what it is to the
+others in two slots: `link`, the kind of inner clause spliced into it (that: a that-clause, the next frame), and `clause`, the
+kind of inner clause it is itself (embedded).  A that-clause (c.embedded) is two frames: at the splice, after the outer
+clause's arguments and adverbs, the attention goes down, the inner frame prints from P0 (が on its subject, no politeness)
+and at its END emits と and goes back up, and the outer frame continues at its tail.  The sentence's question mark is read
+after a that-clause, when the outer frame has left the encoder: it arrives as the register sent.question, not in a frame.
 What generate() does with infinitives, control, fixed sentences and the idiom copula is out of scope
 (parser_matrix.UNSUPPORTED_REGS): the frame cannot hold it, so render() refuses there.  Inside the scope the rules must
 print exactly what generate() prints — pinned by the `printer` action (harness/eval_printer.py) on every sentence the rule
@@ -31,15 +34,8 @@ FLAGS = ("past", "neg", "prog", "perf", "question", "imp", "please", "lets", "th
 UNSUPPORTED = ("infinitive", "control", "embedded", "purpose_clause", "pre_clause", "manner", "so_that", "howabout", "exclaim", "fixed_out", "relative", "suffix")
 # (a `folded` frame — one whose string came from an inner clause — prints like any other: the string is opaque to the rules; only the cell cannot hold it)
 PRON6 = ("私", "彼", "彼女", "私たち", "彼ら", "あなた")            # generate(): a possessive coreferent with one of these subjects is dropped
-# the tag slots: the registers of the outer predicate that the suffix positions (M_TAIL onward) read — everything else the outer
-# frame held was printed in the prefix or is refused at OPEN (a copula noun phrase, a comparison, the there-template).  The
-# negation the prefix carried (never, nobody, nothing) is folded into tag.neg at OPEN.  Pinned by test_inner_clause_in_one_frame.
-TAG_KEYS = ("verb", "past", "neg", "prog", "perf", "perf_had", "modal", "want", "neg_inner", "question", "tag", "imp", "lets", "please", "causative",
-            "cop_kind", "cop_adj", "degree", "degree2")
-# what OPEN refuses: an outer predicate the tags cannot hold — a copula that is not an adjective (its noun phrase or its subject's
-# animacy would be read after the clause), a comparison (the adjective stem reads it), the verb want (its predicate reads its object)
-OPEN_REFUSES = ("slot.cop_kind=np", "slot.cop_kind=pp", "slot.cop_kind=adv", "slot.cop_kind=wh", "slot.cmp.noun", "verb.lemma=want")
-PMODES = ("prefix", "embedded", "suffix")
+LINK_KINDS = ("that",)             # slot `link` of a frame: the kind of inner clause spliced into it — the next frame of the context
+CLAUSE_KINDS = ("embedded",)       # slot `clause` of a frame: the kind of inner clause it is (the main clause has none)
 NOPART = "∅"                                                      # an explicit empty object particle (generate's ""), a value a slot can hold
 EMPTY = (None, "", False)
 
@@ -178,14 +174,16 @@ def eval_lit(lit, F, D):
     v = any(all(eval_lit(l, F, D) for l in conj) for conj in D[name]) if name.startswith("d.") else base_pred(name, F)
     return (not v) if neg else v
 
-def tag_frame(F, D):
-    """what OPEN leaves of an outer frame for the suffix: the tag slots, with the negation the printed arguments carried; raises
-    Refuse where OPEN refuses"""
-    for lit in OPEN_REFUSES:
-        if eval_lit(lit, F, D): raise Refuse(f"a that-clause under {lit}")
-    T = {k: F[k] for k in TAG_KEYS if filled(F.get(k))}
-    if eval_lit("d.neg", F, D): T["neg"] = True
-    return T
+def frames_of(c):
+    """a Clause -> the context its sentence prints from: one flat frame per clause in the order the encoder flushes them — the
+    main clause, marked with the link where its that-clause is spliced, then that clause, marked embedded, and so on down"""
+    frames = []; kind = None
+    while c is not None:
+        F = flatten(c, skip=("embedded",))
+        if kind: F["clause"] = kind
+        if c.embedded is not None: F["link"] = "that"
+        frames.append(F); kind = "embedded"; c = c.embedded
+    return frames
 
 def derived():
     """the derived predicates: name -> DNF (a list of conjunctions of base literals)"""
@@ -193,13 +191,17 @@ def derived():
     D["d.neg"] = [["flag.neg"], ["adv.never"], ["adv2.never"], ["subj.negpol"], ["obj.negpol"]]   # generate() turns these into c.neg before it prints the predicate
     D["d.whcop"] = [["slot.wh", "slot.cop_kind=wh"]]
     D["d.weather"] = [["subj.sore", "verb.weather"]]
-    D["d.polite"] = [["flag.question", "¬slot.pmode=embedded"]]                        # generate(inner, polite=False, embedded=True)
+    # the sentence is a question by a flag of the main clause's frame (the inversion) or by the question mark read after a
+    # that-clause (sent.question); an inner clause is never polite, and takes か only on a question flag of its own
+    D["d.polite"] = [["flag.question", "¬slot.clause=embedded"], ["slot.sent.question", "¬slot.clause=embedded"]]
+    D["d.q"] = [["flag.question"], ["slot.sent.question", "¬slot.clause=embedded"]]
     NEGS = ["flag.neg", "adv.never", "adv2.never", "subj.negpol", "obj.negpol"]; NOT_NEG = ["¬" + n for n in NEGS]
     # the tense generate() prints: c.past, except that a negative perfect takes the tense of its auxiliary (perf_had), and will takes none
     past_eff = [["flag.past", "¬flag.perf"], ["flag.past", "flag.perf"] + NOT_NEG] + [["flag.perf", "flag.perf_had", n] for n in NEGS]
     D["d.past_eff"] = [conj + ["¬slot.modal=will"] for conj in past_eff]
     D["d.past_raw"] = [["flag.past", "¬slot.modal=will"]]                                   # had better: the tense before the perfect correction
-    D["d.will_conj"] = [conj + ["slot.modal=will", "¬flag.question", "¬slot.want"] for conj in past_eff]        # would: 〜だろう
+    D["d.will_conj"] = [conj + ["slot.modal=will", "¬flag.question", "¬slot.want", sent] for conj in past_eff
+                        for sent in ("¬slot.sent.question", "slot.clause=embedded")]                # would: 〜だろう, unless the clause is a question
     D["d.verbkind"] = [[f"verb.conj={c}"] for c in ("g", "i", "s", "k")]
     D["d.pp_state"] = [["slot.cop_kind=pp"], ["verb.vc=ni_location"]]                   # the PP takes its existence particle
     D["d.stative_prog"] = [["verb.stative", "¬verb.use", "¬slot.want", "¬flag.imp", "¬flag.lets", "¬slot.modal=can", "¬flag.perf"]]
@@ -234,6 +236,7 @@ def negate(lit): return lit[1:] if lit.startswith("¬") else "¬" + lit
 def C(s): return ("c", s)
 def S(slot, idx=None): return ("s", slot) if idx is None else ("s", slot, idx)
 def VF(name, alt=False): return ("vf", name, alt)
+def H(move): return ("h", move)                   # no morpheme: the attention moves down to the next frame or up to the previous one
 
 # the finite suffix of each predicate kind, by (past, neg): plain and polite
 PLAIN = {"V1C": ["る", "た", "ない", "なかった"], "IA": ["い", "かった", "くない", "くなかった"], "NA": ["だ", "だった", "ではない", "ではなかった"],
@@ -249,13 +252,11 @@ def godan_suffixes(kana):
 def build_rules():
     """every printing rule, in the order of generate()'s template"""
     B = Build()
-    # ---- the sentence: front, time, then the there-template or the main template; in suffix mode (the outer clause after its
-    #      that-clause) the tail alone; the there-template has no that-clause
-    B.rule("P0", ["slot.pmode=suffix"], "M_TAIL")
-    B.rule("P0", ["¬slot.pmode=suffix", "slot.front"], "P_TIME", [S("front")]); B.rule("P0", ["¬slot.pmode=suffix", "¬slot.front"], "P_TIME")
+    # ---- the clause: front, time, then the there-template or the main template; the there-template has no that-clause
+    B.rule("P0", ["slot.front"], "P_TIME", [S("front")]); B.rule("P0", ["¬slot.front"], "P_TIME")
     B.rule("P_TIME", ["slot.time"], "P_BRANCH", [S("time")]); B.rule("P_TIME", ["¬slot.time"], "P_BRANCH")
-    B.rule("P_BRANCH", ["flag.there", "slot.pmode=prefix"], "FAIL:there-clause with a that-clause")
-    B.rule("P_BRANCH", ["flag.there", "¬slot.pmode=prefix"], "T_PP1"); B.rule("P_BRANCH", ["¬flag.there"], "M_SUBJ0")
+    B.rule("P_BRANCH", ["flag.there", "slot.link"], "FAIL:there-clause with a that-clause")
+    B.rule("P_BRANCH", ["flag.there", "¬slot.link"], "T_PP1"); B.rule("P_BRANCH", ["¬flag.there"], "M_SUBJ0")
     # ---- noun phrases: det poss num adj1 adj2 noun [の noun2] [mono]
     built = set()
     def np(role, cont, coref=None):
@@ -303,8 +304,8 @@ def build_rules():
     B.rule("M_SUBJ1", ["d.whcop", "wh.text=何時", "¬subj.sore", "slot.subj.noun", "subj.negpol"], np("subj", "M_WH_T"))
     B.rule("M_SUBJ1", ["d.whcop", "wh.text=何時", "¬subj.sore", "slot.subj.noun", "¬subj.negpol"], np("subj", "M_SUBJ_WA"))
     B.rule("M_SUBJ1", ["d.whcop", "wh.text=何時", "¬subj.sore", "¬slot.subj.noun"], "M_WH_T")
-    B.rule("M_SUBJ_WA", ["slot.pmode=embedded", "¬flag.coord"], "M_WH_T", [C("が")])            # the subject of a that-clause
-    B.rule("M_SUBJ_WA", ["slot.pmode=embedded", "flag.coord"], "M_WH_T", [C("は")]); B.rule("M_SUBJ_WA", ["¬slot.pmode=embedded"], "M_WH_T", [C("は")])
+    B.rule("M_SUBJ_WA", ["slot.clause=embedded", "¬flag.coord"], "M_WH_T", [C("が")])            # the subject of a that-clause
+    B.rule("M_SUBJ_WA", ["slot.clause=embedded", "flag.coord"], "M_WH_T", [C("は")]); B.rule("M_SUBJ_WA", ["¬slot.clause=embedded"], "M_WH_T", [C("は")])
     # ---- question words before the arguments
     B.rule("M_WH_T", ["¬d.whcop", "wh.kind=t", "wh.text=何時"], "M_WH_LOC", [S("wh", 0), C("に")])
     B.rule("M_WH_T", ["¬d.whcop", "wh.kind=t", "¬wh.text=何時"], "M_WH_LOC", [S("wh", 0)])
@@ -341,13 +342,16 @@ def build_rules():
     B.rule("M_OBJ_PART", ["¬obj.negpol", "¬slot.obj_particle", "¬slot.verb"], "M_WH_O", [C("を")])
     B.rule("M_WH_O", ["wh.kind=o", "¬slot.cop_kind"], "M_ADV", [S("wh", 0), C("を")]); B.rule("M_WH_O", ["wh.kind=o", "slot.cop_kind"], "M_ADV"); B.rule("M_WH_O", ["¬wh.kind=o"], "M_ADV")
     B.rule("M_ADV", ["slot.adv1"], "M_ADV2", [S("adv1")]); B.rule("M_ADV", ["¬slot.adv1"], "M_ADV2")      # the cell holds a second adverb in adv2
-    B.rule("M_ADV2", ["slot.adv2", "slot.pmode=prefix"], "OPEN", [S("adv2")]); B.rule("M_ADV2", ["¬slot.adv2", "slot.pmode=prefix"], "OPEN")   # the that-clause follows
-    B.rule("M_ADV2", ["slot.adv2", "¬slot.pmode=prefix"], "M_TAIL", [S("adv2")]); B.rule("M_ADV2", ["¬slot.adv2", "¬slot.pmode=prefix"], "M_TAIL")
+    B.rule("M_ADV2", ["slot.adv2"], "M_LINK", [S("adv2")]); B.rule("M_ADV2", ["¬slot.adv2"], "M_LINK")
+    # ---- the splice: a that-clause is the next frame — the attention goes down, the clause prints from P0 and comes back up from
+    #      its END to M_BACK, where the frame's link says how the clause that was spliced continues
+    B.rule("M_LINK", ["slot.link=that"], "P0", [H("down")]); B.rule("M_LINK", ["¬slot.link=that"], "M_TAIL")
+    B.rule("M_BACK", ["slot.link=that"], "M_TAIL"); B.rule("M_BACK", ["¬slot.link=that"], "FAIL:no clause was spliced into this frame")
     # ---- the tail: a question-word copula (何ですか; inside a that-clause 何か / 何だったか), or the copula adverb, the degree and the predicate
     whk = ["o", "s", "adv", "loc", "t", "count"]
     for k in whk:
-        B.rule("M_TAIL", ["d.whcop", f"wh.kind={k}", "¬slot.pmode=embedded"], ("FIN", "NA", "whcop"), [S("wh", 0)])
-        B.rule("M_TAIL", ["d.whcop", f"wh.kind={k}", "slot.pmode=embedded"], ("FIN", "NA", "whcop_emb"), [S("wh", 0)])
+        B.rule("M_TAIL", ["d.whcop", f"wh.kind={k}", "¬slot.clause=embedded"], ("FIN", "NA", "whcop"), [S("wh", 0)])
+        B.rule("M_TAIL", ["d.whcop", f"wh.kind={k}", "slot.clause=embedded"], ("FIN", "NA", "whcop_emb"), [S("wh", 0)])
     B.rule(("FIN", "NA", "whcop_emb"), ["flag.past"], "END", [C("だった"), C("か")]); B.rule(("FIN", "NA", "whcop_emb"), ["¬flag.past"], "END", [C("か")])
     B.rule("M_TAIL", ["d.whcop"] + [f"¬wh.kind={k}" for k in whk], "M_COPADV"); B.rule("M_TAIL", ["¬d.whcop"], "M_COPADV")
     B.rule("M_COPADV", ["slot.cop_kind=adv"], "M_DEGREE", [S("cop_adv")]); B.rule("M_COPADV", ["¬slot.cop_kind=adv"], "M_DEGREE")
@@ -355,17 +359,15 @@ def build_rules():
     B.rule("M_DEGREE2", ["slot.degree2"], "PRED", [S("degree2")]); B.rule("M_DEGREE2", ["¬slot.degree2"], "PRED")
     # ---- after the predicate: か / ね, then 。
     B.rule("Q", ["flag.there", "wh.kind=count"], "END", [C("か")])
-    B.rule("Q", ["flag.there", "¬wh.kind=count", "flag.question"], "END", [C("か")]); B.rule("Q", ["flag.there", "¬wh.kind=count", "¬flag.question"], "END")
-    B.rule("Q", ["¬flag.there", "flag.tag"], "END", [C("ね")]); B.rule("Q", ["¬flag.there", "¬flag.tag", "flag.question"], "END", [C("か")])
-    B.rule("Q", ["¬flag.there", "¬flag.tag", "¬flag.question"], "END")
-    B.rule("END", ["slot.pmode=embedded"], "RESTORE", [C("と")])                # the that-clause closes: と, then the outer predicate
-    B.rule("END", ["¬slot.pmode=embedded"], "DONE", [C("。")])
+    B.rule("Q", ["flag.there", "¬wh.kind=count", "d.q"], "END", [C("か")]); B.rule("Q", ["flag.there", "¬wh.kind=count", "¬d.q"], "END")
+    B.rule("Q", ["¬flag.there", "flag.tag"], "END", [C("ね")]); B.rule("Q", ["¬flag.there", "¬flag.tag", "d.q"], "END", [C("か")])
+    B.rule("Q", ["¬flag.there", "¬flag.tag", "¬d.q"], "END")
+    B.rule("END", ["slot.clause=embedded"], "M_BACK", [C("と"), H("up")])       # the that-clause closes: と, and back up to the clause it was spliced into
+    B.rule("END", ["¬slot.clause=embedded"], "DONE", [C("。")])
     build_predicate(B, np)
     return reachable(B.rules)
 
-TERMINALS = ("DONE", "OPEN", "RESTORE")        # where a run of the rules ends: the sentence, the prefix before a that-clause, the clause itself
-
-def is_terminal(pos): return pos in TERMINALS or (isinstance(pos, str) and pos.startswith("FAIL:"))
+def is_terminal(pos): return pos == "DONE" or (isinstance(pos, str) and pos.startswith("FAIL:"))        # where a run of the rules ends
 
 def reachable(rules):
     """the rules of the positions reachable from P0, in their order: a kind-and-mode combination no path needs is dropped"""
@@ -602,27 +604,24 @@ class PrintRules:
         if kind == "af": return adj_stem(F["cop_adj"], tok[2])
         raise Refuse(f"unknown token {tok}")
 
-    def render(self, frame, bound=200):
-        """the tokens the rules emit for a frame (a Clause or a flat frame), by stepping them; raises Refuse.  A Clause with a
-        that-clause is three runs on one frame — prefix, the inner clause, suffix — as the cell prints it"""
-        if isinstance(frame, dict): return self.run(frame, bound=bound)
-        if frame.embedded is None: return self.run(flatten(frame), bound=bound)
-        outer = flatten(frame, skip=("embedded",)); inner = flatten(frame.embedded)
-        out = self.run(dict(outer, pmode="prefix"), "OPEN", bound)
-        out += self.run(dict(inner, pmode="embedded"), "RESTORE", bound)
-        return out + self.run(dict(tag_frame(outer, self._D), pmode="suffix"), "DONE", bound)
+    def render(self, frame, bound=400):
+        """the tokens the rules emit for a Clause (its frames_of), a flat frame or a list of frames; raises Refuse"""
+        return self.run(frame if isinstance(frame, list) else [frame] if isinstance(frame, dict) else frames_of(frame), bound)
 
-    def run(self, F, stop="DONE", bound=200):
-        """step the rules from P0 on a flat frame until the terminal `stop`; another terminal, no rule, two rules, or a token
-        the frame cannot give are refusals"""
-        state = "P0"; out = []
+    def run(self, frames, bound=400):
+        """step the rules from P0 with the attention on the first frame until DONE: the rules read the frame under the attention,
+        a head token moves it; no rule, two rules, a token the frame cannot give, or the attention leaving the context are refusals"""
+        state = "P0"; at = 0; out = []
         for _ in range(bound):
-            if state == stop: return out
+            if state == "DONE": return out
             if isinstance(state, str) and state.startswith("FAIL:"): raise Refuse(state[5:])
-            if is_terminal(state): raise Refuse(f"the run ended at {state}, not {stop}")
+            if not 0 <= at < len(frames): raise Refuse("the attention left the context")
+            F = frames[at]
             hits = [r for r in self._by_pos.get(state, []) if all(eval_lit(l, F, self._D) for l in r[1])]
             if len(hits) != 1: raise Refuse(f"{len(hits)} rules at {state}")
             nxt, tok = hits[0][2]
-            if tok is not None: out.append(self.token_string(tok, F))
+            if tok is None: pass
+            elif tok[0] == "h": at += 1 if tok[1] == "down" else -1
+            else: out.append(self.token_string(tok, F))
             state = nxt
         raise Refuse("loop")

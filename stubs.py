@@ -33,42 +33,42 @@ class Stub:
     def _hit(self, name): CALLS[f"{type(self).__name__}.{name}"] += 1; return TODO
 
 class ClauseModes(Stub):
-    """print modes that end an inner clause at a stem form instead of a finite form (item clause-modes)"""
+    """clause kinds whose frame prints to a stem form instead of a finite form (item clause-modes)"""
     item = "clause-modes"
-    def modes(self): return self._hit("modes")                               # -> the names of the modes: te, the masu stem, the plain form, the causative with the outer tense
-    def stem_rules(self): return self._hit("stem_rules")                     # -> the printing rules of those modes: the predicate's stem form, then the construction's morpheme
+    def kinds(self): return self._hit("kinds")                               # -> the clause kinds: te, the masu stem, the plain form, the causative stem
+    def stem_rules(self): return self._hit("stem_rules")                     # -> the printing rules of those kinds: the predicate's stem form, then the attention back up
 
 class Coordination(Stub):
-    """the clause before a conjunction flushed in the link's mode (item coordination)"""
+    """the clause before a conjunction as a frame of its own, linked to the next (item coordination)"""
     item = "coordination"
-    def link_rules(self): return self._hit("link_rules")                     # -> the rules at the conjunction: flush the first clause, clear, read the second
+    def link_rules(self): return self._hit("link_rules")                     # -> the rules at the conjunction: link and flush the first clause's frame, clear, read the second
 
 class SubordinateClause(Stub):
-    """a sentence-initial subordinate clause flushed at the comma with its conjunction (item subordinate-clauses)"""
+    """a subordinate clause as a frame of its own, printed first whichever clause came first (item subordinate-clauses)"""
     item = "subordinate-clauses"
-    def order_rules(self): return self._hit("order_rules")                   # -> the rules at the comma: flush the clause with とき / なら / ので / が, clear, read the main clause
+    def order_rules(self): return self._hit("order_rules")                   # -> the encoder's rules at the comma or the conjunction, and the decoder's that put the subordinate frame first
 
 class RelativeClause(Stub):
-    """the modified noun phrase held while the relative clause is read and printed before it (item relative-clauses)"""
+    """a relative clause as a frame printed before the noun phrase it modifies (item relative-clauses)"""
     item = "relative-clauses"
-    def hold_rules(self): return self._hit("hold_rules")                     # -> the rules that hold the noun phrase, flush the clause in the plain form and print the phrase after it
+    def splice_rules(self): return self._hit("splice_rules")                 # -> the link on the modified role, and the decoder's move down before that role's noun phrase
 
 class Infinitive(Stub):
-    """an infinitive complement of a copula flushed in its mode (item infinitives)"""
+    """an infinitive complement of a copula as a frame linked to the copula's (item infinitives)"""
     item = "infinitives"
-    def mode_rules(self): return self._hit("mode_rules")                     # -> the flush rules per mode: te before the adjective, のは, のには
+    def link_rules(self): return self._hit("link_rules")                     # -> the rules per kind of link: te before the adjective, のは, のには
 
 class PurposeClause(Stub):
-    """a purpose clause flushed before the main verb held in the tags (item purpose-clauses)"""
+    """a purpose clause as a frame printed before the main verb (item purpose-clauses)"""
     item = "purpose-clauses"
-    def purpose_rules(self): return self._hit("purpose_rules")               # -> the flush rules: the masu stem with に, the plain form with ために
+    def purpose_rules(self): return self._hit("purpose_rules")               # -> the link and the decoder's rules: the masu stem with に, the plain form with ために
 
 class Gerund(Stub):
-    """a gerund or manner clause flushed before the verb held in the tags (item gerunds)"""
+    """a gerund or manner clause as a frame printed where the object or the manner goes (item gerunds)"""
     item = "gerunds"
-    def gerund_rules(self): return self._hit("gerund_rules")                 # -> the flush rules: the plain form with のを or こと, the masu stem with ながら
+    def gerund_rules(self): return self._hit("gerund_rules")                 # -> the link and the decoder's rules: the plain form with のを or こと, the masu stem with ながら
 
 class ControlClause(Stub):
-    """an object-control clause: the object moved into the inner subject, the clause flushed (item control-clauses)"""
+    """an object-control clause: the object moved into the inner clause's frame as its subject (item control-clauses)"""
     item = "control-clauses"
-    def control_rules(self): return self._hit("control_rules")               # -> the move of the object and the flush rules: ように, or the causative with the outer tense
+    def control_rules(self): return self._hit("control_rules")               # -> the move of the object across the boundary and the decoder's rules: ように, or the causative with the outer tense
