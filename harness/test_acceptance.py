@@ -39,7 +39,14 @@ def small_cell(root):
                  "if it rains tomorrow , i will stay at home .", "she has a son who is a doctor .", "do you know any doctors who speak japanese ?",
                  "this problem is difficult to solve .", "it is a good idea to read this book .", "it is definite that he will go to america .",
                  "please come to talk to me .", "he comes to see me nearly every day .", "i am thinking of going to the mountains .",
-                 "she insisted on going there .", "she stood looking at a boat on the river .", "she asked him to open the window .", "i made him change his plan .")
+                 "she insisted on going there .", "she stood looking at a boat on the river .", "she asked him to open the window .", "i made him change his plan .",
+                 # round 5: the anchors of the gaps recorded after clause modes
+                 "i was absent from the meeting .", "he was afraid of his wife .", "i 'm sure she will come .", "i 'm afraid she will fail .",
+                 "i reached school before the rain started .", "my father and i played tennis on sunday .", "unless it rains , i will go , too .",
+                 "when i was a child , i loved reading when it rains .", "in fact , when i was a child , i loved reading .",
+                 "what a lovely day .", "thank you for your cooperation .", "three years is a long time , i feel .",
+                 "how many pens do you have ?", "he can speak both english and french .", "jim is not a lawyer but a doctor .",
+                 "the policeman 's quick arrival surprised us .", "she is now staying at her uncle 's house .", "he is reading a book .")
         sents = [R.merge_multiword(en) for en, ja in H.load("dev")[:60]] + [R.merge_multiword(s.split()) for s in extra]
         _cache["comp"] = PM.build_hybrid(sents); _cache["mp"] = PM.MatrixParser(_cache["comp"]); _cache["sents"] = sents
     return _cache["comp"], _cache["mp"], _cache["sents"]
@@ -65,6 +72,30 @@ def agrees(root, sentences):
         except PR.ParseFail as e: got = f"refused: {str(e)[:60]}"
         if got != want: bad.append((s, want, got))
     assert not bad, f"{len(bad)} of {len(sentences)} sentences differ from the rules: {bad[0]}"
+
+def translates(root, sentences):
+    """the whole cell — encoder, context, decoder — prints for every sentence what the rule transducer prints"""
+    comp, mp, sents = small_cell(root); bad = []
+    for s in sentences:
+        toks = R.merge_multiword(s.split()); want = R.translate(s.split())
+        try: got = mp.translate(toks)
+        except PR.ParseFail as e: got = f"refused: {str(e)[:60]}"
+        if got != want: bad.append((s, want, got))
+    assert not bad, f"{len(bad)} of {len(sentences)} sentences differ from the rules: {bad[0]}"
+
+def judged_right(root, sentences):
+    """the rule transducer translates each of these corpus sentences, and what it prints is RIGHT in the lattice's sense: the
+    corpus reference, or an output a verdict in harness/adjudications.json calls right"""
+    verdicts, ungrammatical = LAT.load_adjudications(os.path.join(root, "harness", "adjudications.json"))
+    index = {" ".join(en): (split, line, ja) for split in ("dev", "test") for line, en, ja in H.load_indexed(split)}
+    bad = []
+    for s in sentences:
+        split, line, ja = index[s]
+        try: out = R.translate(s.split())
+        except PR.ParseFail as e: out = ""; why = str(e)[:50]
+        level = LAT.sentence_level(out, ja, f"{split} {line}: {s}", verdicts, ungrammatical)
+        if level != "RIGHT": bad.append((s, level, out or why))
+    assert not bad, f"{len(bad)} of {len(sentences)} sentences are not right: {bad[0]}"
 
 def test_clause_kinds_end_at_stem_forms(root):
     """a frame of a stem-form kind — te, the masu stem — prints to that form of its predicate, by the form gates and not by slicing a
@@ -124,6 +155,91 @@ def test_control_clauses_agree(root):
     """the object of a control verb becomes the inner clause's subject, and the clause prints with ように or in the causative with the outer tense"""
     assert ST.ControlClause().control_rules(), "no control-clause rules"
     agrees(root, ["she asked him to open the window .", "i made him change his plan ."])
+
+# ---------------------------------------------------------------- round 5: the gaps recorded after clause modes
+def test_copula_idiom_agrees(root):
+    """an adjective with its preposition is a copula kind the frame holds: the printing rules print its clause as generate() does,
+    and the cell translates the sentence"""
+    import gen_module as GM
+    c = PR.parse_bounded(R.merge_multiword("he was afraid of his wife .".split()))
+    try: got = "".join(GM.PrintRules().render(c))
+    except GM.Refuse as e: got = f"refused: {e}"
+    assert got == R.translate("he was afraid of his wife .".split()), got
+    translates(root, ["i was absent from the meeting .", "he was afraid of his wife ."])
+
+def test_copula_that_clause_agrees(root):
+    """a that-clause after a copula is a frame of its own, and the copula's predicate prints after it"""
+    translates(root, ["i 'm sure she will come .", "i 'm afraid she will fail ."])
+
+def test_second_reading_of_a_fork_agrees(root):
+    """where the rule parser resolves a fork by its second reading — before as a conjunction, and after a noun phrase as part of it —
+    the cell takes that reading too"""
+    translates(root, ["i reached school before the rain started .", "my father and i played tennis on sunday ."])
+
+def test_unless_clause_prints(root):
+    """the printing rules print an unless-clause as generate() does — なければ in place of the ない its finite form ends in, なら
+    after any other ending — and the cell translates the sentence"""
+    import copy, gen_module as GM
+    pr = GM.PrintRules()
+    for sentence in ("unless it rains , i will go , too .", "unless he is busy , he will come ."):
+        c = PR.parse_bounded(R.merge_multiword(sentence.split()))
+        try: got = "".join(pr.render(copy.deepcopy(c)))
+        except GM.Refuse as e: got = f"refused: {e}"
+        assert got == R.generate(copy.deepcopy(c)), (sentence, got)
+    translates(root, ["unless it rains , i will go , too ."])
+
+def test_subordinate_chains_agree(root):
+    """a second subordinate clause, and a subordinate clause after the main clause's front adverb, are frames the decoder reaches"""
+    translates(root, ["when i was a child , i loved reading when it rains .", "in fact , when i was a child , i loved reading ."])
+
+def test_fixed_templates_agree(root):
+    """an exclamation, a thank-you and the hearsay tail are held by the frame and printed from their templates"""
+    translates(root, ["what a lovely day .", "thank you for your cooperation .", "three years is a long time , i feel ."])
+
+def test_composed_noun_phrases_agree(root):
+    """two noun phrases in one role, and the noun phrase of a question word, are slots of the frame"""
+    translates(root, ["how many pens do you have ?", "he can speak both english and french .", "jim is not a lawyer but a doctor ."])
+
+def test_possessive_noun_phrases_agree(root):
+    """a possessive with 's before a noun is read by the noun-phrase module"""
+    translates(root, ["the policeman 's quick arrival surprised us .", "she is now staying at her uncle 's house ."])
+
+def test_question_mark_in_an_unseen_shape(root):
+    """a question mark is read as one on a path whose traces all ended in a full stop: the cell was compiled with `i went out
+    although it was raining .` and prints the question the rules print for the same sentence with a question mark"""
+    comp, mp, sents = small_cell(root)
+    assert R.merge_multiword("i went out although it was raining .".split()) in sents and R.merge_multiword("i went out although it was raining ?".split()) not in sents
+    assert R.translate("i went out although it was raining ?".split()).endswith("か。")
+    translates(root, ["i went out although it was raining ?"])
+
+def test_predicate_stages_read_the_class(root):
+    """no stage of the predicate has a position per conjugation class: a plain verb and ある have their own, every other predicate
+    one per stage, the class read from the output block"""
+    import gen_module as GM
+    staged = [p for p in GM.PrintRules().positions() if isinstance(p, tuple) and p[0] in ("K", "V2", "V3", "V4", "V5", "FIN")]
+    per_class = sorted({str(p) for p in staged if p[1] not in ("V", "VA", "ARU", "S") and p[2:3] not in (("whcop",), ("whcop_emb",))})
+    assert staged and not per_class, f"{len(per_class)} positions of the predicate's stages are per class, e.g. {per_class[0]}"
+
+def test_decoder_keeps_only_the_class(root):
+    """the decoder keeps no unit per morpheme of its output, and an ending still follows the stem before it"""
+    comp, mp, sents = small_cell(root); L5 = comp["decoder"]["layers"][4][0]
+    kept = [n for n in L5.names if n[0] == "keepout"]
+    assert not kept, f"{len(kept)} keep units, one per morpheme of the output block"
+    translates(root, ["he is reading a book .", "i like the big dog ."])
+
+def test_verb_preposition_idioms_right(root): judged_right(root, ["the new plan will call for a lot of money .", "you must make up for lost time ."])
+def test_noun_phrase_adverbials_right(root): judged_right(root, ["i like summer the best .", "my friend called me a coward ."])
+def test_fronted_phrases_right(root): judged_right(root, ["in the summer , it 's very humid .", "because of illness , she couldn 't come .", "looking into the room , i found nobody there ."])
+def test_nominal_adjectives_right(root): judged_right(root, ["cats can see in the dark .", "you ask me to do the impossible ."])
+def test_wh_clauses_after_predicate_right(root): judged_right(root, ["we went to boston , where we stayed a week .", "that 's exactly what he said ."])
+
+def test_every_output_is_judged(root):
+    """no sentence item of the baseline is UNKNOWN: every output of the rule transducer is the reference or carries a verdict"""
+    verdicts, ungrammatical = LAT.load_adjudications(os.path.join(root, "harness", "adjudications.json"))
+    outs = baseline(root)["outputs"]["rules"]; refs = {split: {f"{line}: {' '.join(en)}": ja for line, en, ja in H.load_indexed(split)} for split in ("dev", "test")}
+    unknown = [f"{split} {key}" for split in ("dev", "test") for key, out in outs[split].items()
+               if LAT.sentence_level(out, refs[split].get(key), f"{split} {key}", verdicts, ungrammatical) == "UNKNOWN"]
+    assert not unknown, f"{len(unknown)} outputs nobody has judged, e.g. {unknown[0]}"
 
 # ---------------------------------------------------------------- carried over from round 2
 def test_matrix_items_scope(root):

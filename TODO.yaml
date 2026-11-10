@@ -52,6 +52,10 @@ items:
         and reads the second clause into the cleared frame, keeping the subject when the second clause has none; the decoder
         prints the first frame to its linking form — te, or the finite form with が or ので — moves down, and prints the second.
       hypothesis: true
+    - text: The te link is not the te form of the whole predicate — generate() takes clause_pred's, the verb with its progressive or
+        the copula's adjective or noun, and falls back to the finite form with 、 when the clause is negative or a past adjective
+        — so the te mode needs that guard, and the links with が and ので need no stem form at all.
+      hypothesis: true
   stubs: [Coordination]
   acceptance: test_coordinated_clauses_agree
   touches: [parser_matrix.py, gen_module.py, parser_rules.py]
@@ -112,6 +116,10 @@ items:
         the clause ends at te, or with のは or のには — and the dummy subject それ of an extraposed clause is dropped as the weather
         rule drops it.
       hypothesis: true
+    - text: The te before the adjective is the bare verb's — generate() slices the whole finite predicate off and drops what the
+        inner clause's flags added — so the te mode needs a guard that the inner frame holds nothing but the verb; のは and のには
+        follow a finite form and need a frame and a link only.
+      hypothesis: true
   stubs: [Infinitive]
   acceptance: test_infinitive_clauses_agree
   touches: [parser_matrix.py, gen_module.py, predicate_module.py]
@@ -128,6 +136,9 @@ items:
     - text: The main clause's frame is flushed with a purpose link when the infinitive opens; the decoder moves down before the main
         verb, and the clause ends at the masu stem with に, or at the plain form with ために.
       hypothesis: true
+    - text: The masu stem with に is the bare verb's, with no progressive for a stative verb, so the stem mode needs a guard on the
+        inner frame; ために follows a finite form and needs a frame and a link only.
+      hypothesis: true
   stubs: [PurposeClause]
   acceptance: test_purpose_clauses_agree
   touches: [parser_matrix.py, gen_module.py, pp_module.py]
@@ -143,6 +154,8 @@ items:
       pinned_by: matrix
     - text: The frame of the verb before the gerund is flushed with a link of the clause's kind; the decoder moves down where the
         object or the manner goes, and the clause ends at the plain form with のを or こと, or at the masu stem with ながら.
+      hypothesis: true
+    - text: Only the manner clause ends at a stem — the bare verb's, as the purpose clause's — and the gerund follows a finite form.
       hypothesis: true
   stubs: [Gerund]
   acceptance: test_gerund_clauses_agree
@@ -165,6 +178,252 @@ items:
   stubs: [ControlClause]
   acceptance: test_control_clauses_agree
   touches: [parser_matrix.py, gen_module.py, predicate_module.py]
+
+# ---------------------------------------------------------------------------------------------------- round 5
+# The gaps recorded after subordinate clauses and clause modes.  First what the cell refuses and the rules translate, with no
+# inner clause to wait for; then what the decoder's own-output read left undone; then the rule transducer's own refusals, by
+# where the parser stops; then the outputs nobody has judged.
+- id: copula-idiom
+  title: The adjective that takes a preposition (absent from, afraid of, good at) — a copula kind of its own
+  status: open
+  round: 5
+  context:
+    - text: An adjective with its preposition is a copula kind the frame has no slot for, so the printing rules refuse the clause
+        and the cell refuses the sentence where the rules translate it.
+      pinned_by: check_todo
+    - text: It needs no inner clause, no stem form and no second reading — a row per pair of the adjective table in the copula
+        module, which writes the predicate and the particle of its object, a copula kind in the frame, and one branch of the
+        printing rules that prints the predicate as a stem of its class and leaves the ending to the finishing stage.
+      hypothesis: true
+  acceptance: test_copula_idiom_agrees
+  touches: [predicate_module.py, parser_matrix.py, gen_module.py]
+
+- id: copula-that-clause
+  title: A that-clause after a copula (I am sure she will come) — the copula module's second exit
+  status: open
+  round: 5
+  context:
+    - text: A that-clause after a copula opens inside the copula module, which refuses it.
+      pinned_by: test_context_is_one_frame_per_clause
+    - text: The copula module returns at the clause as the PP machine returns at a conjunction, the clause rules open the frame,
+        and the copula's predicate prints after the clause as a verb's does.
+      hypothesis: true
+  acceptance: test_copula_that_clause_agrees
+  touches: [predicate_module.py, parser_matrix.py]
+
+- id: fork-readings
+  title: The second reading of a fork — before and since as conjunctions, and after a noun phrase
+  status: open
+  round: 5
+  context:
+    - text: After a main clause the PP machine reads a conjunction that is also a preposition as the preposition and while as a
+        coordinator, the rule parser's first readings.
+      pinned_by: test_subordinate_clause_in_both_orders
+    - text: A sentence the rule parser translates by the second reading of a fork — before the rain started, my father and i — is
+        refused by the cell.
+      pinned_by: check_todo
+    - text: The rule parser settles a fork by which reading dies first inside its window, and the cell's window is as wide — where
+        the tokens that kill a reading are in the window at the fork, a rule can take the surviving reading there.
+      hypothesis: true
+  acceptance: test_second_reading_of_a_fork_agrees
+  touches: [pp_module.py, np_module.py, parser_matrix.py]
+
+- id: unless-clauses
+  title: unless — the ending of a negative chosen where the clause ends
+  status: open
+  round: 5
+  context:
+    - text: The encoder reads an unless-clause into a frame with the negative written in, and the printing rules refuse it.
+      pinned_by: test_subordinate_clause_in_both_orders
+    - text: generate() replaces the ない the clause's finite form ends in by なければ and appends なら to any other ending, which the
+        decoder cannot do once the morpheme is out; if the last morpheme of a negative is printed by one shared position, that
+        position prints the conditional under unless, and the end of the clause reads from the output block whether it did.
+      hypothesis: true
+  acceptance: test_unless_clause_prints
+  touches: [gen_module.py]
+
+- id: subordinate-chains
+  title: More than one frame beside a main clause — a second subordinate clause, a that-clause inside one, an adverb before one
+  status: open
+  round: 5
+  context:
+    - text: The encoder refuses a second subordinate clause, a that-clause inside a subordinate clause, and a subordinate clause
+        that opens when its main clause has begun.
+      pinned_by: test_subordinate_clause_in_both_orders
+    - text: The decoder walks from a main clause to the one frame beside it; a mark on each frame for the neighbour to visit first
+        would let the same moves reach a chain, and a front adverb read before a subordinate clause needs a register the boundary
+        does not clear.
+      hypothesis: true
+  acceptance: test_subordinate_chains_agree
+  touches: [parser_matrix.py, gen_module.py]
+
+- id: fixed-templates
+  title: Sentences printed from a template of their own — an exclamation, a thank-you, the hearsay tail
+  status: open
+  round: 5
+  context:
+    - text: An exclamation, a thank-you and the hearsay tail (… , i hear) are registers the frame has no slot for, and the cell
+        refuses the sentences the rules translate with them.
+      pinned_by: check_todo
+    - text: Each is a constant frame around one noun phrase or one clause — a slot for the register and a branch of the printing
+        rules that prints its template.
+      hypothesis: true
+  acceptance: test_fixed_templates_agree
+  touches: [parser_matrix.py, gen_module.py, pp_module.py]
+
+- id: composed-noun-phrases
+  title: Two noun phrases in one role (both … and, not A but B) and the noun phrase of a question word
+  status: open
+  round: 5
+  context:
+    - text: A role whose string the rule parser composes of two noun phrases, and the noun phrase of a question word (how many
+        pens), are written to no slot of the frame, and the cell refuses the sentence.
+      pinned_by: check_todo
+    - text: A second noun-phrase role beside the first, with the connective as a slot, and the question word's noun phrase as a
+        role of its own, are run by the noun-phrase module as an of-phrase is.
+      hypothesis: true
+  acceptance: test_composed_noun_phrases_agree
+  touches: [np_module.py, parser_matrix.py, gen_module.py]
+
+- id: possessive-noun-phrases
+  title: A possessive with 's before a noun (her uncle's house)
+  status: open
+  round: 5
+  context:
+    - text: The noun-phrase module refuses a possessive with 's before a noun, which the rule parser reads.
+      pinned_by: check_todo
+    - text: The possessor is a noun phrase run once more on slots of its own and printed before the head with の, as the of-phrase
+        is.
+      hypothesis: true
+  acceptance: test_possessive_noun_phrases_agree
+  touches: [np_module.py, parser_matrix.py, gen_module.py]
+
+- id: sentence-end-by-hand
+  title: The end of the sentence by hand — a question mark in a shape the traces have not seen
+  status: open
+  round: 5
+  context:
+    - text: The rule that consumes the end of the sentence is extracted from traces, one control point per path that reaches it.
+      pinned_by: test_clause_modules_replace_extraction
+    - text: Where the traces of a path all end in a full stop, a question mark is read as one, and the cell prints a statement
+        where the rules print a question.
+      pinned_by: check_todo
+    - text: end() is a small machine — the end token, the question mark into the question flag or the sentence block, nothing after
+        it — and translated by hand it decides every path alike; a tail that returns without consuming a token leaves no event in
+        a trace, so where a clause ends is decided by an extracted row, guarded by hand only where a subordinate clause closes.
+      hypothesis: true
+  acceptance: test_question_mark_in_an_unseen_shape
+  touches: [parser_matrix.py, predicate_module.py]
+
+- id: predicate-stages-read-class
+  title: The stages of the predicate before its ending read the stem's class from the output block too
+  status: open
+  round: 5
+  context:
+    - text: The finishing stage of the predicate takes the conjugation class from the output block, with one position per mode.
+      pinned_by: test_decoder_reads_its_own_output
+    - text: The stages before it — the copula's must, the complement, the modal, the request and the imperative — still have a
+        position per class.
+      pinned_by: check_todo
+    - text: A plain verb and ある, whose stem is not out, keep positions of their own; every other class is read from the block, so
+        each stage becomes one position for the stems that are out.
+      hypothesis: true
+  acceptance: test_predicate_stages_read_the_class
+  touches: [gen_module.py]
+
+- id: output-class-register
+  title: The decoder keeps what its rules read of its output — the class — not a unit per morpheme
+  status: open
+  round: 5
+  context:
+    - text: The output block is kept by one keep unit per morpheme.
+      pinned_by: test_decoder_reads_its_own_output
+    - text: The printing rules read nothing of the block but the class of the last morpheme as a stem.
+      pinned_by: test_print_rules_normal_form
+    - text: A register of the classes, written by the rule that prints a stem and cleared by any other morpheme, carries the same
+        information in a handful of units, and the block of morphemes need not be kept.
+      hypothesis: true
+  acceptance: test_decoder_keeps_only_the_class
+  touches: [parser_matrix.py, gen_module.py]
+
+- id: verb-preposition-idioms
+  title: A verb with a preposition the idiom table has no row for (call for, make up for)
+  status: open
+  round: 5
+  context:
+    - text: The rule parser refuses a verb followed by a preposition it has no idiom row for, at the tail of the clause.
+      pinned_by: check_todo
+    - text: These are rows of the idiom table, not grammar — each pair with its Japanese verb and the particle of its object.
+      hypothesis: true
+  acceptance: test_verb_preposition_idioms_right
+  touches: [tables/idioms.tbl, tables/lexicon.tbl]
+
+- id: noun-phrase-adverbials
+  title: A noun phrase after the object that is no argument — the best, all day long, called me a coward
+  status: open
+  round: 5
+  context:
+    - text: The rule parser refuses a noun phrase after the object that is an adverbial of degree or time, or an object complement.
+      pinned_by: check_todo
+    - text: The adverbials are a closed list for the adverb register; the complement is a second role of a few verbs, printed
+        before the verb with と.
+      hypothesis: true
+  acceptance: test_noun_phrase_adverbials_right
+  touches: [parser_rules.py, rules_ja.py, tables/lexicon.tbl]
+
+- id: fronted-phrases
+  title: A prepositional phrase or a participle clause before the subject
+  status: open
+  round: 5
+  context:
+    - text: The rule parser refuses a sentence that opens with a prepositional phrase or a participle clause (in the summer , …;
+        looking into the room , …).
+      pinned_by: check_todo
+    - text: The prepositional phrase is the tail's, read first into the same roles; the participle clause is a subordinate clause
+        without a conjunction, a frame of its own that ends at the te form.
+      hypothesis: true
+  acceptance: test_fronted_phrases_right
+  touches: [parser_rules.py, rules_ja.py]
+
+- id: nominal-adjectives
+  title: The + adjective as a noun phrase (in the dark, the impossible)
+  status: open
+  round: 5
+  context:
+    - text: The rule parser refuses the with an adjective and no noun as a noun phrase.
+      pinned_by: check_todo
+    - text: It is one more shape of the noun phrase — the adjective as head, closed with もの or a noun the table gives.
+      hypothesis: true
+  acceptance: test_nominal_adjectives_right
+  touches: [parser_rules.py, np_module.py, tables/lexicon.tbl]
+
+- id: wh-clauses-after-predicate
+  title: A clause a question word opens after the predicate — , where we stayed; what he said
+  status: open
+  round: 5
+  context:
+    - text: The rule parser refuses a relative clause with where after a comma and a free relative with what after the predicate.
+      pinned_by: check_todo
+    - text: Both are inner clauses of the kind the embedded question already parses after ask and know; here one attaches to a noun
+        phrase and the other stands as the copula's noun.
+      hypothesis: true
+  acceptance: test_wh_clauses_after_predicate_right
+  touches: [parser_rules.py, rules_ja.py]
+
+- id: unjudged-outputs
+  title: A verdict on every output the rule transducer gives
+  status: open
+  round: 5
+  context:
+    - text: An output nobody has judged is UNKNOWN, below RIGHT and incomparable with the rest, so a change away from it demands a
+        verdict.
+      pinned_by: test_lattice_order
+    - text: Outputs of the rule transducer on the corpus are still unjudged.
+      pinned_by: check_todo
+    - text: Judged in the order of the frontier's groups, the outputs found wrong name the next rules to fix.
+      hypothesis: true
+  acceptance: test_every_output_is_judged
+  touches: [harness/adjudications.json]
 
 # ---------------------------------------------------------------------------------------------------- round 2, carried over
 - id: matrix-chain-scope
