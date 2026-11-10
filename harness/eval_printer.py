@@ -6,9 +6,11 @@ Corpus: for each parsed sentence, the rules are stepped on the frame and their t
 rule), MISFIRE when they print something else.  Sweep: frames are built from a product of the predicates the rules read
 (the kind of predicate, the flags, the modal, the complement; the arguments, the particles, the question words; a
 that-clause under a reporting verb, and around a fixed inner clause; a subordinate clause under every conjunction of the
-table on either side of a fixed main clause, and a main clause around a fixed subordinate one) and rendered by both; a frame generate() itself
-cannot print (it raises) is skipped; the rules may refuse a frame, but where they print they must print what generate()
-prints — the mismatch count is the item `printer.sweep` (MISMATCHES < MATCH).
+table on either side of a fixed main clause, and a main clause around a fixed subordinate one; a clause that ends at its te
+form or its masu stem inside a fixed clause, and a clause around a fixed one of those) and rendered by both; a frame generate() itself
+cannot print (it raises) is skipped — except that where generate() says a predicate has no such stem form, the rules must
+refuse too; the rules may refuse a frame, but where they print they must print what generate() prints — the mismatch count
+is the item `printer.sweep` (MISMATCHES < MATCH).
 """
 import sys, os, json, argparse, collections, itertools, time
 sys.path.insert(0, os.getcwd())
@@ -203,14 +205,45 @@ def subordinate_frames():
                             main = make_clause(kind, val, flags, modal, None); main.front = front
                             yield ("main", conj, order, kind, str(val), flags, modal, front), join(main, order, conj, sub_fixed())
 
+def stem_frames():
+    """a clause that ends at a stem form (Clause.inner_of = te | stem) spliced into another, which goes on after it: each
+    predicate frame — kinds x flags x modal, the verbs x want, with the flags that end a predicate before its ending (imp,
+    please, lets) — as the inner clause of `he came`, printed up to the te form or the masu stem of whatever predicate its
+    registers build; and as the outer clause around `he opened the window` in that form"""
+    def inner_fixed(form): c = parse_bounded(R.merge_multiword("he opened the window .".split())); c.inner_of = form; return c
+    def host(): c = base_clause(); c.verb = ("come", "来る", "k"); c.past = True; return c
+    flags_few = ("past", "neg", "question", "perf", "prog", "tag")
+    for form in R.STEM_FORMS:
+        for kind, val in predicate_kinds():
+            for animate in ((True, False) if kind in ("pp", "adv", "there") else (True,)):
+                for bits in itertools.product((False, True), repeat=len(flags_few)):
+                    flags = [f for f, b in zip(flags_few, bits) if b]
+                    for modal in (None, "will", "can", "should", "must", "may"):
+                        inner = make_clause(kind, val, flags, modal, None, animate); inner.inner_of = form
+                        outer = host(); outer.embedded = inner
+                        yield ("stem", "inner", form, kind, str(val), flags, modal, None, animate), outer
+                        outer = make_clause(kind, val, flags, modal, None, animate); outer.embedded = inner_fixed(form)
+                        yield ("stem", "outer", form, kind, str(val), flags, modal, None, animate), outer
+            if kind != "verb": continue
+            for flags in ((), ("past",), ("neg",), ("past", "neg"), ("imp",), ("please",), ("lets",), ("neg", "imp")):
+                for want in WANTS:
+                    inner = make_clause(kind, val, flags, None, want); inner.inner_of = form
+                    outer = host(); outer.embedded = inner
+                    yield ("stem", "inner", form, kind, str(val), flags, None, want, True), outer
+
 def sweep(pr):
     t0 = time.time(); cnt = collections.Counter(); examples = {}; per_group = collections.defaultdict(collections.Counter)
-    for label, c in itertools.chain(predicate_frames(), template_frames(), embedded_frames(), subordinate_frames()):
+    for label, c in itertools.chain(predicate_frames(), template_frames(), embedded_frames(), subordinate_frames(), stem_frames()):
         group = label[0]
         try: got = "".join(pr.render(c))
         except G.Refuse as e: got = None; why = str(e)
         try: want = R.generate(c)
-        except Exception as e: cnt["generate_crash"] += 1; per_group[group]["generate_crash"] += 1; continue
+        except Exception as e:
+            if group == "stem" and isinstance(e, ValueError) and got is not None:       # no such form of this predicate: the rules must refuse too
+                cnt["mismatch"] += 1; per_group[group]["mismatch"] += 1
+                examples.setdefault(("mismatch", group, "no form", got[-6:]), {"frame": str(label), "rules": got, "generate": f"ValueError: {e}"})
+            else: cnt["generate_crash"] += 1; per_group[group]["generate_crash"] += 1
+            continue
         if got is None: cnt["refused"] += 1; per_group[group]["refused"] += 1; examples.setdefault(("refused", why[:30]), str(label)); continue
         if got == want: cnt["match"] += 1; per_group[group]["match"] += 1
         else:

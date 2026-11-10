@@ -23,7 +23,8 @@ A clause boundary writes a mark into the frame, flushes it, and clears the slots
 flushes the last frame.
 
 The decoder prints (compile_decoder).  Its input is the frame under the attention head; its state holds the printing
-position, the sentence block, and what a step puts out.  The printing rules of gen_module are its rules: one emits a token
+position, the sentence block, and the output block — the last morpheme printed, kept until the next one, which the rules read
+back (the conjugation class of a stem decides the ending after it).  The printing rules of gen_module are its rules: one emits a token
 — a constant morpheme (its own output unit), a slot read (a read gate ORed from the rules, one read unit per value, AND of
 gate and the frame's value, mirroring the encoder's write units) or a form lookup (a form gate, one lookup unit per verb or
 adjective value) — and raises `emit`, as the encoder raises `shift`; or it raises `down` or `up`, and the attention head
@@ -1161,16 +1162,17 @@ def frame_to_clause(frame):
     return c
 
 def frames_to_clause(frames):
-    """the frames of a context -> the rule parser's Clause.  A frame marked embedded is the that-clause of the frame before it;
+    """the frames of a context -> the rule parser's Clause.  A frame marked embedded is the that-clause of the frame before it (and
+    one marked te or stem the clause spliced into it that ends at that form);
     of the others one is the main clause and at most one a subordinate clause, on the side its mark says, which the main clause
     holds as the rule parser does — the clause in subords and its string in pre_clause (rules_ja.subord_form: what the
     conjunction changes is in the frame already, and changing it again changes nothing); the sentence block of the last frame
     — the question mark — belongs to the main clause"""
     clauses = [frame_to_clause(F) for F in frames]; tops = []
     for k, (F, c) in enumerate(zip(frames, clauses)):
-        if F.get("clause") == "embedded":
+        if F.get("clause") in ("embedded",) + GM.STEM_FORMS:
             if k == 0: raise ParseFail("MATRIX: a that-clause with no clause before it")
-            clauses[k - 1].embedded = c; c.inner_of = "embedded"
+            clauses[k - 1].embedded = c; c.inner_of = F["clause"]
         else: tops.append((F, c))
     mains = [c for F, c in tops if not F.get("clause")]; subs = [(F, c) for F, c in tops if F.get("clause")]
     if len(mains) != 1 or len(subs) > 1: raise ParseFail(f"MATRIX: {len(mains)} main clauses and {len(subs)} subordinate clauses in the context")
@@ -1324,8 +1326,18 @@ def output_lexicon(unit):
     if kind == "s":
         _, _, slot, idx, v = unit; v = v if idx is None else v[idx]
         return "" if v == GM.NOPART else str(v)
-    if kind == "vf": _, _, name, alt, v = unit; return GM.vform(v, name, alt)
+    if kind == "vf": name, alt, v = unit[2:5]; return GM.vform(v, name, alt)
     if kind == "af": _, _, strip, v = unit; return GM.adj_stem(v, strip)
+    raise ValueError(unit)
+
+def output_class(unit):
+    """the conjugation class an output unit has as a stem (gen_module.out_class of its token and value): ("out", "c", string[, class]),
+    ("out", "s", slot, index, value), ("out", "vf", form, alt, verb[, class]), ("out", "af", strip, adjective)"""
+    kind = unit[1]
+    if kind == "c": return GM.out_class(unit[1:])
+    if kind == "s": return GM.out_class(("s", unit[2]), unit[4])
+    if kind == "vf": return GM.out_class(("vf", unit[2], unit[3]) + tuple(unit[5:6]), unit[4])
+    if kind == "af": return GM.out_class(("af", "stem", unit[2]), unit[3])
     raise ValueError(unit)
 
 def implied(sets, by_superset):
@@ -1398,7 +1410,13 @@ def universal_vocabulary():
     the clause rules — and the lexicon's copy sources: the universe a diagram (canon.py) ranges over when it has no particular cell"""
     rules = module_rules(set(NP_ROLES))[0] + clause_module_rules()[0]
     rules += clause_rules(sorted(vocabulary(rules)[0]))[0]
-    return vocabulary(rules)[0]
+    return mark_kinds(vocabulary(rules)[0])
+
+def mark_kinds(slot_vocab):
+    """the marks of a frame take every kind the printing rules know (gen_module), whether or not a rule of this encoder writes it
+    yet: the frame is the decoder's input as much as the encoder's state, and a context can be handed to the decoder directly"""
+    for slot, kinds in (("clause", GM.CLAUSE_KINDS), ("link", GM.LINK_KINDS), ("sublink", GM.SUBLINK_KINDS)): slot_vocab[slot] |= set(kinds)
+    return slot_vocab
 
 # ---------------------------------------------------------------------------------------------- the layers both cells share
 def slot_values(q, slot_vocab):
@@ -1504,6 +1522,7 @@ def compile_encoder(trees, extra_rules=(), derived=None):
     crules, cderived = clause_rules(sorted(slot_vocab), {out[0][1:] for _, _, out in rules if out[0][0] == "OPEN"})
     rules += crules; derived.update(cderived)
     slot_vocab, src_vocab, copy_pairs, move_pairs, use_rules = vocabulary(rules)
+    mark_kinds(slot_vocab)
     # ---- state index: control, slots, pend_prep, shift
     S = Index()
     ctrl_states = {("START",), ("DONE",), FAIL} | set(trees) | set(out[0] for _, _, out in rules) | set(prev for prev, _, _ in rules)
@@ -1765,33 +1784,40 @@ def compile_encoder(trees, extra_rules=(), derived=None):
 def compile_decoder(slot_vocab):
     """the printing rules -> the decoder cell, over the frame the encoder leaves (slot_vocab: its slots and their values).
     The input is the frame under the attention — one unit per value of every slot, in the encoder's order — and the constant.
-    The state is the printing position, the sentence block (SENT_SLOTS: set from the encoder's final state, then kept), and what
-    a step puts out: the emit unit with one output unit — a morpheme: a constant, a slot's value, a form of the verb or of the
-    adjective — or an attention unit, down or up.  The same five layers as the encoder: conjunctions over the frame, their
-    NOTs, the rules, the gates (next position, emit, down, up, a read gate per slot read, a form gate per stem form), and the
-    read and lookup units, AND(gate, the frame's value), with the crash of a read that finds nothing"""
+    The state is the printing position, the sentence block (SENT_SLOTS: set from the encoder's final state, then kept), the head
+    units — emit, down, up — and the output block: one unit per morpheme (a constant, a slot's value, a form of the verb or of
+    the adjective), holding the last morpheme printed: written when emit is on, kept otherwise, as a slot of the encoder is.
+    The rules read it back — a class predicate (out.class=C) is the OR of the block's units of that class (output_class), one
+    layer-1 unit — so the decoder is autoregressive: its next step depends on the frame, its position and its own last output.
+    The same five layers as the encoder: conjunctions over the frame and the state, their NOTs, the rules, the gates (next
+    position, emit, down, up, a read gate per slot read, a form gate per stem form), and the read and lookup units, AND(gate,
+    the frame's value), with the keep units of the output block and the crash of a read that finds nothing"""
     rules, derived = decoder_rules()
     emits = [(ri, v) for ri, (prev, lits, (cp, k, actions)) in enumerate(rules) for slot, v, src in actions if src == PRINT_SRC]
     moves = [(ri, v) for ri, (prev, lits, (cp, k, actions)) in enumerate(rules) for slot, v, src in actions if src == HEAD_SRC]
     out_tokens = sorted({v for ri, v in emits}, key=str)
-    const_out = sorted({tok[1] for tok in out_tokens if tok[0] == "c"})
+    const_out = sorted({tok for tok in out_tokens if tok[0] == "c"}, key=str)                                  # ("c", string[, class])
     read_out = sorted({(tok[1], tok[2] if len(tok) > 2 else None) for tok in out_tokens if tok[0] == "s"}, key=str)
-    form_out = sorted({(tok[1], tok[2]) for tok in out_tokens if tok[0] == "vf"})
+    form_out = sorted({(tok[1], tok[2], tok[3] if len(tok) > 3 else None) for tok in out_tokens if tok[0] == "vf"}, key=str)      # (form, alt, class)
     aform_out = sorted({tok[2] for tok in out_tokens if tok[0] == "af"})
-    # ---- state: the printing position, the sentence block, y(t) — one output unit per morpheme — and the head units
+    def form_unit(name, alt, cls, v): return ("out", "vf", name, alt, v) + ((cls,) if cls else ())
+    # ---- state: the printing position, the sentence block, the output block — one unit per morpheme — and the head units
     S = Index()
     for c in sorted({FAIL, ("P", "P0"), ("P", "DONE")} | {prev for prev, _, _ in rules} | {out[0] for _, _, out in rules}, key=str): S.add(("ctrl", c))
     for slot in SENT_SLOTS:
         for v in sorted(slot_vocab.get(slot, []), key=str): S.add(("slot", slot, v))
-    for s_ in const_out: S.add(("out", "c", s_))
+    for tok in const_out: S.add(("out",) + tok)
     for slot, idx in read_out:
         for v in slot_vocab.get(slot, []): S.add(("out", "s", slot, idx, v))
-    for name, alt in form_out:
+    for name, alt, cls in form_out:
         for v in slot_vocab.get("verb", []):
-            if form_ok(v, name, alt): S.add(("out", "vf", name, alt, v))
+            if form_ok(v, name, alt): S.add(form_unit(name, alt, cls, v))
     for strip in aform_out:
         for v in slot_vocab.get("cop_adj", []): S.add(("out", "af", strip, v))
     for head in ("emit", "down", "up"): S.add((head,))
+    out_names = [n for n in S.names if n[0] == "out"]
+    by_class = collections.defaultdict(list)
+    for n in out_names: by_class[output_class(n)].append(("S", S[n]))
     # ---- input: the attended frame, unit for unit the encoder's slot block, and the constant
     X = Index()
     for slot in sorted(slot_vocab):
@@ -1799,8 +1825,9 @@ def compile_decoder(slot_vocab):
     X.add(("one",))
     def unit(slot, v): return ("S", S[("slot", slot, v)]) if slot in SENT_SLOTS else ("X", X[("slot", slot, v)])
     def edges(q):
+        if q.startswith("out.class="): return list(by_class.get(q[10:], [])) or None            # the last morpheme printed is a stem of this class
         sv = slot_values(q, slot_vocab)
-        if sv is None: raise ValueError(f"a printing rule reads {q}, which is not a literal over the frame")
+        if sv is None: raise ValueError(f"a printing rule reads {q}, which is not a literal over the frame or the output block")
         return [unit(sv[0], v) for v in sv[1]] or None
     # ---- layers 1-3: the conjunctions of the derived predicates, their NOTs, the rules
     L1 = Index(); W1 = []; b1 = {}; L2 = Index(); W2 = []; b2 = {}; L3 = Index(); W3 = []; b3 = {}
@@ -1817,44 +1844,49 @@ def compile_decoder(slot_vocab):
     emit = L4.add(("emit",)); gate_read = {}; gate_form = {}; gate_aform = {}; const_out_w = collections.defaultdict(list)
     for ri, tok in emits:
         W4.append((emit, ("L3", L3[("rule", ri)]), 1.0))
-        if tok[0] == "c": const_out_w[tok[1]].append(ri)
+        if tok[0] == "c": const_out_w[tok].append(ri)
         elif tok[0] == "s":
             g = gate_read.setdefault((tok[1], tok[2] if len(tok) > 2 else None), L4.add(("gread", tok[1], tok[2] if len(tok) > 2 else None))); W4.append((g, ("L3", L3[("rule", ri)]), 1.0))
         elif tok[0] == "vf":
-            g = gate_form.setdefault((tok[1], tok[2]), L4.add(("gform", tok[1], tok[2]))); W4.append((g, ("L3", L3[("rule", ri)]), 1.0))
+            key = (tok[1], tok[2], tok[3] if len(tok) > 3 else None)
+            g = gate_form.setdefault(key, L4.add(("gform",) + key)); W4.append((g, ("L3", L3[("rule", ri)]), 1.0))
         elif tok[0] == "af":
             g = gate_aform.setdefault(tok[2], L4.add(("gaform", tok[2]))); W4.append((g, ("L3", L3[("rule", ri)]), 1.0))
     for move in ("down", "up"):
         g = L4.add((move,))
         for ri, mv in moves:
             if mv == move: W4.append((g, ("L3", L3[("rule", ri)]), 1.0))
-    # ---- layer 5: the sentence block kept; a read unit per value = AND(read gate, the frame's value), the mirror of the encoder's
-    #      write unit; a lookup unit per verb or adjective value = AND(form gate, the value); a constant morpheme = OR of the rules
-    #      that emit it; and the crash of a read with nothing in the block or a form the verb has not -> FAIL (the mirror of nosrc)
-    L5 = Index(); W5 = []; b5 = {}
+    # ---- layer 5: the sentence block kept; the output block kept unless this step emits (the keep unit of each morpheme is cut by
+    #      emit, as a slot's keep units are by its write gate); a read unit per value = AND(read gate, the frame's value), the mirror
+    #      of the encoder's write unit; a lookup unit per verb or adjective value = AND(form gate, the value); a constant morpheme =
+    #      OR of the rules that emit it; and the crash of a read with nothing in the block or a form the verb has not -> FAIL (the
+    #      mirror of nosrc)
+    L5 = Index(); W5 = []; b5 = {}; writes = []                       # writes: (output unit of the state, the layer-5 unit that sets it)
     for slot in SENT_SLOTS:
         for v in slot_vocab.get(slot, []):
             kp = L5.add(("keep", slot, v)); W5.append((kp, ("S", S[("slot", slot, v)]), 1.0))
+    for n in out_names:
+        kp = L5.add(("keepout", n)); W5.append((kp, ("S", S[n]), 1.0)); W5.append((kp, ("L4", emit), -1.0)); writes.append((S[n], kp))
     for (slot, idx), g in gate_read.items():
         for v in slot_vocab.get(slot, []):
-            ru = L5.add(("read", slot, idx, v)); W5.append((ru, ("L4", g), 1.0)); W5.append((ru, unit(slot, v), 1.0)); b5[ru] = -1.0
+            ru = L5.add(("read", slot, idx, v)); W5.append((ru, ("L4", g), 1.0)); W5.append((ru, unit(slot, v), 1.0)); b5[ru] = -1.0; writes.append((S[("out", "s", slot, idx, v)], ru))
         cu = L5.add(("noread", slot, idx)); W5.append((cu, ("L4", g), 1.0))
         for v in slot_vocab.get(slot, []): W5.append((cu, unit(slot, v), -1.0))
-    for (name, alt), g in gate_form.items():
+    for (name, alt, cls), g in gate_form.items():
         valid = [v for v in slot_vocab.get("verb", []) if form_ok(v, name, alt)]
         for v in valid:
-            lu = L5.add(("form", name, alt, v)); W5.append((lu, ("L4", g), 1.0)); W5.append((lu, unit("verb", v), 1.0)); b5[lu] = -1.0
-        cu = L5.add(("noform", name, alt)); W5.append((cu, ("L4", g), 1.0))
+            lu = L5.add(("form", name, alt, cls, v)); W5.append((lu, ("L4", g), 1.0)); W5.append((lu, unit("verb", v), 1.0)); b5[lu] = -1.0; writes.append((S[form_unit(name, alt, cls, v)], lu))
+        cu = L5.add(("noform", name, alt, cls)); W5.append((cu, ("L4", g), 1.0))
         for v in valid: W5.append((cu, unit("verb", v), -1.0))
     for strip, g in gate_aform.items():
         for v in slot_vocab.get("cop_adj", []):
-            lu = L5.add(("aform", strip, v)); W5.append((lu, ("L4", g), 1.0)); W5.append((lu, unit("cop_adj", v), 1.0)); b5[lu] = -1.0
+            lu = L5.add(("aform", strip, v)); W5.append((lu, ("L4", g), 1.0)); W5.append((lu, unit("cop_adj", v), 1.0)); b5[lu] = -1.0; writes.append((S[("out", "af", strip, v)], lu))
         cu = L5.add(("noaform", strip)); W5.append((cu, ("L4", g), 1.0))
         for v in slot_vocab.get("cop_adj", []): W5.append((cu, unit("cop_adj", v), -1.0))
-    for s_, ris in const_out_w.items():
-        ou = L5.add(("outc", s_))
+    for tok, ris in const_out_w.items():
+        ou = L5.add(("outc", tok)); writes.append((S[("out",) + tok], ou))
         for ri in ris: W5.append((ou, ("L3", L3[("rule", ri)]), 1.0))
-    # ---- the readout: the next position, the head units, the sentence block, y(t)
+    # ---- the readout: the next position, the head units, the sentence block, and the output block — kept, or the morpheme of this step
     W6 = []
     for i, name in enumerate(L4.names):
         if name[0] == "next": W6.append((S[name[1]], ("L4", i), 1.0))
@@ -1862,10 +1894,7 @@ def compile_decoder(slot_vocab):
     for i, name in enumerate(L5.names):
         if name[0] == "keep": W6.append((S[("slot", name[1], name[2])], ("L5", i), 1.0))
         if name[0] in ("noread", "noform", "noaform"): W6.append((S[("ctrl", FAIL)], ("L5", i), 1.0))
-        if name[0] == "read": W6.append((S[("out", "s", name[1], name[2], name[3])], ("L5", i), 1.0))
-        if name[0] == "form": W6.append((S[("out", "vf", name[1], name[2], name[3])], ("L5", i), 1.0))
-        if name[0] == "aform": W6.append((S[("out", "af", name[1], name[2])], ("L5", i), 1.0))
-        if name[0] == "outc": W6.append((S[("out", "c", name[1])], ("L5", i), 1.0))
+    for si, li in writes: W6.append((si, ("L5", li), 1.0))
     layers = [(L1, W1, b1), (L2, W2, b2), (L3, W3, b3), (L4, W4, b4), (L5, W5, b5)]
     return {"S": S, "X": X, "layers": layers, "W6": W6, "rules": rules, "derived": derived, "unresolved": unresolved, "dead_conj": dead_conj}
 

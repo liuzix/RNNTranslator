@@ -3,28 +3,28 @@
 "matrix": {
 "both_refuse": 263,
 "cell": {
-"build_seconds": 47,
+"build_seconds": 49,
 "canon": {
-"complete": 1175,
-"consistent": 1175,
-"control_points": 1175,
+"complete": 1176,
+"consistent": 1176,
+"control_points": 1176,
 "example": "NP1@cop:\n  w0 ⟨class=num ∧ surf=one⟩:\n      = class=num » #2: → ('NP2', 'cop') k=1 (('cop.num', None, ('copy', 'num')),)\n      = class=num ∧ surf=one » w1 ⟨class=noun⟩:\n          = class=noun » #2\n          * » cop.det ⟨slot.cop.det⟩:\n              = slot.cop.det » #1: → ('NP2', 'cop') k=0 ()\n              * » cop.poss ⟨slot.cop.poss⟩:\n                  = slot.cop.poss » #1\n                  * » #2\n      * » #1\n",
-"nodes": 19495,
+"nodes": 19734,
 "not_total": [],
-"seconds": 99.7
+"seconds": 104.0
 },
 "decoder": {
-"input_units": 31481,
+"input_units": 31485,
 "layers": [
-55,
-16,
-1412,
-859,
-37219
+70,
+27,
+1559,
+861,
+75658
 ],
-"nnz": 293100,
-"rules": 1412,
-"state_units": 37754
+"nnz": 414436,
+"rules": 1559,
+"state_units": 38446
 },
 "encoder": {
 "input_units": 2974,
@@ -33,16 +33,16 @@
 415,
 11073,
 1302,
-74632
+74636
 ],
-"nnz": 673100,
+"nnz": 673210,
 "rules": 10795,
-"state_units": 32295
+"state_units": 32299
 },
-"frame_units": 31480,
-"nnz": 966200,
-"output_units": 37056,
-"rules": 12207,
+"frame_units": 31484,
+"nnz": 1087646,
+"output_units": 37747,
+"rules": 12354,
 "rules_by_kind": {
 "clause": 2594,
 "entry": 121,
@@ -51,7 +51,7 @@
 "flush": 53,
 "module": 2543,
 "outer": 396,
-"print": 1412
+"print": 1559
 },
 "scope": {
 "in scope": 600,
@@ -88,7 +88,7 @@
 }
 },
 "refused_parseable": 143,
-"summary": "identical 589, wrong frame 0, matrix parses refused 0, refused parseable 143, both refuse 263; nnz 966200, rules 12207; canon: 1175 control points, 0 with a gap, 0 with a conflict",
+"summary": "identical 589, wrong frame 0, matrix parses refused 0, refused parseable 143, both refuse 263; nnz 1087646, rules 12354; canon: 1176 control points, 0 with a gap, 0 with a conflict",
 "wrong_frame": 0
 },
 "negatives": {
@@ -98,7 +98,7 @@
 "count": 18,
 "matrix_accepted": 0,
 "problems": [],
-"seconds": 49,
+"seconds": 52,
 "summary": "negatives: rules refuse 18/18 and accept 18/18 controls; matrix refuses 18/18 and accepts 15/18 controls"
 },
 "np": {
@@ -113,7 +113,7 @@
 },
 "printer": {
 "agree": 649,
-"derived": 16,
+"derived": 27,
 "gap": 83,
 "misfire": 0,
 "per_split": {
@@ -153,13 +153,13 @@
 }
 }
 },
-"positions": 692,
-"rules": 1412,
-"summary": "printer vs generate: agree 649, gap 83, misfire 0 on the corpus; sweep 223491 frames, 210499 match, 0 mismatches, 1916 refused, 11076 generate() cannot print; 1412 rules at 692 positions",
+"positions": 693,
+"rules": 1559,
+"summary": "printer vs generate: agree 649, gap 83, misfire 0 on the corpus; sweep 270515 frames, 238791 match, 0 mismatches, 3436 refused, 28288 generate() cannot print; 1559 rules at 693 positions",
 "sweep": {
-"frames": 223491,
-"generate_crash": 11076,
-"match": 210499,
+"frames": 270515,
+"generate_crash": 28288,
+"match": 238791,
 "mismatch_examples": [],
 "mismatches": 0,
 "per_group": {
@@ -191,9 +191,14 @@
 "pp": {
 "match": 12096
 },
+"stem": {
+"generate_crash": 17212,
+"match": 28276,
+"refused": 1536
+},
 "sub": {
-"match": 37158,
-"refused": 1452
+"match": 37174,
+"refused": 1436
 },
 "there": {
 "match": 9216
@@ -209,13 +214,14 @@
 }
 },
 "refusal_reasons": {
+"a bare -ing clause under while": "('sub', 'while', 'before', 'ing', \"('understand', '理解する', 's')\", (), None)",
 "imperative": "('verb', \"('eat', '食べる', 'i')\", ['neg', 'imp'], None, 'better')",
+"no stem form of a predicate of": "('sub', 'while', 'before', 'ing', \"('like', '好む', 'g')\", (), None)",
 "there-clause with a that-claus": "('outer', 'there', 'None', [], None, None)",
-"unless takes the negative stem": "('sub', 'unless', 'before', 'verb', \"('eat', '食べる', 'i')\", [], None)",
-"while with a bare -ing clause ": "('sub', 'while', 'before', 'ing', \"('eat', '食べる', 'i')\", (), None)"
+"unless takes the negative stem": "('sub', 'unless', 'before', 'verb', \"('eat', '食べる', 'i')\", [], None)"
 },
-"refused": 1916,
-"seconds": 100.0
+"refused": 3436,
+"seconds": 171.8
 }
 },
 "rules": {
@@ -362,7 +368,7 @@
 "torch": {
 "diverging": 0,
 "dtype": "float32",
-"seconds": 214.4,
+"seconds": 242.9,
 "sentences": 995,
 "steps": 59545,
 "summary": "torch 2.15.0+cpu: 995 sentences, 59545 steps compared, 0 diverging",
@@ -3861,5 +3867,5 @@
 }
 ]
 },
-"taken": "2026-11-10 at 31fc5d9 (staged)"
+"taken": "2026-11-10 at c1f17b5 (staged)"
 }

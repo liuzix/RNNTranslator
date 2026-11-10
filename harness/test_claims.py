@@ -27,7 +27,8 @@ def small_cell(root):
     if "comp" not in _cell:
         extra = ("she took a rest .", "i like the big dog .", "he said that he was tired .", "he said that he was tired ?", "he said that she thought that he was tired .",
                  "when i was a child , i loved reading .", "i loved reading when i was a child .", "i went out although it was raining .", "i went out when it was raining ?",
-                 "if it rains tomorrow , i will stay at home .", "unless it rains , i will go , too .", "speak clearly so that everyone may hear you .", "in fact , i like the big dog .")
+                 "if it rains tomorrow , i will stay at home .", "unless it rains , i will go , too .", "speak clearly so that everyone may hear you .", "in fact , i like the big dog .",
+                 "while walking , he sang a song .", "while having a car , he walks .", "he is reading a book .", "he can swim .")
         sents = [R.merge_multiword(en) for en, ja in H.load("dev")[:60]] + [R.merge_multiword(s.split()) for s in extra]
         _cell["comp"] = PM.build_hybrid(sents); _cell["mp"] = PM.MatrixParser(_cell["comp"])
     return _cell["comp"], _cell["mp"]
@@ -134,14 +135,15 @@ def test_slot_write_circuit(root):
         if S.names[tgt][0] == "slot": assert all(w == 1.0 and src[0] == "L5" and L5.names[src[1]][0] in ("keep", "write", "writec", "writem", "writeu") for src, w in srcs)
 
 def test_print_rules_normal_form(root):
-    """every printing rule is (position, literals, (next position, token)): the literals are base predicates of the flat frame or
-    derived predicates whose DNF is over base literals, a token is one of the four kinds of morpheme or a move of the attention,
-    every next position is a position, DONE or FAIL, and the rules reach the sentence end from P0"""
+    """every printing rule is (position, literals, (next position, token)): the literals are base predicates of the flat frame or of
+    the last morpheme printed, or derived predicates whose DNF is over base literals, a token is one of the four kinds of morpheme
+    or a move of the attention, every next position is a position, DONE or FAIL, and the rules reach the sentence end from P0"""
     import gen_module as G
     pr = G.PrintRules(); D = pr.derived(); positions = set(pr.positions()); F = G.flatten(PR.parse_bounded(R.merge_multiword("i like the big dog .".split())))
     assert pr.positions()[0] == "P0" and "DONE" not in positions
     def check_base(name):
-        G.base_pred(name, F)                                                      # KeyError if it is not a predicate of the flat frame
+        if name.startswith("out."): G.out_pred(name, None)                        # KeyError if it is not a predicate of the last morpheme
+        else: G.base_pred(name, F)                                                # KeyError if it is not a predicate of the flat frame
     for name, conjs in D.items():
         assert name.startswith("d.") and conjs
         for conj in conjs:
@@ -164,19 +166,19 @@ def test_print_rules_normal_form(root):
 def test_encoder_and_decoder_share_only_the_context(root):
     """the decoder is a second cell and nothing passes between the two but the context: the frames the encoder flushed and the
     sentence block of its final state.  No decoder unit reads a token, no encoder unit emits; a printing rule reads only the
-    frame under the attention and the sentence block, and writes no slot; and the decoder alone, given the frames a Clause
-    spells, prints what the rule generator prints"""
+    frame under the attention, the sentence block and the decoder's own output block, and writes no slot; and the decoder
+    alone, given the frames a Clause spells, prints what the rule generator prints"""
     import numpy as np
     comp, mp = small_cell(root); enc, dec = comp["encoder"], comp["decoder"]
     assert not any(n[0] in ("out", "emit", "down", "up") for n in enc["S"].names) and not any(n[0] in ("pend", "shift", "flush") for n in dec["S"].names)
     for prev, lits, (cp, k, acts) in dec["rules"]:
         assert k == 0 and all(src in (PM.PRINT_SRC, PM.HEAD_SRC) for slot, v, src in acts), "a printing rule that consumes a token or writes a slot"
     for prev, lits, (cp, k, acts) in enc["rules"]: assert not any(src in (PM.PRINT_SRC, PM.HEAD_SRC) for slot, v, src in acts), "a reading rule that prints"
-    # layer 1 and layer 3 of the decoder read the frame (input), the sentence block and the printing position (state), and the constant
+    # layer 1 and layer 3 of the decoder read the frame (input), the sentence block, the printing position and the output block (state), and the constant
     D = dec["S"]; frame_or_one = len(dec["X"])
     for L, W, b in (dec["layers"][0], dec["layers"][2]):
         for u, ref, w in W:
-            if ref[0] == "S": assert D.names[ref[1]][0] == "ctrl" or D.names[ref[1]][1] in PM.SENT_SLOTS, D.names[ref[1]]
+            if ref[0] == "S": assert D.names[ref[1]][0] in ("ctrl", "out") or D.names[ref[1]][1] in PM.SENT_SLOTS, D.names[ref[1]]
             else: assert ref[0] in ("X", "L2") and (ref[0] != "X" or ref[1] < frame_or_one)
     # what the runner hands over: the frames, and the sentence block, decoder register <- encoder state unit of the same name
     assert mp.handoff and all(D.names[d] == enc["S"].names[e] and D.names[d][1] in PM.SENT_SLOTS for d, e in mp.handoff)
@@ -220,31 +222,119 @@ def test_decoder_mirrors_encoder(root):
     assert reads and forms
     for i, (_, slot, idx, v) in reads:
         assert b5.get(i) == -1.0 and sorted(into5[i], key=str) == sorted([(("L4", L4[("gread", slot, idx)]), 1.0), (("X", X[("slot", slot, v)]), 1.0)], key=str)
-    for i, (_, name, alt, v) in forms:
-        assert b5.get(i) == -1.0 and sorted(into5[i], key=str) == sorted([(("L4", L4[("gform", name, alt)]), 1.0), (("X", X[("slot", "verb", v)]), 1.0)], key=str)
+    for i, (_, name, alt, cls, v) in forms:
+        assert b5.get(i) == -1.0 and sorted(into5[i], key=str) == sorted([(("L4", L4[("gform", name, alt, cls)]), 1.0), (("X", X[("slot", "verb", v)]), 1.0)], key=str)
     into6 = collections.defaultdict(list)
     for tgt, src, w in dec["W6"]: into6[tgt].append((src, w))
-    for i, (_, slot, idx, v) in reads: assert into6[S[("out", "s", slot, idx, v)]] == [(("L5", i), 1.0)]
+    for i, (_, slot, idx, v) in reads:                              # an output unit is set by its read unit, or kept by its keep unit
+        assert sorted(into6[S[("out", "s", slot, idx, v)]]) == sorted([(("L5", i), 1.0), (("L5", L5[("keepout", ("out", "s", slot, idx, v))]), 1.0)])
     crashes = [i for i, n in enumerate(L5.names) if n[0] in ("noread", "noform", "noaform")]
     assert crashes and all((("L5", i), 1.0) in into6[S[("ctrl", PM.FAIL)]] for i in crashes)
     for i in crashes:
         ins = dict(into5[i]); assert sum(1 for src, w in ins.items() if w == 1.0 and src[0] == "L4") == 1 and all(w == -1.0 for src, w in ins.items() if src[0] == "X")
 
 def test_output_is_one_hot_morphemes(root):
-    """y(t): at every step of the decoder exactly one output unit is on when emit is, none when it is not; every output unit is a
-    constant, a slot's value, or a form of a verb or an adjective, and the output lexical layer gives each a string"""
+    """y(t): the output block holds one morpheme — on a step that emits, the unit of that morpheme and no other; on a step that
+    does not, the unit of the last morpheme printed, and none before the first; every output unit is a constant, a slot's value,
+    or a form of a verb or an adjective, and the output lexical layer gives each a string"""
     comp, mp = small_cell(root); S = comp["decoder"]["S"]
     assert {n[1] for n in S.names if n[0] == "out"} == {"c", "s", "vf", "af"}
     for n in S.names:
         if n[0] == "out": assert isinstance(PM.output_lexicon(n), str)
     toks = R.merge_multiword("she took a rest .".split())
-    frames, final = mp.encode(toks); seen = []
+    frames, final = mp.encode(toks); seen = []; held = []
     def on_step(which, s, x, s2):
-        on = [S.names[i] for i in mp.out_units if s2[i] > 0.5]
-        assert which == "decoder" and len(on) == (1 if s2[mp.emit_unit] > 0.5 else 0), len(on)
-        seen.append(on)
+        on = [S.names[i] for i in mp.out_units if s2[i] > 0.5]; emits = s2[mp.emit_unit] > 0.5
+        assert which == "decoder" and len(on) == (1 if emits or held else 0), len(on)
+        if not emits: assert on == held[-1:], "a step that prints nothing changed the output block"
+        else: seen.append(on[0])
+        held[:] = on
     units = mp.decode(frames, final, on_step=on_step)
-    assert [u for on in seen for u in on] == units and len(seen) > len(units) and "".join(PM.output_lexicon(u) for u in units) == "彼女は休んだ。"
+    assert seen == units and "".join(PM.output_lexicon(u) for u in units) == "彼女は休んだ。"
+
+def test_decoder_reads_its_own_output(root):
+    """the decoder is autoregressive: its output block — the last morpheme printed — stays in its state, kept by one keep unit per
+    morpheme that the emit unit cuts, and its rules read it.  A stem is printed with its conjugation class (a constant or a form
+    lookup declares it, an adjective's stem and the copula's noun have theirs), a class predicate is one layer-1 unit, the OR of
+    the block's units of that class, and the finishing stage of the predicate takes the class from there: it has one position
+    per mode for every predicate whose stem is out, and the ending it prints follows the block, whatever printed the stem"""
+    import numpy as np, gen_module as G
+    comp, mp = small_cell(root); dec = comp["decoder"]; S, X = dec["S"], dec["X"]
+    L1, W1, b1 = dec["layers"][0]; L4 = dec["layers"][3][0]; L5, W5, b5 = dec["layers"][4]
+    into5 = collections.defaultdict(list)
+    for u, src, w in W5: into5[u].append((src, w))
+    outs = [n for n in S.names if n[0] == "out"]
+    for n in outs:                                                                # kept unless this step emits
+        assert sorted(into5[L5[("keepout", n)]]) == sorted([(("S", S[n]), 1.0), (("L4", L4[("emit",)]), -1.0)]) and b5.get(L5[("keepout", n)], 0.0) == 0.0
+    into1 = collections.defaultdict(list)
+    for u, src, w in W1: into1[u].append((src, w))
+    classes = G.stem_classes(); seen_classes = set()
+    for c in classes:                                                             # a class predicate: the OR of the block's units of that class
+        members = sorted((("S", S[n]), 1.0) for n in outs if PM.output_class(n) == c)
+        key = ("conj", (f"out.class={c}",))
+        if not members: assert key not in L1; continue
+        assert sorted(into1[L1[key]]) == members and b1.get(L1[key], 0.0) == 0.0; seen_classes.add(c)
+    assert {"V1C", "IA", "NA"} <= seen_classes
+    assert PM.output_class(("out", "c", "い", "V1C")) == "V1C" and PM.output_class(("out", "c", "い")) is None and ("out", "c", "い", "V1C") in S and ("out", "c", "い") in S, "the same string, two morphemes"
+    # the finishing stage: no position per class
+    pr = G.PrintRules(); fin = [p for p in pr.positions() if isinstance(p, tuple) and p[0] == "FIN"]
+    assert {p[1] for p in fin} == {"V", "VA", "ARU", "S", "NA"} and {p[2] for p in fin if p[1] == "NA"} == {"whcop", "whcop_emb"}
+    assert {p[2] for p in fin if p[1] == "S"} == {"flags", "plain", "noneg", "conj", "conj_nn", "lets", "te", "stem"}
+    # the ending follows the output block: the same position, the same frame, another stem in the block
+    D = mp.dec
+    def ending(stem_unit, frame):
+        s = np.zeros(D.nS); s[S[("ctrl", ("P", ("FIN", "S", "flags")))]] = 1.0
+        if stem_unit is not None: s[S[stem_unit]] = 1.0
+        s2 = mp.step_decoder(s, np.concatenate([mp.frame_vector(frame), np.ones(1)]))
+        return D.control(s2), [PM.output_lexicon(u) for u in mp.emitted(s2)]
+    past = {"past": True}
+    assert ending(("out", "c", "い", "V1C"), past) == (("P", "Q"), ["た"]) and ending(("out", "c", "い", "V1C"), {}) == (("P", "Q"), ["る"])
+    assert ending(("out", "c", "た", "IA"), past) == (("P", "Q"), ["かった"]) and ending(("out", "c", "好き", "NA"), past) == (("P", "Q"), ["だった"])
+    assert ending(None, past)[0] == PM.FAIL and ending(("out", "c", "。"), past)[0] == PM.FAIL, "an ending with no stem in the block"
+    # end to end: predicates that chain stems, each ending read off the stem before it
+    for s_, want in (("he is reading a book .", "彼は本を読んでいる。"), ("he can swim .", "彼は泳げる。"), ("i like the big dog .", "私は大きい犬が好きだ。")):
+        toks = R.merge_multiword(s_.split()); assert mp.translate(toks) == R.translate(s_.split()) == want, s_
+
+def test_clause_kind_decides_the_ending(root):
+    """a frame's clause kind decides the form its predicate ends in: a clause marked te or stem, spliced into another like a
+    that-clause, prints up to the te form or the masu stem of the predicate its registers build — by a lookup for a plain verb,
+    by the ending of the class of the stem just printed otherwise, never by slicing — and gives the attention back with nothing
+    after it; the clause it is spliced into goes on.  The rule generator prints such a clause the same way (generate(form=…)),
+    and where a predicate has no such form — a fixed phrase, must, an imperative — both refuse.  A bare -ing clause under while
+    is the first construction that uses it: it ends at its masu stem and takes ながら"""
+    import copy, gen_module as G
+    comp, mp = small_cell(root); pr = G.PrintRules()
+    def host(): c = PR.parse_bounded(R.merge_multiword("he came .".split())); return c
+    def inner(sentence, form, **regs):
+        c = PR.parse_bounded(R.merge_multiword(sentence.split())); c.inner_of = form
+        for k, v in regs.items(): setattr(c, k, v)
+        return c
+    cases = [("he opened the window .", "te", {}, "彼は彼が窓を開けて来た。"), ("he opened the window .", "stem", {}, "彼は彼が窓を開け来た。"),
+             ("he is reading a book .", "te", {}, "彼は彼が本を読んでいて来た。"), ("he is reading a book .", "stem", {}, "彼は彼が本を読んでい来た。"),
+             ("he can swim .", "te", {}, "彼は彼が泳げて来た。"), ("i like the big dog .", "te", {}, "彼は私が大きい犬が好きで来た。")]
+    for sentence, form, regs, want in cases:
+        c = host(); c.embedded = inner(sentence, form, **regs)
+        frames = G.frames_of(copy.deepcopy(c))
+        assert [F.get("link") for F in frames] == [form, None] and [F.get("clause") for F in frames] == [None, form]
+        assert "".join(pr.render(copy.deepcopy(c))) == R.generate(copy.deepcopy(c)) == want, (sentence, form)
+        assert "".join(PM.output_lexicon(u) for u in mp.print_clause(copy.deepcopy(c))) == want, (sentence, form, "the compiled decoder")
+    for sentence, form, regs in (("he opened the window .", "te", {"modal": "must"}), ("he opened the window .", "stem", {"imp": True}), ("i like the big dog .", "stem", {})):
+        c = host(); c.embedded = inner(sentence, form, **regs)
+        try: R.generate(copy.deepcopy(c)); assert False, "generate() printed a form the predicate has not"
+        except ValueError: pass
+        try: pr.render(copy.deepcopy(c)); assert False, "the rules printed a form the predicate has not"
+        except G.Refuse: pass
+        try: mp.print_clause(copy.deepcopy(c)); assert False, "the decoder printed a form the predicate has not"
+        except PR.ParseFail: pass
+    # the attention: down at the link, back up from the stem, on to the outer predicate
+    c = host(); c.embedded = inner("he opened the window .", "te"); path = []; at = [0]
+    def on_step(which, s, x, s2):
+        if not path or path[-1] != at[0]: path.append(at[0])
+        at[0] += int(s2[mp.down_unit] > 0.5) - int(s2[mp.up_unit] > 0.5)
+    mp.decode(mp.clause_context(c), on_step=on_step); assert path == [0, 1, 0], path
+    # while + a bare -ing clause, read by the encoder and printed through the stem mode
+    for s_, want in (("while walking , he sang a song .", "歩きながら彼は歌を歌った。"), ("while having a car , he walks .", "車を持っていながら彼は歩く。")):
+        toks = R.merge_multiword(s_.split()); assert mp.translate(toks) == R.translate(s_.split()) == want, (s_, mp.translate(toks))
 
 def _diagrams(root):
     """every control point of the small cell -> (its rules, its canonical diagram), built in one table over the cell's own vocabulary"""
@@ -571,7 +661,7 @@ def test_subordinate_frame_holds_its_conjunction(root):
     potential for may and no will under so that) is written into the frame by the rule that flushes it — adjust_rules mirrors
     subord_adjust for every conjunction of the table and every modal — so the frame the decoder reads is the clause generate()
     prints; and the printing rules give every conjunction its ending after the clause's finite form, as subord_form does, refusing
-    the two cases that slice the predicate's string"""
+    unless, which slices the predicate's string"""
     import copy
     modals = sorted(set(R.MODALS.values()))
     rules = PM.adjust_rules(("X",), (("slot.clause=after", True),), ("Y",), [PM.FLUSH]); pr = GM.PrintRules(); n = 0
@@ -596,9 +686,7 @@ def test_subordinate_frame_holds_its_conjunction(root):
     assert n > 500
     c = PR.Clause(); c.verb = ("walk", "歩く", "g"); main = PR.Clause(); main.subj, main.subj_cls = "彼", "h"; main.verb = ("come", "来る", "k")
     main.subords = [("before", "while", c)]; main.pre_clause = R.subord_form(c, "while")
-    assert main.pre_clause.endswith("ながら")
-    try: pr.render(main); assert False, "while walking was printed"
-    except GM.Refuse as e: assert "while" in str(e)
+    assert main.pre_clause == "歩きながら" and "".join(pr.render(main)) == R.generate(copy.deepcopy(main)) == "歩きながら彼は来る。"       # (the stem mode: test_clause_kind_decides_the_ending)
 
 def test_np_of_phrase(root):
     """an of-phrase is the noun-phrase module run once more on the role's of-phrase slots, printing before the head with の, and a

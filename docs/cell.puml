@@ -2,7 +2,8 @@
 ' The compiled machine: two recurrent cells and the context between them.  The encoder reads — a read head over the English,
 ' advanced by its shift unit — and hands the frame of each clause to the context when its flush unit is on.  The decoder prints —
 ' a print head over the Japanese, advanced by its emit unit — from the frame under the attention head, which its down and up
-' units move.  Below, one slot write of the encoder and its mirror, one slot read of the decoder.
+' units move, and from its own output block, the last morpheme it printed.  Below, one slot write of the encoder and its
+' mirror, one slot read of the decoder.
 ' Rendered hermetically by `harness/render_diagram.py` with the PlantUML jar pinned in docs/architecture.lock.json.
 skinparam shadowing false
 skinparam defaultFontName sans-serif
@@ -47,16 +48,17 @@ rectangle "**decoder cell**" as DEC #FBF3EA {
   rectangle "**s(t)**  state: one-hot blocks" as DS #D8ECD4 {
     rectangle "ctrl\nprinting positions" as DCTRL
     rectangle "sentence block" as DSENT
+    rectangle "output block\nthe last morpheme printed" as DOUT
     rectangle "emit · down · up" as DHEADS
   }
   rectangle "**one step**: the same five layers" as DSTEP {
-    rectangle "L1  AND conjunctions\nover the frame" as D1
+    rectangle "L1  AND conjunctions over the frame\nthe class of the last morpheme" as D1
     rectangle "L2  NOT" as D2
     rectangle "L3  rules\nAND(position, literals)" as D3
     rectangle "L4  next position\nemit · down · up\nread gates · form gates" as D4
-    rectangle "L5  read · lookups\ncrash" as D5
+    rectangle "L5  read · lookups\nkeep · crash" as D5
   }
-  rectangle "**y(t)**  one morpheme\none-hot: slot values · stem forms\nparticles · suffixes · 。" as Y #FDE7C8
+  rectangle "**y(t)**  one morpheme\none-hot: slot values · stem forms\nparticles · suffixes · 。\nkept until the next one" as Y #FDE7C8
 }
 
 rectangle "**output lexical layer**\nunit → string; the print head\nappends it when emit = 1" as OUT #EEEEEE
@@ -124,6 +126,7 @@ D3 --> D4
 D4 --> D5
 D5 --> Y : W6
 D5 --> DS : W6, one step
+Y .[#777777,norank].> DOUT : read back
 DS .[#777777,norank].> ATT : down / up
 Y --> OUT
 

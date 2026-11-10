@@ -322,35 +322,45 @@ def classify(tok):
 # ============================================================================
 # 5. Generation: frame -> Japanese, a fixed template of table lookups
 # ============================================================================
-def predicate_form(c, polite):
-    """the finite predicate of a clause from its registers"""
+STEM_FORMS = ("te", "stem")     # the non-finite forms a clause can end in: the te form, the masu stem (Clause.inner_of of such a clause)
+
+def predicate_form(c, polite, form=None):
+    """the finite predicate of a clause from its registers; with form = "te" or "stem", the same predicate — what the registers
+    build before tense, negation and politeness — in its te form or its masu stem instead, and ValueError where it has none (a
+    fixed phrase, an adjective's masu stem) or ends before it gets there (must, an imperative, a request, would)"""
+    def fin(p, past, neg):
+        if form is None: return p.finite(past, neg, polite)
+        return p.te() if form == "te" else p.masu_stem()
+    def whole(s):
+        if form is not None: raise ValueError(f"no {form} form: the predicate is already finite")
+        return s
     if c.there:
         base = Pred("v1", "い") if c.subj_cls in ("h", "a") else make_pred("ある", "aru")
-        return base.finite(c.past, c.neg, polite)
+        return fin(base, c.past, c.neg)
     if c.copula is not None:
         kind, *rest = c.copula
         if kind == "wh":
-            return ""
+            return whole("")
         if kind == "idiom":
             ja, k = rest
             p = {"na": Pred("na", ja), "a": Pred("ia", ja[:-1]), "fx": adj_pred(ja, "fx"), "v": make_pred(ja, "i" if ja.endswith(("れる", "える", "ける")) else "g")}[k]
-            return p.finite(c.past, c.neg, polite)
+            return fin(p, c.past, c.neg)
         if kind == "adj":
             ja, k = rest[0]
             if c.compare is not None and ja.startswith("より"): ja = ja[2:]
             p = adj_pred(ja, k)
         elif kind == "np":
             p = Pred("na", rest[0])
-            if c.relative and not c.neg and not c.past: return rest[0] + "である"
+            if c.relative and not c.neg and not c.past: return whole(rest[0] + "である")
         elif kind == "pp":
             prep, np = rest
             p = Pred("v1", "い") if c.subj_cls in ("h", "a") else make_pred("ある", "aru")
         elif kind == "adv":
             p = Pred("v1", "い") if c.subj_cls in ("h", "a") else make_pred("ある", "aru")
-        if c.modal == "must": return p_must(p, c, polite, noun=(kind == "np"))
-        return p.finite(c.past, c.neg, polite)
+        if c.modal == "must": return whole(p_must(p, c, polite, noun=(kind == "np")))
+        return fin(p, c.past, c.neg)
     if c.verb is None:
-        return ""
+        return whole("")
     lemma, ja, conj = c.verb
     if conj == "fixed":
         p = Pred("fixed", ja)
@@ -364,11 +374,11 @@ def predicate_form(c, polite):
     elif c.want == "wish":       p = p.tai()
     elif c.want in COMPLEMENTS:  p = complement_pred(c.want, p, c)
     elif c.want == "better":     p = Pred("ia", (p.nai_stem() + "ない" if c.neg else p.ta()) + "ほうがい"); c.neg = False
-    elif c.want == "neednot":    return p.dic + "必要はない" if not polite else p.dic + "必要はありません"
-    elif c.want == "mind_request": return p.te() + "もらえません"
-    elif c.want == "request":      return p.te() + "くださいません"                          # would you please V ? -> Vてくださいませんか
+    elif c.want == "neednot":    return whole(p.dic + "必要はない" if not polite else p.dic + "必要はありません")
+    elif c.want == "mind_request": return whole(p.te() + "もらえません")
+    elif c.want == "request":      return whole(p.te() + "くださいません")                   # would you please V ? -> Vてくださいませんか
     elif c.want == "be_to":      p = Pred("fixed", p.dic + "ことになっている")
-    elif c.want == "canthave":   return p.ta() + "はずがない"
+    elif c.want == "canthave":   return whole(p.ta() + "はずがない")
     if "+" in lemma:
         lemma = "__use__"
     if lemma in STATIVE and not c.want and not c.imp and not c.lets and c.modal not in ("can",) and not c.perf:
@@ -381,22 +391,22 @@ def predicate_form(c, polite):
     if c.perf and c.neg: c.prog = True; c.past = c.perf_had    # haven't come yet -> まだ来ていない; hadn't come -> 来ていなかった
     if c.prog and not c.want and p.kind in ("v1", "v5", "suru", "kuru"):     p = p.progressive()
     if c.modal == "can":          p = p.potential() if p.kind in ("v1", "v5", "suru", "kuru") else p
-    elif c.modal == "must":       return p_must(p, c, polite)
+    elif c.modal == "must":       return whole(p_must(p, c, polite))
     elif c.modal == "should":     p = p.should()
     elif c.modal == "may":        p = p.maybe()
-    if c.lets:                    return p.volitional(polite=True) if p.kind in ("v1", "v5", "suru", "kuru") else p.finite(False, False, True)
+    if c.lets:                    return whole(p.volitional(polite=True) if p.kind in ("v1", "v5", "suru", "kuru") else p.finite(False, False, True))
     if c.imp:
         if c.causative and p.kind in ("v1", "v5", "suru", "kuru"):
             caus = {"v1": p.stem + "させ", "v5": p.nai_stem() + "せ", "suru": p.stem[:-2] + "させ", "kuru": p.kuru_stem("こ") + "させ" if p.kind == "kuru" else None}[p.kind]
-            return caus + "てください"
-        if c.neg: return p.nai_stem() + "ないでください"
-        return p.te() + "ください"
+            return whole(caus + "てください")
+        if c.neg: return whole(p.nai_stem() + "ないでください")
+        return whole(p.te() + "ください")
     if c.please and c.verb and not c.imp:
-        return p.te() + "ください"
+        return whole(p.te() + "ください")
     past = c.past and not (c.modal == "will")
     if c.modal == "will" and c.past and not c.question and not c.want:                       # would (conjecture): 言わないだろう
-        return p.finite(False, c.neg, False) + ("でしょう" if polite else "だろう")
-    return p.finite(past, c.neg, polite)
+        return whole(p.finite(False, c.neg, False) + ("でしょう" if polite else "だろう"))
+    return fin(p, past, c.neg)
 
 class _Forms(dict):
     """forms of the governed verb, computed only when a template asks for them"""
@@ -453,10 +463,15 @@ def p_must(p, c, polite, noun=False):
     if p.kind == "na": return p.stem + ("の" if noun else "な") + "はずだ"
     return p.finite(False, False, False) + "はずだ"
 
-def generate(c, polite=None, embedded=False):
+def generate(c, polite=None, embedded=False, form=None):
+    """the Japanese of a clause.  form = "te" or "stem": the clause up to that form of its predicate (predicate_form), with
+    nothing after it — no question particle, no full stop — for a clause another clause continues; ValueError where the template
+    has no predicate to end at"""
     if polite is None:
         polite = bool(c.question)
     out = []
+    if form is not None and (c.fixed_out is not None or c.so_that is not None or c.howabout is not None or c.exclaim is not None or c.infinitive is not None):
+        raise ValueError(f"no {form} form of this clause")
     if c.fixed_out is not None:
         return c.fixed_out
     if c.so_that is not None:
@@ -476,10 +491,13 @@ def generate(c, polite=None, embedded=False):
     if c.there:
         for p, np in c.pp: out.append(np + p[1])
         if c.wh and c.wh[1] == "count":
-            out.append(c.subj + "は" + "いくつ"); out.append(predicate_form(c, polite)); out.append("か")
+            out.append(c.subj + "は" + "いくつ")
+            if form is not None: return "".join(out) + predicate_form(c, False, form)
+            out.append(predicate_form(c, polite)); out.append("か")
             return "".join(out) + "。"
         if c.subj.endswith(("何も", "誰も")): c.neg = True; out.append(c.subj)
         else: out.append(c.subj + "が")
+        if form is not None: return "".join(out) + predicate_form(c, False, form)
         out.append(predicate_form(c, polite))
         if c.question: out.append("か")
     else:
@@ -551,8 +569,11 @@ def generate(c, polite=None, embedded=False):
             out.append(c.wh[0] + "を")
         if c.adv: out.append(c.adv)
         if c.embedded is not None:
-            out.append(generate(c.embedded, polite=False, embedded=True)[:-1] + "と")
+            if getattr(c.embedded, "inner_of", None) in STEM_FORMS:           # a clause that ends at a stem form: this clause goes on after it
+                out.append(generate(c.embedded, polite=False, embedded=True, form=c.embedded.inner_of))
+            else: out.append(generate(c.embedded, polite=False, embedded=True)[:-1] + "と")
         if c.wh and c.copula is not None and c.copula[0] == "wh" and c.wh[1] in ("o", "s", "adv", "loc", "t", "count"):
+            if form is not None: raise ValueError(f"no {form} form of a question-word copula")
             if embedded: out.append(c.wh[0] + ("だった" if c.past else "") + "か")
             else: out.append(Pred("na", c.wh[0]).finite(c.past, c.neg, polite) + "か")
         else:
@@ -580,6 +601,7 @@ def generate(c, polite=None, embedded=False):
                     base = (a.stem + "すぎて") if a is not None else ""
                     out.append(base + (p0.potential().finite(False, True, polite) if p0 and p0.kind in ("v1", "v5", "suru", "kuru") else "できない"))
             else:
+                if form is not None: return "".join(out) + c.degree + predicate_form(c, False, form)
                 out.append(c.degree + predicate_form(c, polite if not c.suffix else False) + c.suffix)
             if c.question and not c.tag: out.append("か")
             if c.tag: out.append("ね")

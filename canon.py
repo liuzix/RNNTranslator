@@ -33,6 +33,7 @@ import np_module as NPM
 GAP, CONFLICT, TERM = "GAP", "CONFLICT", "TERM"
 EMPTY = "∅"                                   # the value of a slot that holds nothing (a flag that is off)
 OTHER = "«other»"                             # a token the lexicon does not know: no readings, its surface its own
+PLAIN = "«no class»"                          # a morpheme of the output block that is not a stem
 
 # ---------------------------------------------------------------- the model: variables, universes, predicates
 class Model:
@@ -83,6 +84,7 @@ class Model:
         if var == "pend": return sorted(R.PREPS) + [EMPTY]
         if var == "w0=w2": return [True, False]
         if var == "pp.count": return [0, 1, 2, 3]
+        if var == "out": return GM.stem_classes() + [PLAIN, EMPTY]        # the last morpheme printed: a stem of one of the classes, another morpheme, or nothing yet
         if PP_NOUN.match("slot." + var): return sorted(self.slot_vocab.get(var, ()), key=str)        # a filled role's noun: never EMPTY (the count says)
         return sorted(self.slot_vocab.get(var, ()), key=str) + [EMPTY]
 
@@ -122,6 +124,7 @@ def var_of(q):
     if q.startswith("pp.count"): return "pp.count", q
     if q == "w0=w2": return q, q
     if q.startswith("pend_prep="): return "pend", q
+    if q.startswith("out."): return "out", q
     if q.startswith("flag."): return q[5:], q
     if q.startswith("slot."):
         return q[5:].split("=", 1)[0], q
@@ -142,6 +145,7 @@ def holds(pred, var, value, model):
     if var.startswith("w") and var[1:].isdigit(): return pred in value                 # a window value is the set of its predicates
     if var == "w0=w2": return value is True
     if var == "pend": return value == pred[10:]
+    if var == "out": return value == pred[10:]                                         # out.class=<C>: the block's value is a stem of that class
     if var == "pp.count": return value >= int(pred[10:]) if pred.startswith("pp.count>=") else value == int(pred[9:])
     if value == EMPTY: return False
     if pred == "verb.phrasal": return " " in value[0]

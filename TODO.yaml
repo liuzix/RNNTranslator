@@ -15,27 +15,28 @@ items:
 # attention moves back.  Nothing is printed before the encoder is done, so the order of the frames is the decoder's to choose.
 - id: clause-modes
   title: Clause kinds that end at a stem form, so that no construction slices a generated string
-  status: open
+  status: done
   round: 4
   context:
-    - text: A that-clause is a frame of its own — the encoder flushes the outer frame with a link, the decoder's attention moves down
-        at the link, the clause prints with が on its subject and plain forms, emits と, and the attention moves back up for the outer
-        predicate.
-      pinned_by: test_context_is_one_frame_per_clause
-    - text: The printing rules end a clause at a finite form of its predicate, whatever its kind — a main clause or an embedded one.
+    - text: A frame's clause kind decides the form its predicate ends in — a clause marked te or stem, spliced into another by a
+        link of the same kind, prints up to the te form or the masu stem of the predicate its registers build and hands the
+        attention back with nothing after it, and the clause it is spliced into goes on; a bare -ing clause under while is the
+        first construction the encoder reads that ends this way.
+      pinned_by: test_clause_kind_decides_the_ending
+    - text: The decoder reads its own output — the last morpheme printed stays in its state, a stem is printed with its conjugation
+        class, and the finishing stage of the predicate takes the class from there and not from its position, so the two new modes
+        added no position per class.
+      pinned_by: test_decoder_reads_its_own_output
+    - text: The rule generator prints a clause to a stem form as well (generate with a form), and on the sweep the printing rules
+        print what it prints and refuse where it says the predicate has no such form.
       pinned_by: printer
-    - text: generate() builds the Japanese of a purpose clause, a manner clause, a control clause and an adjective's infinitive by
-        slicing the string of the inner clause and appending a stem form of its predicate — the masu stem with に or ながら, the te
-        form, the causative conjugated with the outer tense — which no slot read gives.
+    - text: The constructions generate() still builds by slicing — the purpose and manner clauses, an adjective's infinitive, the te
+        link of coordination, the causative — take the form of the bare verb or of clause_pred, not of the whole predicate, so each
+        needs a guard of its own on top of the two modes; and what follows a stem another frame printed — the tense after a
+        causative stem — can be chosen from the output block once the attention is back, with no position per class.
       hypothesis: true
-    - text: A frame's clause kind decides the form its predicate ends in — te, the masu stem, the plain form, the causative stem —
-        and what follows the stem is printed once the attention is back on the outer frame, from the outer frame's flags, the
-        conjugation class carried across the move in the printing position; every construction then prints by slot reads,
-        constant morphemes and form lookups, the stem forms being columns of the morphology table the form gates already read.
-      hypothesis: true
-  stubs: [ClauseModes]
   acceptance: test_clause_kinds_end_at_stem_forms
-  touches: [gen_module.py, parser_matrix.py]
+  touches: [gen_module.py, parser_matrix.py, rules_ja.py, canon.py]
 
 - id: coordination
   title: Coordinated clauses — one frame each, the first printed to its linking form
@@ -65,12 +66,12 @@ items:
         either way, moving its attention up or down from the main clause's frame and back.
       pinned_by: test_subordinate_clause_in_both_orders
     - text: What a conjunction changes in its clause is written into the frame by the rule that flushes it, and every conjunction of
-        the table has its ending after the clause's finite form; unless and while with a bare -ing clause, which slice that form,
-        are refused by the printing rules.
+        the table has its ending after the clause's finite form; unless, which slices that form, is refused by the printing rules.
       pinned_by: test_subordinate_frame_holds_its_conjunction
-    - text: unless and while with a bare -ing clause print once a clause kind can end at a stem form (clause-modes); a conjunction that
-        also reads as a preposition — before, after, since — and while after a main clause stay refused because the cell follows
-        the rule parser's first reading of them, and reading them needs the reading that survives the fork.
+    - text: unless prints once the ending of a negative can be chosen where the clause ends — it replaces the ない the finite form
+        ends in; a conjunction that also reads as a preposition — before, after, since — and while after a main clause stay
+        refused because the cell follows the rule parser's first reading of them, and reading them needs the reading that
+        survives the fork.
       hypothesis: true
   acceptance: test_subordinate_clauses_agree_in_both_orders
   touches: [parser_matrix.py, gen_module.py, parser_rules.py, pp_module.py, rules_ja.py]

@@ -68,15 +68,23 @@ def agrees(root, sentences):
 
 def test_clause_kinds_end_at_stem_forms(root):
     """a frame of a stem-form kind — te, the masu stem — prints to that form of its predicate, by the form gates and not by slicing a
-    generated string, and the outer frame it is linked from continues after it"""
+    generated string, and the outer frame it is linked from continues after it; where the predicate's stem is already out, the
+    ending is chosen by the class of that stem, which the rules read from their own output and not from their position"""
     import gen_module as GM
-    cm = ST.ClauseModes(); kinds = cm.kinds(); rules = cm.stem_rules()
-    assert kinds and rules, "no clause kinds that end at a stem form"
+    kinds = GM.STEM_FORMS; pr = GM.PrintRules()
+    rules = [r for r in pr.rules() if isinstance(r[0], tuple) and r[0][0] == "FIN" and r[0][2] in kinds]
+    assert kinds == ("te", "stem") and rules, "no clause kinds that end at a stem form"
     outer = GM.flatten(PR.parse_bounded(R.merge_multiword("he came .".split()))); inner = GM.flatten(PR.parse_bounded(R.merge_multiword("he opened the window .".split())))
-    pr = GM.PrintRules()
     for kind, ending in (("te", "開けて"), ("stem", "開け")):
         out = "".join(pr.run([dict(outer, link=kind), dict(inner, clause=kind)]))
         assert ending in out and out.endswith("来た。") and out.index(ending) < out.index("来た"), (kind, out)
+    # after a stem that is out (the progressive's い), the same position prints the ending of the stem's class: read from the output
+    prog = GM.flatten(PR.parse_bounded(R.merge_multiword("he is reading a book .".split())))
+    assert "読んでいて" in "".join(pr.run([dict(outer, link="te"), dict(prog, clause="te")]))
+    after_stem = [r for r in rules if r[0][1] == "S"]
+    assert after_stem and all(any(l.lstrip("¬").startswith("d.cls.") for l in lits) for pos, lits, out in after_stem), "an ending after a stem that does not read the stem's class"
+    assert all(conj == [f"out.class={name[6:]}"] for name, conjs in pr.derived().items() if name.startswith("d.cls.") for conj in conjs)
+    assert {r[0][1] for r in pr.rules() if isinstance(r[0], tuple) and r[0][0] == "FIN"} == {"V", "VA", "ARU", "S", "NA"}, "a finishing position per class"
 
 def test_coordinated_clauses_agree(root):
     """the clause before and / but / so is a frame of its own, printed to its linking form, and the second clause follows"""

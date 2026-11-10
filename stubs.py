@@ -32,12 +32,6 @@ class Stub:
     item = None                    # the TODO.yaml item this stub belongs to
     def _hit(self, name): CALLS[f"{type(self).__name__}.{name}"] += 1; return TODO
 
-class ClauseModes(Stub):
-    """clause kinds whose frame prints to a stem form instead of a finite form (item clause-modes)"""
-    item = "clause-modes"
-    def kinds(self): return self._hit("kinds")                               # -> the clause kinds: te, the masu stem, the plain form, the causative stem
-    def stem_rules(self): return self._hit("stem_rules")                     # -> the printing rules of those kinds: the predicate's stem form, then the attention back up
-
 class Coordination(Stub):
     """the clause before a conjunction as a frame of its own, linked to the next (item coordination)"""
     item = "coordination"

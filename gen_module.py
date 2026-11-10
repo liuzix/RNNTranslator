@@ -8,8 +8,17 @@ the token is None (a silent move), ("c", string) a constant morpheme, ("s", slot
 form, alt) a form of the frame's verb from the morphology table (dic, ta, te, a = negative stem, i = masu stem, e =
 potential stem, caus = causative stem, pre = what precedes ある), or ("af", "stem", strip) the stem of the copula's
 adjective (より stripped when a comparison follows), or ("h", move) a move of the attention.  Literals are the base predicates below ("slot.x", "slot.x=v",
-"flag.f", and the families verb.*, wh.*, adj.*, subj.*, obj.*, adv.*: each a test on one slot's value) or a derived
-predicate d.* defined as a DNF over base literals, as in np_module.
+"flag.f", and the families verb.*, wh.*, adj.*, subj.*, obj.*, adv.*: each a test on one slot's value), a predicate on the
+last morpheme printed ("out.class=C"), or a derived predicate d.* defined as a DNF over base literals, as in np_module.
+
+The rules read their own output: the last morpheme printed stays with the printer (in the compiled decoder, in its state),
+and a constant or a form lookup that is a stem carries the conjugation class it has as one (a third / fourth field of the
+token: V1C, IA, NA, FIXED, V5C:<kana>; an adjective's stem and the copula's noun have theirs by what they are — out_class).
+The finishing stage of the predicate (FIN) takes the class from there, not from its position, so a predicate whose stem is
+out ends at one position per mode, whatever its class.  The modes are the finite ones and two stem forms, te and the masu
+stem (rules_ja.STEM_FORMS), which the frame chooses: a clause whose `clause` mark is te or stem — spliced into another
+clause like a that-clause, by a `link` of the same kind — prints up to that form of its predicate and gives the attention
+back without と, and the clause it is spliced into goes on.  Pinned against generate(form=…) by the `printer` action's sweep.
 
 The rules print from a context of frames, one per clause, with the attention on one frame at a time; a token ("h", "down")
 or ("h", "up") moves the attention to the next or the previous frame instead of emitting.  A frame says what it is to the
@@ -23,8 +32,9 @@ clause's, in the order the two were read, and is printed first either way, after
 starts on the first frame, steps over a subordinate clause that came first to its main clause, and from the main clause's
 P_PRE the attention goes to the subordinate frame — up or down, as `sublink` says — which prints to its END, emits its
 conjunction's ending (とき, ので, たら's ら …) and gives the attention back for the main clause to go on at its time adverb.
-What its conjunction changes in a clause (rules_ja.subord_adjust: the past of if) is in the frame already; unless, and while
-with a bare -ing clause, slice the predicate's string in generate() and are refused here.  The sentence's question mark is
+What its conjunction changes in a clause (rules_ja.subord_adjust: the past of if) is in the frame already; unless slices the
+predicate's string in generate() and is refused here; a bare -ing clause under while ends at its masu stem (the stem mode)
+and takes ながら.  The sentence's question mark is
 read after a that-clause or a subordinate clause, when the main frame has left the encoder: it arrives as the register
 sent.question, not in a frame.
 What generate() does with infinitives, control, fixed sentences and the idiom copula is out of scope
@@ -44,9 +54,10 @@ FLAGS = ("past", "neg", "prog", "perf", "question", "imp", "please", "lets", "th
 UNSUPPORTED = ("infinitive", "control", "embedded", "purpose_clause", "pre_clause", "manner", "so_that", "howabout", "exclaim", "fixed_out", "relative", "suffix")
 # (a `folded` frame — one whose string came from an inner clause — prints like any other: the string is opaque to the rules; only the cell cannot hold it)
 PRON6 = ("私", "彼", "彼女", "私たち", "彼ら", "あなた")            # generate(): a possessive coreferent with one of these subjects is dropped
-LINK_KINDS = ("that",)             # slot `link` of a frame: the kind of inner clause spliced into it — the next frame of the context
+STEM_FORMS = R.STEM_FORMS          # te, stem: the non-finite forms a clause can end in — the te form, the masu stem
+LINK_KINDS = ("that",) + STEM_FORMS   # slot `link` of a frame: the kind of inner clause spliced into it — the next frame of the context: a that-clause, or a clause that ends at a stem form
 SUBLINK_KINDS = ("before", "after")   # slot `sublink` of a main clause's frame: its subordinate clause is the frame before / after it
-CLAUSE_KINDS = ("embedded", "before", "after")   # slot `clause` of a frame: the kind of inner clause it is (the main clause has none) — a that-clause, a subordinate clause read before / after its main clause
+CLAUSE_KINDS = ("embedded", "before", "after") + STEM_FORMS   # slot `clause` of a frame: the kind of inner clause it is (the main clause has none) — a that-clause, a subordinate clause read before / after its main clause, a clause that ends at the te form / the masu stem of its predicate
 NOPART = "∅"                                                      # an explicit empty object particle (generate's ""), a value a slot can hold
 EMPTY = (None, "", False)
 
@@ -180,14 +191,41 @@ def base_pred(name, F):
         return filled(val) and bool(test(val, arg))
     raise KeyError(name)
 
-def eval_lit(lit, F, D):
+# the conjugation classes a printed stem can have — what the ending after it is chosen by: an ichidan stem (V1C), an i-adjective
+# stem (IA), a na-adjective or a noun (NA), a phrase that is already finite (FIXED), a godan stem by its last kana (V5C:<kana>)
+STEM_CLASSES = ("V1C", "IA", "NA", "FIXED")
+COP_NOUN = ("cop.noun", "cop.noun2", "cop.mono")                 # the last piece of the copula's noun phrase: a noun is conjugated as a na-adjective
+def v5_kanas(): return sorted({t[-1] for (t, kd) in R.COMPLEMENTS.values() if kd == "v5"})
+def stem_classes(): return list(STEM_CLASSES) + [f"V5C:{k}" for k in v5_kanas()]
+
+def out_class(tok, v=None):
+    """the conjugation class of a printed morpheme as a stem, or None when nothing conjugates after it: the class the rule that
+    emits it declares (a constant, a form lookup), the kind of the copula's adjective (its stem), a noun (the last piece of the
+    copula's noun phrase).  tok: the token, v: the slot value it was read from"""
+    kind = tok[0]
+    if kind == "c": return tok[2] if len(tok) > 2 else None
+    if kind == "vf": return tok[3] if len(tok) > 3 else None
+    if kind == "af": return {"ia": "IA", "na": "NA", "fixed": "FIXED", "v1": "V1C"}.get(adj_kind(v)) if filled(v) else None
+    if kind == "s": return "NA" if tok[1] in COP_NOUN else None
+    return None
+
+def out_pred(name, last):
+    """a predicate on the last morpheme printed — (token, value), None before the first: out.class=<C>, its class as a stem"""
+    if not name.startswith("out.class="): raise KeyError(name)
+    return last is not None and out_class(*last) == name[10:]
+
+def eval_lit(lit, F, D, last=None):
+    """a literal on the frame under the attention F and the last morpheme printed `last`"""
     neg = lit.startswith("¬"); name = lit[1:] if neg else lit
-    v = any(all(eval_lit(l, F, D) for l in conj) for conj in D[name]) if name.startswith("d.") else base_pred(name, F)
+    if name.startswith("d."): v = any(all(eval_lit(l, F, D, last) for l in conj) for conj in D[name])
+    elif name.startswith("out."): v = out_pred(name, last)
+    else: v = base_pred(name, F)
     return (not v) if neg else v
 
 def frames_of(c):
     """a Clause -> the context its sentence prints from: one flat frame per clause in the order the encoder flushes them — the
-    main clause, marked with the link where its that-clause is spliced, then that clause, marked embedded, and so on down; and
+    main clause, marked with the link where its inner clause is spliced, then that clause, marked embedded — or te / stem, when
+    it ends at that form of its predicate (Clause.inner_of) — and so on down; and
     a subordinate clause (the one clause Clause.subords holds, when pre_clause is exactly its string) with its conjunction's
     changes made (rules_ja.subord_adjust), marked before or after and put on that side of the main clause, whose frame gets
     the sublink.  Any other pre_clause — a coordinated clause, two subordinate clauses — is a register the frames cannot hold"""
@@ -196,8 +234,10 @@ def frames_of(c):
         while c is not None:
             F = flatten(c, skip=skip); skip = ("embedded",)
             if kind: F["clause"] = kind
-            if c.embedded is not None: F["link"] = "that"
-            frames.append(F); kind = "embedded"; c = c.embedded
+            if c.embedded is not None:                                # the clause spliced into this one: a that-clause, or one that ends at a stem form
+                kind = c.embedded.inner_of if getattr(c.embedded, "inner_of", None) in STEM_FORMS else "embedded"
+                F["link"] = "that" if kind == "embedded" else kind
+            frames.append(F); c = c.embedded
         return frames
     if not filled(c.pre_clause): return chain(c, None, ("embedded",))
     subs = getattr(c, "subords", [])
@@ -231,7 +271,15 @@ def derived():
     D["d.stative_prog"] = [["verb.stative", "¬verb.use", "¬slot.want", "¬flag.imp", "¬flag.lets", "¬slot.modal=can", "¬flag.perf"]]
     D["d.obj_default_ga"] = [["verb.ga", "¬slot.want"], ["slot.modal=can", "¬slot.want"]]
     D["d.obj_default_ni"] = [["verb.vc=ni_obj"]]
-    D["d.while_ing"] = [["slot.conj=while", "¬slot.subj.noun", "slot.verb", "¬slot.cop_kind"]]       # while walking: generate() slices the predicate for 〜ながら
+    D["d.while_ing"] = [["slot.conj=while", "¬slot.subj.noun", "slot.verb", "¬slot.cop_kind"]]       # while walking: a bare -ing clause under while
+    D["d.while_nopred"] = [["slot.want"], ["slot.modal"], ["flag.perf"], ["verb.use"], ["verb.conj=fixed"], ["verb.conj=ia_fixed"]]   # … whose predicate rules_ja.clause_pred does not give: it stays finite, with 間
+    # the form a clause's predicate ends in is decided by the frame: the te form or the masu stem for a clause of that kind, and the
+    # masu stem (〜ながら) for a bare -ing clause under while whose predicate clause_pred gives; every other frame ends finite
+    D["d.form.te"] = [["slot.clause=te"]]
+    #   (rules_ja.subord_form takes the stem of the verb itself: 'understand', which the predicate prints as 分かる, is left out and refused)
+    D["d.form.stem"] = [["slot.clause=stem"], ["¬slot.clause=te"] + D["d.while_ing"][0] + ["¬" + c[0] for c in D["d.while_nopred"]] + ["¬flag.question", "¬flag.tag", "¬verb.lemma=understand"]]
+    D["d.stemform"] = D["d.form.te"] + D["d.form.stem"]
+    for c in stem_classes(): D[f"d.cls.{c}"] = [[f"out.class={c}"]]                                # the class of the stem just printed, read from the output block
     for role in ("obj", "cmp"):                                                           # the possessive coreferent with the subject is dropped
         D[f"d.{role}_coref"] = [[f"slot.subj.noun={p}", "¬slot.subj.det", "¬slot.subj.poss", "¬slot.subj.num", "¬slot.subj.adj1", "¬slot.subj.noun2", "¬slot.subj.mono",
                                  f"slot.{role}.poss={p}の", f"¬slot.{role}.det"] for p in PRON6]
@@ -258,9 +306,10 @@ class Build:
             self.rule(cur, [lit], nx); self.rule(cur, [negate(lit)], exit_state); cur = nx
 
 def negate(lit): return lit[1:] if lit.startswith("¬") else "¬" + lit
-def C(s): return ("c", s)
+def C(s, cls=None): return ("c", s) if cls is None else ("c", s, cls)                  # cls: the class the morpheme has as a stem (out_class)
 def S(slot, idx=None): return ("s", slot) if idx is None else ("s", slot, idx)
-def VF(name, alt=False): return ("vf", name, alt)
+def VF(name, alt=False, cls=None): return ("vf", name, alt) if cls is None else ("vf", name, alt, cls)
+def cls_lit(c): return f"d.cls.{c}"
 def H(move): return ("h", move)                   # no morpheme: the attention moves down to the next frame or up to the previous one
 
 # the finite suffix of each predicate kind, by (past, neg): plain and polite
@@ -378,10 +427,10 @@ def build_rules():
     B.rule("M_WH_O", ["wh.kind=o", "¬slot.cop_kind"], "M_ADV", [S("wh", 0), C("を")]); B.rule("M_WH_O", ["wh.kind=o", "slot.cop_kind"], "M_ADV"); B.rule("M_WH_O", ["¬wh.kind=o"], "M_ADV")
     B.rule("M_ADV", ["slot.adv1"], "M_ADV2", [S("adv1")]); B.rule("M_ADV", ["¬slot.adv1"], "M_ADV2")      # the cell holds a second adverb in adv2
     B.rule("M_ADV2", ["slot.adv2"], "M_LINK", [S("adv2")]); B.rule("M_ADV2", ["¬slot.adv2"], "M_LINK")
-    # ---- the splice: a that-clause is the next frame — the attention goes down, the clause prints from P0 and comes back up from
-    #      its END to M_BACK, where the frame's link says how the clause that was spliced continues
-    B.rule("M_LINK", ["slot.link=that"], "P0", [H("down")]); B.rule("M_LINK", ["¬slot.link=that"], "M_TAIL")
-    B.rule("M_BACK", ["slot.link=that"], "M_TAIL"); B.rule("M_BACK", ["¬slot.link=that"], "FAIL:no clause was spliced into this frame")
+    # ---- the splice: the inner clause is the next frame — the attention goes down, the clause prints from P0 and comes back up to
+    #      M_BACK: a that-clause from its END, after と; a clause of a stem-form kind from STEM_END, where its predicate stopped
+    B.rule("M_LINK", ["slot.link"], "P0", [H("down")]); B.rule("M_LINK", ["¬slot.link"], "M_TAIL")
+    B.rule("M_BACK", ["slot.link"], "M_TAIL"); B.rule("M_BACK", ["¬slot.link"], "FAIL:no clause was spliced into this frame")
     # ---- the tail: a question-word copula (何ですか; inside a that-clause 何か / 何だったか), or the copula adverb, the degree and the predicate
     whk = ["o", "s", "adv", "loc", "t", "count"]
     for k in whk:
@@ -393,23 +442,33 @@ def build_rules():
     B.rule("M_DEGREE", ["slot.degree"], "M_DEGREE2", [S("degree")]); B.rule("M_DEGREE", ["¬slot.degree"], "M_DEGREE2")
     B.rule("M_DEGREE2", ["slot.degree2"], "PRED", [S("degree2")]); B.rule("M_DEGREE2", ["¬slot.degree2"], "PRED")
     # ---- after the predicate: か / ね, then 。
-    B.rule("Q", ["flag.there", "wh.kind=count"], "END", [C("か")])
-    B.rule("Q", ["flag.there", "¬wh.kind=count", "d.q"], "END", [C("か")]); B.rule("Q", ["flag.there", "¬wh.kind=count", "¬d.q"], "END")
-    B.rule("Q", ["¬flag.there", "flag.tag"], "END", [C("ね")]); B.rule("Q", ["¬flag.there", "¬flag.tag", "d.q"], "END", [C("か")])
-    B.rule("Q", ["¬flag.there", "¬flag.tag", "¬d.q"], "END")
+    fin = ["¬d.stemform"]                                                          # (a predicate that reaches Q is finite)
+    B.rule("Q", ["d.stemform"], "FAIL:the predicate of a clause that ends at a stem form has none here")
+    B.rule("Q", fin + ["flag.there", "wh.kind=count"], "END", [C("か")])
+    B.rule("Q", fin + ["flag.there", "¬wh.kind=count", "d.q"], "END", [C("か")]); B.rule("Q", fin + ["flag.there", "¬wh.kind=count", "¬d.q"], "END")
+    B.rule("Q", fin + ["¬flag.there", "flag.tag"], "END", [C("ね")]); B.rule("Q", fin + ["¬flag.there", "¬flag.tag", "d.q"], "END", [C("か")])
+    B.rule("Q", fin + ["¬flag.there", "¬flag.tag", "¬d.q"], "END")
     B.rule("END", ["slot.clause=embedded"], "M_BACK", [C("と"), H("up")])       # the that-clause closes: と, and back up to the clause it was spliced into
     B.rule("END", ["slot.clause=before"], "S_END_B"); B.rule("END", ["slot.clause=after"], "S_END_A")
+    for kind in STEM_FORMS: B.rule("END", [f"slot.clause={kind}"], "FAIL:a clause that ends at a stem form has no finite end")
     B.rule("END", ["¬slot.clause"], "DONE", [C("。")])
+    # ---- a predicate that stopped at its te form or its masu stem (FIN, modes te and stem): a clause of that kind gives the
+    #      attention back to the clause it is spliced into, which goes on; a bare -ing clause under while takes ながら and gives the
+    #      attention back to its main clause as any subordinate clause does
+    for kind in STEM_FORMS: B.rule("STEM_END", [f"slot.clause={kind}"], "M_BACK", [H("up")])
+    B.rule("STEM_END", ["slot.clause=before"], "P_TIME", [C("ながら"), H("down")]); B.rule("STEM_END", ["slot.clause=after"], "P_TIME", [C("ながら"), H("up")])
+    B.rule("STEM_END", [f"¬slot.clause={kind}" for kind in STEM_FORMS + ("before", "after")], "FAIL:a stem form in a clause of no such kind")
     # ---- a subordinate clause closes: its conjunction's ending, and the attention back to the main clause — down when the clause
     #      was read before it, up when after — which goes on at its time adverb.  The ending follows the clause's finite form
-    #      (if and once: ら after the past the frame holds); unless and while with a bare -ing clause slice that form: refused
+    #      (if and once: ら after the past the frame holds); unless slices that form: refused.  A bare -ing clause under while ends
+    #      at its masu stem and never comes here (STEM_END) — unless its predicate has none, when it is finite with 間 like any other
     for st, move in (("S_END_B", "down"), ("S_END_A", "up")):
         for conj in sorted(R.SUBORD):
             if conj == "unless": B.rule(st, ["slot.conj=unless"], "FAIL:unless takes the negative stem of its clause's predicate"); continue
             ending = [C("ら" if conj in ("if", "once") else R.SUBORD[conj]), H(move)]
             if conj == "while":
-                B.rule(st, ["slot.conj=while", "d.while_ing"], "FAIL:while with a bare -ing clause takes the stem of its predicate")
-                B.rule(st, ["slot.conj=while", "¬d.while_ing"], "P_TIME", ending)
+                B.rule(st, ["slot.conj=while", "d.while_ing", "¬d.while_nopred"], "FAIL:a bare -ing clause under while that did not end at its stem")
+                B.rule(st, ["slot.conj=while", "d.while_ing", "d.while_nopred"], "P_TIME", ending); B.rule(st, ["slot.conj=while", "¬d.while_ing"], "P_TIME", ending)
             else: B.rule(st, [f"slot.conj={conj}"], "P_TIME", ending)
         B.rule(st, [f"¬slot.conj={conj}" for conj in sorted(R.SUBORD)], "FAIL:a subordinate clause without a conjunction the table has")
     build_predicate(B, np)
@@ -429,11 +488,20 @@ def reachable(rules):
 
 def build_predicate(B, np):
     """predicate_form(): the kind of predicate, the transformations want / prog / modal / lets / imp / please apply to it, and
-    its finite form — the stem is emitted when the kind is fixed and the suffixes follow, one morpheme per step"""
+    its ending — the stem is emitted when the kind is fixed and the suffixes follow, one morpheme per step.  A stem is emitted
+    with its conjugation class (out_class), and the finishing stage FIN reads the class from the last morpheme printed instead
+    of taking it from its position: one position per mode for every predicate whose stem is out (track S), and one each for a
+    plain verb (V, VA: its form is one lookup, chosen with the ending) and for ある (ARU), which have no stem out.  The mode is
+    the finite form the flags choose, or — for a frame whose clause kind says so (d.form.te, d.form.stem) — the te form or the
+    masu stem"""
     verbkind = ["d.verbkind"]
+    def to_fin(st, lits, track, mode, toks=()):
+        """into the finishing stage of a track (V, VA, ARU, or S: the stem is out): the finite mode, or the form the frame's kind asks for"""
+        B.rule(st, lits + ["¬d.form.te", "¬d.form.stem"], ("FIN", track, mode), toks)
+        B.rule(st, lits + ["d.form.te"], ("FIN", track, "te"), toks); B.rule(st, lits + ["d.form.stem"], ("FIN", track, "stem"), toks)
     # PRED: which predicate
-    B.rule("PRED", ["flag.there", "subj.animate"], ("FIN", "V1C", "plain"), [C("い")])      # there is: no modal reaches the predicate
-    B.rule("PRED", ["flag.there", "¬subj.animate"], ("FIN", "ARU", "plain"))
+    to_fin("PRED", ["flag.there", "subj.animate"], "S", "plain", [C("い", "V1C")])            # there is: no modal reaches the predicate
+    to_fin("PRED", ["flag.there", "¬subj.animate"], "ARU", "plain")
     B.rule("PRED", ["¬flag.there", "slot.cop_kind=wh"], "Q")
     B.rule("PRED", ["¬flag.there", "slot.cop_kind=adj", "slot.cmp.noun"], "PRED_ADJ", [("af", "stem", True)])
     B.rule("PRED", ["¬flag.there", "slot.cop_kind=adj", "¬slot.cmp.noun"], "PRED_ADJ", [("af", "stem", False)])
@@ -441,7 +509,7 @@ def build_predicate(B, np):
     B.rule("PRED_ADJ", [f"¬adj.kind={k}" for k in ("ia", "na", "fixed", "v1")], "FAIL:adjective kind")
     B.rule("PRED", ["¬flag.there", "slot.cop_kind=np"], np("cop", ("K", "NA", "noun")))
     for kind in ("pp", "adv"):
-        B.rule("PRED", ["¬flag.there", f"slot.cop_kind={kind}", "subj.animate"], ("K", "V1C"), [C("い")])
+        B.rule("PRED", ["¬flag.there", f"slot.cop_kind={kind}", "subj.animate"], ("K", "V1C"), [C("い", "V1C")])
         B.rule("PRED", ["¬flag.there", f"slot.cop_kind={kind}", "¬subj.animate"], ("K", "ARU"))
     B.rule("PRED", ["¬flag.there", "¬slot.cop_kind", "¬slot.verb"], "Q")
     B.rule("PRED", ["¬flag.there", "¬slot.cop_kind", "slot.verb", "verb.conj=aru"], ("K", "ARU"), [VF("pre")])
@@ -458,12 +526,12 @@ def build_predicate(B, np):
                 B.rule(st, ["slot.modal=must"], "Q", [C("の" if extra else "な"), C("はずだ")])
             else:
                 B.rule(st, ["slot.modal=must"], "Q", [C(PLAIN[kind][0]), C("はずだ")])
-            B.rule(st, ["¬slot.modal=must"], ("FIN", kind, "plain"))
+            to_fin(st, ["¬slot.modal=must"], "ARU" if kind == "ARU" else "S", "plain")
     # ---- a verb predicate: the complement transformation
     v = "V_WANT"
-    B.rule(v, ["slot.want=tai"], ("V2", "IA"), [VF("i"), C("た")]); B.rule(v, ["slot.want=wish"], ("V2", "IA"), [VF("i"), C("た")])
+    B.rule(v, ["slot.want=tai"], ("V2", "IA"), [VF("i"), C("た", "IA")]); B.rule(v, ["slot.want=wish"], ("V2", "IA"), [VF("i"), C("た", "IA")])
     for w, tail in (("promise", "と約束する"), ("try", "ようにする"), ("decide", "ことにした")):
-        B.rule(v, [f"slot.want={w}", "flag.neg_inner"], ("V2", "FIXED"), [VF("a"), C("ない"), C(tail)])
+        B.rule(v, [f"slot.want={w}", "flag.neg_inner"], ("V2", "FIXED"), [VF("a"), C("ない"), C(tail, "FIXED")])
     compl = []
     for w, (tmpl, kind) in R.COMPLEMENTS.items():
         if w in ("promise", "try", "decide"): lits = [f"slot.want={w}", "¬flag.neg_inner"]
@@ -475,17 +543,17 @@ def build_predicate(B, np):
             B.rule(v, lits + (["flag.neg_inner"] if inner_neg else ["¬flag.neg_inner"] if "{inner}" in tmpl else []), ("V2",) + (kind2 if isinstance(kind2, tuple) else (kind2,)), toks)
     others = [f"¬slot.want={w}" for w in ("tai", "wish", "better", "neednot", "mind_request", "request", "canthave")] + [f"¬slot.want={w}" for w in compl if w not in ("promise", "try", "decide")]
     others += [f"¬slot.want={w}" for w in ("promise", "try", "decide")]
-    B.rule(v, ["slot.want=better", "d.neg"], ("V2", "IA_NN"), [VF("a"), C("ない"), C("ほうがい")]); B.rule(v, ["slot.want=better", "¬d.neg"], ("V2", "IA_NN"), [VF("ta"), C("ほうがい")])
+    B.rule(v, ["slot.want=better", "d.neg"], ("V2", "IA_NN"), [VF("a"), C("ない"), C("ほうがい", "IA")]); B.rule(v, ["slot.want=better", "¬d.neg"], ("V2", "IA_NN"), [VF("ta"), C("ほうがい", "IA")])
     B.rule(v, ["slot.want=neednot", "d.polite"], "Q", [VF("dic"), C("必要はありません")]); B.rule(v, ["slot.want=neednot", "¬d.polite"], "Q", [VF("dic"), C("必要はない")])
     B.rule(v, ["slot.want=mind_request"], "Q", [VF("te"), C("もらえません")]); B.rule(v, ["slot.want=request"], "Q", [VF("te"), C("くださいません")])
     B.rule(v, ["slot.want=canthave"], "Q", [VF("ta"), C("はずがない")])
     B.rule(v, others + ["¬verb.conj=fixed"], ("V2", "V"))       # no want, or one that leaves the governed verb as it is
-    B.rule(v, others + ["verb.conj=fixed"], ("V2", "FIXED"), [VF("dic")])
+    B.rule(v, others + ["verb.conj=fixed"], ("V2", "FIXED"), [VF("dic", False, "FIXED")])
     # ---- the special verbs (like -> 好き ...), stative -> progressive, perf+neg -> progressive, the progressive
-    B.rule(("V2", "V"), ["¬slot.want", "¬verb.use", "verb.lemma=like"], ("V3", "NA"), [C("好き")])
-    B.rule(("V2", "V"), ["¬slot.want", "¬verb.use", "verb.lemma=want", "slot.obj.noun"], ("V3", "IA"), [C("欲し")])
-    B.rule(("V2", "V"), ["¬slot.want", "¬verb.use", "verb.lemma=need"], ("V3", "NA"), [C("必要")])
-    B.rule(("V2", "V"), ["¬slot.want", "¬verb.use", "verb.lemma=hate"], ("V3", "NA"), [C("嫌い")])
+    B.rule(("V2", "V"), ["¬slot.want", "¬verb.use", "verb.lemma=like"], ("V3", "NA"), [C("好き", "NA")])
+    B.rule(("V2", "V"), ["¬slot.want", "¬verb.use", "verb.lemma=want", "slot.obj.noun"], ("V3", "IA"), [C("欲し", "IA")])
+    B.rule(("V2", "V"), ["¬slot.want", "¬verb.use", "verb.lemma=need"], ("V3", "NA"), [C("必要", "NA")])
+    B.rule(("V2", "V"), ["¬slot.want", "¬verb.use", "verb.lemma=hate"], ("V3", "NA"), [C("嫌い", "NA")])
     B.rule(("V2", "V"), ["¬slot.want", "¬verb.use", "verb.lemma=understand"], ("V3", "VA"))
     special = ["¬verb.lemma=like", "¬verb.lemma=need", "¬verb.lemma=hate", "¬verb.lemma=understand"]
     B.rule(("V2", "V"), ["¬slot.want", "¬verb.use", "verb.lemma=want", "¬slot.obj.noun"], ("V3", "V"))
@@ -497,10 +565,10 @@ def build_predicate(B, np):
     for src in ("V", "VA"):
         alt = src == "VA"
         prog = ["¬slot.want"]
-        B.rule(("V3", src), prog + ["d.stative_prog"], ("V4", "V1C"), [VF("te", alt), C("い")])
-        B.rule(("V3", src), prog + ["¬d.stative_prog", "flag.perf", "d.neg"], ("V4", "V1C"), [VF("te", alt), C("い")])
-        B.rule(("V3", src), prog + ["¬d.stative_prog", "¬flag.perf", "flag.prog"], ("V4", "V1C"), [VF("te", alt), C("い")])
-        B.rule(("V3", src), prog + ["¬d.stative_prog", "flag.perf", "¬d.neg", "flag.prog"], ("V4", "V1C"), [VF("te", alt), C("い")])
+        B.rule(("V3", src), prog + ["d.stative_prog"], ("V4", "V1C"), [VF("te", alt), C("い", "V1C")])
+        B.rule(("V3", src), prog + ["¬d.stative_prog", "flag.perf", "d.neg"], ("V4", "V1C"), [VF("te", alt), C("い", "V1C")])
+        B.rule(("V3", src), prog + ["¬d.stative_prog", "¬flag.perf", "flag.prog"], ("V4", "V1C"), [VF("te", alt), C("い", "V1C")])
+        B.rule(("V3", src), prog + ["¬d.stative_prog", "flag.perf", "¬d.neg", "flag.prog"], ("V4", "V1C"), [VF("te", alt), C("い", "V1C")])
         B.rule(("V3", src), prog + ["¬d.stative_prog", "flag.perf", "¬d.neg", "¬flag.prog"], ("V4", src))
         B.rule(("V3", src), prog + ["¬d.stative_prog", "¬flag.perf", "¬flag.prog"], ("V4", src))
         B.rule(("V3", src), ["slot.want"], ("V4", src))
@@ -516,9 +584,9 @@ def build_predicate(B, np):
         st = ("V4",) + kd; kind = kd[0]; alt = kind == "VA"; verbal = kind in ("V", "VA", "V1C", "V5C")
         nxt_base = ("V5",) + kd
         # can
-        if kind in ("V", "VA"): B.rule(st, ["slot.modal=can"], ("V5", "V1C"), [VF("e", alt)])
-        elif kind == "V1C": B.rule(st, ["slot.modal=can"], ("V5", "V1C"), [C("られ")])
-        elif kind == "V5C": B.rule(st, ["slot.modal=can"], ("V5", "V1C"), [C(R.GODAN_ROWS[kd[1]][2])])
+        if kind in ("V", "VA"): B.rule(st, ["slot.modal=can"], ("V5", "V1C"), [VF("e", alt, "V1C")])
+        elif kind == "V1C": B.rule(st, ["slot.modal=can"], ("V5", "V1C"), [C("られ", "V1C")])
+        elif kind == "V5C": B.rule(st, ["slot.modal=can"], ("V5", "V1C"), [C(R.GODAN_ROWS[kd[1]][2], "V1C")])
         else: B.rule(st, ["slot.modal=can"], nxt_base)
         # must
         if kind in ("V", "VA"):
@@ -532,8 +600,8 @@ def build_predicate(B, np):
         else: B.rule(st, ["slot.modal=must"], "Q", [C(PLAIN["IA" if kind in ("IA", "IA_NN") else kind][0]), C("はずだ")])
         # should: dic + べき -> na
         dic = {"V": [VF("dic")], "VA": [VF("dic", True)], "V1C": [C("る")], "IA": [], "IA_NN": [], "NA": [], "FIXED": []}.get(kind, [C(kd[1])] if kind == "V5C" else [])
-        B.rule(st, ["slot.modal=should"], ("V5", "NA"), dic + [C("べき")])
-        B.rule(st, ["slot.modal=may"], ("V5", "FIXED"), dic + [C("かもしれない")])
+        B.rule(st, ["slot.modal=should"], ("V5", "NA"), dic + [C("べき", "NA")])
+        B.rule(st, ["slot.modal=may"], ("V5", "FIXED"), dic + [C("かもしれない", "FIXED")])
         B.rule(st, ["¬slot.modal=can", "¬slot.modal=must", "¬slot.modal=should", "¬slot.modal=may"], nxt_base)
     B.rule("MUST_TAIL", ["d.polite"], "Q", [C("です")]); B.rule("MUST_TAIL", ["¬d.polite"], "Q")
     for kd in kinds_after_v4():
@@ -542,7 +610,7 @@ def build_predicate(B, np):
         if kind in ("V", "VA"): B.rule(st, ["flag.lets"], "Q", [VF("i", alt), C("ましょう")])
         elif kind == "V1C": B.rule(st, ["flag.lets"], "Q", [C("ましょう")])
         elif kind == "V5C": B.rule(st, ["flag.lets"], "Q", [C(R.GODAN_ROWS[kd[1]][1]), C("ましょう")])
-        else: B.rule(st, ["flag.lets"], ("FIN",) + (("IA",) if kind == "IA_NN" else kd) + ("lets",))
+        else: B.rule(st, ["flag.lets"], ("FIN", "S", "lets"))
         # imp
         te = {"V": [VF("te")], "VA": [VF("te", True)], "V1C": [C("て")], "IA": [C("くて")], "IA_NN": [C("くて")], "NA": [C("で")]}.get(kind, [C(R.GODAN_ROWS[kd[1]][4])] if kind == "V5C" else None)
         a = {"V": [VF("a")], "VA": [VF("a", True)], "V1C": []}.get(kind, [C(R.GODAN_ROWS[kd[1]][0])] if kind == "V5C" else None)
@@ -559,45 +627,62 @@ def build_predicate(B, np):
         # please (the frame's verb is set on every path through PRED's verb branch)
         if te is not None: B.rule(st, ["¬flag.lets", "¬flag.imp", "flag.please"], "Q", te + [C("ください")])
         else: B.rule(st, ["¬flag.lets", "¬flag.imp", "flag.please"], "FAIL:please")
-        # would: finite(False, neg, False) + だろう
-        fk = ("IA",) if kind == "IA_NN" else kd
-        B.rule(st, ["¬flag.lets", "¬flag.imp", "¬flag.please", "d.will_conj"], ("FIN",) + fk + ("conj" if kind != "IA_NN" else "conj_nn",))
-        B.rule(st, ["¬flag.lets", "¬flag.imp", "¬flag.please", "¬d.will_conj"], ("FIN",) + fk + ("flags" if kind != "IA_NN" else "noneg",))
-    # ---- FIN: the finite suffix of a kind under (past, neg, polite); modes: flags (frame), noneg (want=better), conj (plain
-    #      present, + だろう), whcop (+ か), lets (polite, present, affirmative)
-    for kd in (("V",), ("VA",), ("V1C",), ("IA",), ("NA",), ("FIXED",), ("ARU",)) + tuple(("V5C", kana) for kana in sorted({t[-1] for (t, kd) in R.COMPLEMENTS.values() if kd == "v5"})):
-        kind = kd[0]; alt = kind == "VA"
-        for mode in ("flags", "plain", "noneg", "conj", "conj_nn", "whcop", "lets"):
-            st = ("FIN",) + kd + (mode,); nxt = "Q"
-            tail = [C("か")] if mode == "whcop" else [C("だろう")] if mode.startswith("conj") else []
-            if mode == "whcop": nxt = "END"
-            cases = []
-            for past in (False, True):
-                for neg in (False, True):
-                    for polite in (False, True):
-                        lits = []
-                        if mode in ("conj", "conj_nn"):
-                            if past or polite: continue
-                            if mode == "conj_nn" and neg: B.rule(st, ["d.neg"], "FAIL:a negated ほうがいい under would"); continue
-                            lits += ["d.neg"] if neg else ["¬d.neg"]
-                        elif mode == "lets":
-                            if past or neg or not polite: continue
-                        else:
-                            past_lit = {"flags": "d.past_eff", "noneg": "d.past_raw"}.get(mode, "flag.past")
-                            lits += [past_lit] if past else ["¬" + past_lit]
-                            if mode == "noneg":
-                                if neg: continue
-                            else: lits += ["d.neg"] if neg else ["¬d.neg"]
-                            lits += ["d.polite"] if polite else ["¬d.polite"]
-                        idx = 2 * neg + past
-                        if kind in ("V", "VA"):
-                            toks = [VF("i", alt), C(POLITE["V1C"][idx])] if polite else ([VF("a", alt), C(PLAIN["V1C"][idx])] if neg else [VF("ta" if past else "dic", alt)])
-                        elif kind == "V5C":
-                            plain, pol = godan_suffixes(kd[1]); toks = [C((pol if polite else plain)[idx])]
-                        else:
-                            toks = [C((POLITE if polite else PLAIN)[kind][idx])]
-                        toks = [t for t in toks if t != ("c", "")]
-                        B.rule(st, lits, nxt, toks + tail)
+        # would: finite(False, neg, False) + だろう; else the ending the frame asks for
+        track = kind if kind in ("V", "VA") else "S"
+        B.rule(st, ["¬flag.lets", "¬flag.imp", "¬flag.please", "d.will_conj"], ("FIN", track, "conj" if kind != "IA_NN" else "conj_nn"))
+        to_fin(st, ["¬flag.lets", "¬flag.imp", "¬flag.please", "¬d.will_conj"], track, "flags" if kind != "IA_NN" else "noneg")
+    # ---- FIN: the ending of the predicate.  Finite modes — the suffix of a class under (past, neg, polite): flags (the frame's),
+    #      plain, noneg (want=better), conj (plain present + だろう), lets (polite, present, affirmative); whcop (+ か) for the
+    #      question-word copula; and the stem-form modes te and stem, which stop the predicate there (STEM_END)
+    def finite_rules(st, kind, mode, guard):
+        alt = kind == "VA"; nxt = "END" if mode == "whcop" else "Q"
+        tail = [C("か")] if mode == "whcop" else [C("だろう")] if mode.startswith("conj") else []
+        for past in (False, True):
+            for neg in (False, True):
+                for polite in (False, True):
+                    lits = list(guard)
+                    if mode in ("conj", "conj_nn"):
+                        if past or polite: continue
+                        if mode == "conj_nn" and neg: B.rule(st, lits + ["d.neg"], "FAIL:a negated ほうがいい under would"); continue
+                        lits += ["d.neg"] if neg else ["¬d.neg"]
+                    elif mode == "lets":
+                        if past or neg or not polite: continue
+                    else:
+                        past_lit = {"flags": "d.past_eff", "noneg": "d.past_raw"}.get(mode, "flag.past")
+                        lits += [past_lit] if past else ["¬" + past_lit]
+                        if mode == "noneg":
+                            if neg: continue
+                        else: lits += ["d.neg"] if neg else ["¬d.neg"]
+                        lits += ["d.polite"] if polite else ["¬d.polite"]
+                    idx = 2 * neg + past
+                    if kind in ("V", "VA"):
+                        toks = [VF("i", alt), C(POLITE["V1C"][idx])] if polite else ([VF("a", alt), C(PLAIN["V1C"][idx])] if neg else [VF("ta" if past else "dic", alt)])
+                    elif kind.startswith("V5C:"):
+                        plain, pol = godan_suffixes(kind[4:]); toks = [C((pol if polite else plain)[idx])]
+                    else:
+                        toks = [C((POLITE if polite else PLAIN)[kind][idx])]
+                    toks = [t for t in toks if t != ("c", "")]
+                    B.rule(st, lits, nxt, toks + tail)
+    modes = ("flags", "plain", "noneg", "conj", "conj_nn", "lets")
+    no_stem = ["¬" + cls_lit(c) for c in stem_classes()]
+    for kind in ("V", "VA", "ARU"):
+        for mode in modes: finite_rules(("FIN", kind, mode), kind, mode, [])
+    finite_rules(("FIN", "NA", "whcop"), "NA", "whcop", [])
+    for mode in modes:
+        for c in stem_classes(): finite_rules(("FIN", "S", mode), c, mode, [cls_lit(c)])
+        B.rule(("FIN", "S", mode), no_stem, "FAIL:no stem was printed for this ending")
+    # the te form and the masu stem, as rules_ja.Pred gives them: a plain verb by lookup; after a stem, the ending of its class —
+    # an ichidan stem is its own masu stem, an adjective, a noun and a fixed phrase have none
+    for kind, alt in (("V", False), ("VA", True)):
+        B.rule(("FIN", kind, "te"), [], "STEM_END", [VF("te", alt)]); B.rule(("FIN", kind, "stem"), [], "STEM_END", [VF("i", alt)])
+    B.rule(("FIN", "ARU", "te"), [], "STEM_END", [C("あって")]); B.rule(("FIN", "ARU", "stem"), [], "FAIL:ある has no masu stem")
+    endings = {"te": {"V1C": [C("て")], "IA": [C("くて")], "NA": [C("で")]}, "stem": {"V1C": []}}
+    for k in v5_kanas(): endings["te"][f"V5C:{k}"] = [C(R.GODAN_ROWS[k][4])]; endings["stem"][f"V5C:{k}"] = [C(R.GODAN_ROWS[k][1])]
+    for mode in STEM_FORMS:
+        for c in stem_classes():
+            if c in endings[mode]: B.rule(("FIN", "S", mode), [cls_lit(c)], "STEM_END", endings[mode][c])
+            else: B.rule(("FIN", "S", mode), [cls_lit(c)], f"FAIL:no {mode} form of a predicate of this class")
+        B.rule(("FIN", "S", mode), no_stem, "FAIL:no stem was printed for this ending")
 
 def template_tokens(tmpl, kind, inner_neg):
     """a complements.tbl template -> the tokens that spell it and the kind the result conjugates as (the stem is emitted,
@@ -613,14 +698,17 @@ def template_tokens(tmpl, kind, inner_neg):
         elif p == "{vol}": toks.append(VF("o"))
         elif p == "{inner}": toks += [VF("a"), C("ない")] if inner_neg else [VF("dic")]
         else: toks.append(C(p))
+    def classed(tok, c): return C(tok[1], c) if tok[0] == "c" else VF(tok[1], tok[2], c)       # the stem: the token after which the result conjugates
     if kind in ("v1", "ia"):
-        last = toks[-1]; assert last[0] == "c" and len(last[1]) >= 1
-        toks[-1] = C(last[1][:-1]); toks = [t for t in toks if t != ("c", "")]
+        last = toks[-1]; assert last[0] == "c" and len(last[1]) >= 2
+        toks[-1] = C(last[1][:-1], "V1C" if kind == "v1" else "IA")
         return toks, "V1C" if kind == "v1" else "IA"
     if kind == "v5":
-        last = toks[-1]; kana = last[1][-1]; toks[-1] = C(last[1][:-1]); toks = [t for t in toks if t != ("c", "")]
+        last = toks[-1]; kana = last[1][-1]; assert last[0] == "c" and len(last[1]) >= 2
+        toks[-1] = C(last[1][:-1], f"V5C:{kana}")
         return toks, ("V5C", kana)
-    return toks, {"na": "NA", "fixed": "FIXED"}[kind]
+    k2 = {"na": "NA", "fixed": "FIXED"}[kind]; toks[-1] = classed(toks[-1], k2)
+    return toks, k2
 
 # ------------------------------------------------------------------------------------------------ the interface
 class PrintRules:
@@ -657,19 +745,24 @@ class PrintRules:
         return self.run(frame if isinstance(frame, list) else [frame] if isinstance(frame, dict) else frames_of(frame), bound)
 
     def run(self, frames, bound=400):
-        """step the rules from P0 with the attention on the first frame until DONE: the rules read the frame under the attention,
-        a head token moves it; no rule, two rules, a token the frame cannot give, or the attention leaving the context are refusals"""
-        state = "P0"; at = 0; out = []
+        """step the rules from P0 with the attention on the first frame until DONE: the rules read the frame under the attention and
+        the last morpheme printed, a head token moves the attention; no rule, two rules, a token the frame cannot give, or the
+        attention leaving the context are refusals"""
+        state = "P0"; at = 0; out = []; last = None
         for _ in range(bound):
             if state == "DONE": return out
             if isinstance(state, str) and state.startswith("FAIL:"): raise Refuse(state[5:])
             if not 0 <= at < len(frames): raise Refuse("the attention left the context")
             F = frames[at]
-            hits = [r for r in self._by_pos.get(state, []) if all(eval_lit(l, F, self._D) for l in r[1])]
+            hits = [r for r in self._by_pos.get(state, []) if all(eval_lit(l, F, self._D, last) for l in r[1])]
             if len(hits) != 1: raise Refuse(f"{len(hits)} rules at {state}")
             nxt, tok = hits[0][2]
             if tok is None: pass
             elif tok[0] == "h": at += 1 if tok[1] == "down" else -1
-            else: out.append(self.token_string(tok, F))
+            else: out.append(self.token_string(tok, F)); last = (tok, self.token_value(tok, F))
             state = nxt
         raise Refuse("loop")
+
+    def token_value(self, tok, F):
+        """the slot value a token was read from (None for a constant): with the token, the last morpheme as the rules read it"""
+        return F.get(tok[1]) if tok[0] == "s" else F.get("verb") if tok[0] == "vf" else F.get("cop_adj") if tok[0] == "af" else None

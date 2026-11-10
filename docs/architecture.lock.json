@@ -16,8 +16,8 @@
   {
    "source": "docs/cell.puml",
    "output": "docs/cell.svg",
-   "source_sha256": "035171b855de3c59cd235c6f4b8ad96f2c97cf9f1891dc2ee93aa1a1cd1b8e0b",
-   "output_sha256": "c205560110cf2bde2d275485d2c8e28f2d7fdfc2810a8a061d3efee049fce7d8"
+   "source_sha256": "7add717eccac678add52693b97bb4144b495921481be60674e6dc5b058ea9ed0",
+   "output_sha256": "69921ad3f506a3e0bb0a1d4b0f0c8c17dc78a78e0f6a256e2ec86c4ba8c06554"
   }
  ],
  "drawings": [
