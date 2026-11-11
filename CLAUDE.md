@@ -55,18 +55,25 @@ measurement, a reason. A claim is either **pinned** (a test or check that would 
 
 - `.githooks/pre-commit` runs the static checks and the actions on the staged tree and compares every item of
   the lattice (`harness/lattice.py`) with `harness/baseline.json` as staged. The order is per item, not per
-  aggregate: a corpus sentence is WRONG < REFUSED < RIGHT with UNKNOWN (an unjudged output) below RIGHT and
-  incomparable with the rest; the matrix on a sentence is MISFIRE < GAP < AGREE; a negative ACCEPTED < REFUSED; a
-  control REFUSED < ACCEPTED. The commit is refused if any item moves down, is removed, or moves to or from
+  aggregate: a corpus sentence is WRONG < REFUSED < STIFF < RIGHT with UNKNOWN (an unjudged output) below RIGHT
+  and incomparable with the rest; the matrix on a sentence is MISFIRE < GAP < AGREE; a negative
+  ACCEPTED < REFUSED; a control REFUSED < ACCEPTED. The commit is refused if any item moves down, is removed, or moves to or from
   UNKNOWN — including from one unjudged output to another — without a verdict. Install the hook with
   `uv run python harness/run.py install-hooks`.
 - Coverage, BLEU and the other aggregates are views, never gates: refusing a wrong output is an improvement even
   though "coverage" falls.
 - When the hook asks for a verdict, judge each unjudged output it shows — the old one, the new one, or both — and
-  record it in `harness/adjudications.json` (`right`, `wrong`, or `input_ungrammatical` for a corpus line whose
-  English is not standard), with the reason. A verdict is about one output of one sentence and is permanent; judge
-  what the output says, never what the gate needs: a new output judged wrong is a down move, and the fix is in the
-  code.
+  record it in `harness/adjudications.json` (`right`, `stiff`, `wrong`, or `input_ungrammatical` for a corpus line
+  whose English is not standard), with the reason, the `cause` of a stiff or wrong one (the list is `CAUSES` in
+  `harness/lattice.py`) and the `judge` (`human` or `model`). A verdict is about one output of one sentence and is
+  permanent; judge what the output says, never what the gate needs: a new output judged wrong is a down move, and
+  the fix is in the code.
+- The standard of a verdict: `right` is natural Japanese that says what the English says; `stiff` is grammatical
+  and faithful but not how it is said, and ranks above a wrong output and a refusal and below a right one; `wrong`
+  is anything else. Plain against polite is not judged at all unless the sentence's own words ask for one of them,
+  and then the other form is wrong. The direction of a giving verb (あげる, くれる, もらう) and the particle a verb
+  asks of its argument are agreement: a failure of either is wrong, as a Latin verb in the wrong person is. This
+  part is applied by the judge and is not mechanically checked.
 - A change that moves items is committed together with its new baseline
   (`uv run python harness/run.py baseline --staged`), and the commit message names what moved and which way.
   `uv run python harness/run.py frontier` shows what remains, grouped by blocker.

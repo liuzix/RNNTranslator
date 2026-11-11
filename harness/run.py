@@ -268,8 +268,8 @@ def compare(results, baseline_path, corpus, src_root=ROOT):
     if d["down"] or d["incomparable"] or d["removed"]:
         if d["incomparable"]:
             print("an output nobody has judged changed, appeared or disappeared: record a verdict on each unjudged output shown")
-            print("  (the old one, the new one, or both) in harness/adjudications.json — right / wrong / input_ungrammatical, with")
-            print("  the reason — stage it, and run the check again")
+            print("  (the old one, the new one, or both) in harness/adjudications.json — right / stiff / wrong / input_ungrammatical,")
+            print("  with the reason, the cause of a stiff or wrong one, and the judge — stage it, and run the check again")
         if d["down"] or d["removed"]: print("an item moved down: fix the cause; a baseline is never lowered to pass (CLAUDE.md §4)")
         return False
     if d["up"]: print("improvements: raise the baseline with `python harness/run.py baseline --staged` and stage it with the change")
@@ -291,7 +291,7 @@ def show_frontier(listing=False, group=None):
     reasons = {f"{s} {k}": r for s, m in base["outputs"].get("refusals", {}).items() for k, r in m.items()}
     print(f"state ({base.get('taken', '?')}):")
     for kind, counts in LT.summary(L).items(): print(f"  {kind:16s} " + ", ".join(f"{lv} {n}" for lv, n in counts.items()))
-    F = LT.frontier(L, reasons)
+    F = LT.frontier(L, reasons, LT.load_causes(os.path.join(ROOT, "harness", "adjudications.json")))
     print(f"frontier: {sum(len(v) for v in F.values())} item(s) below the top of their chain, in {len(F)} groups")
     for g, items in F.items():
         if group and group not in g: continue

@@ -412,17 +412,300 @@ items:
 
 - id: unjudged-outputs
   title: A verdict on every output the rule transducer gives
-  status: open
+  status: done
   round: 5
   context:
-    - text: An output nobody has judged is UNKNOWN, below RIGHT and incomparable with the rest, so a change away from it demands a
-        verdict.
+    - text: A verdict is right, stiff or wrong — natural Japanese that says what the English says; grammatical and faithful but
+        not how it is said; or neither — a stiff or wrong one names its cause, and a stiff output ranks above a wrong one and a
+        refusal and below a right one.
       pinned_by: test_lattice_order
-    - text: Outputs of the rule transducer on the corpus are still unjudged.
+    - text: Every output of the rule transducer on the corpus is the reference or carries a verdict, so no sentence item is
+        unjudged and the frontier groups the judged outputs by what their verdicts blame.
       pinned_by: check_todo
-    - text: Judged in the order of the frontier's groups, the outputs found wrong name the next rules to fix.
+    - text: The verdicts were given by a model reading each output against its English, and their causes name the next rules to
+        fix more reliably than they rank two outputs of the same sentence.
       hypothesis: true
   acceptance: test_every_output_is_judged
+  touches: [harness/adjudications.json, harness/lattice.py, schemas/adjudications.schema.json]
+
+# ---------------------------------------------------------------------------------------------------- round 6
+# What the verdicts on every output blame.  One item per cause a verdict can name: its acceptance test reads the baseline and the
+# verdicts and passes when no output is judged wrong (or, for the last two, stiff) for that cause, so an item closes by fixing the
+# rule or the table row behind each output, or by refusing the sentence — a refusal ranks above a wrong output — and never by
+# re-judging.  The standard of the verdicts: plain against polite is not judged unless the sentence's own words ask for one of
+# them; the direction of a giving verb is judged like the person of a Latin verb; stiff is above wrong and refused, below right.
+- id: idiom-readings
+  title: Set phrases read as a whole or refused, never word for word
+  status: open
+  round: 6
+  context:
+    - text: Outputs in the baseline are judged wrong because a set phrase was read word for word — a verb with its particle (put on
+        your shoes → 靴に置く, got out of the taxi → 外に得た), a light verb with its noun (shook hands → 手を振った, keeps company
+        → 会社を保つ), a prepositional phrase (for the first time → 最初の時間のために, by chance → 機会で), a reflexive verb
+        (applied himself to → 自分を当てはまった), a complement pattern (I wish I could, it took them two years to) or an opaque
+        idiom (for the birds → 鳥のためにある).
+      pinned_by: check_todo
+    - text: The first four kinds are rows of the idiom and use tables — keyed on the verb with its particle or its noun, or on the
+        whole phrase as a multiword token — and each row moves its sentences without a change to the parser; the complement
+        patterns are rows of the complement table with a template each.
+      hypothesis: true
+    - text: An idiom no table lists cannot be recognised, but most of them hang on a light verb — get, take, make, have, put, come,
+        go, keep — followed by a particle or a bare noun that no row covers, and refusing that shape instead of composing it
+        moves those sentences from WRONG to REFUSED, which is up.
+      hypothesis: true
+  acceptance: test_no_idiom_read_word_for_word
+  touches: [tables/idioms.tbl, tables/use.tbl, tables/complements.tbl, parser_rules.py]
+
+- id: word-senses
+  title: A word's sense chosen by the class of its argument
+  status: open
+  round: 6
+  context:
+    - text: Outputs in the baseline are judged wrong because a word was given a sense its argument rules out — have with a drink or
+        a meal (持つ), see with a person (見る for 会う), tell with a question word (話す for 教える), ask with an infinitive (尋ねる
+        for 頼む), stay at home (泊まる), old of a person (古い), well and hard as 上手に and 一生懸命, just as ちょうど, and a
+        transitive verb where nothing is acted on (映画は始める, 状況は変えた).
+      pinned_by: check_todo
+    - text: The parser's state already decides which reading of a token is used (i rest → 休む, i need a rest → 休息).
+      pinned_by: test_feedback_edges
+    - text: A sense row keyed on the word and the class of its object, subject or modified noun — person, drink, meal, place, time
+        — read where that argument closes, as the use-verb rewrite is, and a pairing of each transitive verb with its intransitive
+        partner chosen by whether an object was read, cover these without a new register.
+      hypothesis: true
+  acceptance: test_no_sense_against_its_argument
+  touches: [tables/lexicon.tbl, tables/verb_classes.tbl, parser_rules.py, rules_ja.py]
+
+- id: preposition-readings
+  title: A preposition read by the class of its noun
+  status: open
+  round: 6
+  context:
+    - text: Outputs in the baseline are judged wrong because a preposition was read apart from its noun — for with a duration as
+        purpose (２日のために), by with a time as beside (月曜日のそばに) and with a vehicle the same (車のそばに), at, on and in
+        with a time as で (正午で, 日曜日で, 朝で), above a place as the place of the act (橋の上で), with a cause as company
+        (風邪と).
+      pinned_by: check_todo
+    - text: The preposition table keyed on the preposition and the class of its noun — duration, clock time, day, vehicle, person —
+        gives 間, までに, で and に where they belong, and the classes are those the duration table and the lexicon already hold.
+      hypothesis: true
+  acceptance: test_no_preposition_against_its_noun
+  touches: [tables/prepositions.tbl, tables/duration.tbl, pp_module.py, parser_rules.py]
+
+- id: argument-particles
+  title: The particle a verb asks of its argument
+  status: open
+  round: 6
+  context:
+    - text: Outputs in the baseline are judged wrong because an argument carries a particle its verb does not take — を with 乗る,
+        会う, 反対する, 着く, なる, 電話する and 知らせる, which take に; を with 結婚する, which takes と; に or で with 出る of a
+        place one leaves, which takes を; and は on 誰か.
+      pinned_by: check_todo
+    - text: The suite of particles by verb frame is closed, so the mechanism exists and each of these verbs is a row it lacks.
+      pinned_by: suites
+    - text: A wrong particle is an agreement failure, judged like a Latin case ending, and every verb whose row is missing is found
+        by listing the verbs of the outputs this item's test names.
+      hypothesis: true
+  acceptance: test_no_particle_against_its_verb
+  touches: [tables/verb_classes.tbl, rules_ja.py]
+
+- id: giving-direction
+  title: The giving verb chosen by who gives to whom
+  status: open
+  round: 6
+  context:
+    - text: Outputs in the baseline are judged wrong because a gift to the speaker is printed with あげる (please give me this book
+        → 私にこの本をあげてください), which sends it away from the speaker.
+      pinned_by: check_todo
+    - text: The choice among あげる, くれる and もらう is agreement with the persons of the giver and the receiver — くれる and
+        ください when the receiver is the speaker or the speaker's side, もらう when the receiver is the subject, あげる otherwise
+        — a decision over the subject and indirect-object slots the frame already holds, and a wrong choice is judged like a Latin
+        verb in the wrong person.
+      hypothesis: true
+    - text: Their honorific and humble partners — くださる, 差し上げる, いただく — are chosen by the situation, which is the head of
+        item situation-head, not by the frame.
+      hypothesis: true
+  acceptance: test_no_giving_verb_against_its_persons
+  touches: [rules_ja.py, gen_module.py, tables/verb_classes.tbl]
+
+- id: predicate-forms
+  title: No predicate form that is not Japanese
+  status: open
+  round: 6
+  context:
+    - text: Outputs in the baseline are judged wrong because a form was built that Japanese does not have — too before an adjective
+        as a prefix (すぎ高い for 高すぎる), a する-verb conjugated as a godan verb (失敗すた, 欠席すった), 知っていない for 知らない,
+        たい said of a third person and 欲しがる of the speaker, 同じな, a relative clause that ends in だ (好きだドレス), a だ after
+        an i-adjective, and は before も.
+      pinned_by: check_todo
+    - text: The two する-verbs are rows of the lexicon with the wrong class, and the rest are one guard each in the predicate —
+        すぎる after the stem the class of the adjective gives, the stative verbs that take no ている in the negative, たがる by
+        the person of the subject — which the printing rules then mirror.
+      hypothesis: true
+  acceptance: test_no_form_that_is_not_japanese
+  touches: [tables/lexicon.tbl, tables/adjectives.tbl, rules_ja.py, gen_module.py]
+
+- id: modal-and-tense-readings
+  title: Modals by their use, and the tense the English form fixes
+  status: open
+  round: 6
+  context:
+    - text: Outputs in the baseline are judged wrong because a modal or a tense was misread — may of permission as かもしれない,
+        would like as a past wish (行きたかった), shall I as a plain question, a past form that looks like the present under a
+        third-person subject (she put → 置く, he promised → 約束する), is going to be and is getting as a state (１４だ, よりきれいだ)
+        and a lost may (you may be right → あなたは正しい).
+      pinned_by: check_todo
+    - text: May with a first-person subject in a question, or a second-person subject in a statement, is permission (てもいい);
+        would like is たい in the present; shall I is ましょうか; and a verb whose base and past forms coincide is past under a
+        third-person singular subject, because the present would carry -s — the agreement the rule parser already checks.
+      hypothesis: true
+  acceptance: test_no_modal_or_tense_misread
+  touches: [tables/modals.tbl, parser_rules.py, rules_ja.py, predicate_module.py]
+
+- id: clause-structure-readings
+  title: Constructions read as what they are
+  status: open
+  round: 6
+  context:
+    - text: Outputs in the baseline are judged wrong because a construction was read as another — a copula with an infinitive as an
+        arrangement (my hobby is to read → 読むことになっている), a relative clause on a time noun as a time clause (the day when),
+        a free relative as an indirect question (what you told me → 何を話したか), how far and how is with the question word
+        lost, an infinitive after a verb of asking or promising as a purpose (ために), as of manner as because, and an adverb or
+        a time phrase attached to the wrong head (nearly every day, a child today).
+      pinned_by: check_todo
+    - text: Each is a fork the rule parser resolves to its first reading; the copula with an infinitive and the lost question word
+        are single rules, and the others need the reading chosen by the head just read — a time noun before when, a verb of
+        saying before what — within the window the parser already has.
+      hypothesis: true
+  acceptance: test_no_construction_misread
+  touches: [parser_rules.py, rules_ja.py, predicate_module.py, tables/wh.tbl]
+
+- id: counters-and-quantifiers
+  title: Counts with their counter, and few and little as scarcity
+  status: open
+  round: 6
+  context:
+    - text: Outputs in the baseline are judged wrong because a count lacks its counter or its amount (２娘, ３切符, 時間を眠った,
+        people counted with いくつ) or because few, little and none are printed as some (少しの人々, 小さい水, 電話の何も).
+      pinned_by: check_todo
+    - text: A counter is a column of the lexicon's noun rows — 人, 枚, 本, 時間 — read by the number slot of the noun phrase, and
+        few and little are ほとんど with a negative predicate, a quantifier that writes the negation the way never does.
+      hypothesis: true
+  acceptance: test_no_count_without_its_counter
+  touches: [tables/lexicon.tbl, tables/numbers.tbl, tables/determiners.tbl, np_module.py, rules_ja.py]
+
+- id: dummy-it
+  title: No それ for an it that points at nothing
+  status: open
+  round: 6
+  context:
+    - text: Outputs in the baseline are judged wrong because the it of weather, of dates and of extraposition is printed as それは
+        (it 's hot today → 今日それは暑い, it is a good idea to read this book → それは…読むのには良い考えだ).
+      pinned_by: check_todo
+    - text: It is a dummy when its predicate is a weather or calendar word or when an infinitive or a that-clause follows the
+        predicate, both visible when the subject is printed, so the subject is dropped and the infinitive takes のは.
+      hypothesis: true
+  acceptance: test_no_dummy_it_printed
+  touches: [parser_rules.py, rules_ja.py, gen_module.py]
+
+- id: dropped-words
+  title: A word the frame cannot hold is refused, not dropped
+  status: open
+  round: 6
+  context:
+    - text: Outputs in the baseline are judged wrong because a content word of the English is missing from them — looks (he looks
+        tired → 彼は疲れている), wanted to (he wanted to be rich → 彼は金持ちだ), tall (how tall are you → あなたはどのくらいですか),
+        going to do, playing, last night.
+      pinned_by: check_todo
+    - text: Each is a reading rule that consumes a token and writes no slot, or writes a slot the generator does not read for that
+        predicate; the trace of each sentence names the rule, and where the frame has no slot for the word the rule refuses.
+      hypothesis: true
+  acceptance: test_no_word_dropped
+  touches: [parser_rules.py, rules_ja.py, predicate_module.py]
+
+- id: partial-negation
+  title: Negation kept, and kept partial where the English is
+  status: open
+  round: 6
+  context:
+    - text: Outputs in the baseline are judged wrong because a negation was lost (she didn 't need to come → 来る必要がある, he had no
+        hat on → 帽子を着ている) or widened from partial to total (not always → いつも…ない, not quite → かなり…ない).
+      pinned_by: check_todo
+    - text: Not before always, quite, all and every is partial negation, printed with わけではない after the affirmative clause, and
+        the two lost negations are slots the need and have-on predicates do not read.
+      hypothesis: true
+  acceptance: test_no_negation_lost_or_widened
+  touches: [parser_rules.py, rules_ja.py, gen_module.py]
+
+- id: natural-pronouns
+  title: A pronoun said once, and 自分 for the subject itself
+  status: open
+  round: 6
+  context:
+    - text: Outputs in the baseline are judged stiff because a pronoun the English repeats is repeated — 彼は彼の, 私が…私は across
+        a subordinate clause, あなたの in a request — or because 彼女が inside a clause reads as someone other than the subject.
+      pinned_by: check_todo
+    - text: A possessive or an inner subject that equals the subject of its clause's main frame is dropped, or printed as 自分 where
+        dropping it would change the reading; the comparison is between two slots the context already holds, one per frame.
+      hypothesis: true
+  acceptance: test_pronouns_said_once
+  touches: [rules_ja.py, gen_module.py, parser_matrix.py]
+
+- id: natural-wording
+  title: Outputs said the way Japanese says them
+  status: open
+  round: 6
+  depends_on: [word-senses, preposition-readings, counters-and-quantifiers]
+  context:
+    - text: Outputs in the baseline are judged stiff — grammatical and faithful but worded as the English is — most often 持っている
+        for a relative, news or an obligation one has (いる, ある), a collocation carried over (パーティーを持つ, 枝を壊す, 目を閉める),
+        a comparison or a quantity in the English order, をも for も, and the milder cases of the causes the other items of this
+        round name.
+      pinned_by: check_todo
+    - text: Stiffness has no single mechanism — each group is the weak form of a cause above, and the rows and guards that close
+        those items move most of these outputs with them.
+      hypothesis: true
+  acceptance: test_no_output_stiff
+  touches: [tables/lexicon.tbl, tables/verb_classes.tbl, rules_ja.py]
+
+- id: situation-head
+  title: The situation as an input head — plain or polite chosen by the caller, every output labelled for it
+  status: deferred
+  round: 6
+  context:
+    - text: The rule generator chooses the register itself — polite for a question, plain otherwise — and the verdicts do not judge
+        that choice, because no sentence of the corpus holds a word that asks for the other form.
+      hypothesis: true
+    - text: The register is not in the English, so it is an input — a situation block beside the sentence block, set by the caller
+        and never written by the encoder, with at least the values plain and polite; the decoder's politeness predicate reads it in
+        place of the question mark, and no other rule changes.
+      hypothesis: true
+    - text: Every judged output is then labelled with the value of the head it was printed for, a verdict is about a sentence, a
+        situation and an output, and the corpus gives one item per sentence and value of the head.
+      hypothesis: true
+    - text: A sentence whose own words ask for one value — a vocative such as sir, an honorific title — and a head that says the
+        other disagree like a subject and its verb, and the pair is refused, as the rule parser refuses a verb that disagrees with
+        its subject.
+      hypothesis: true
+    - text: Further values of the same head — humble and honorific — choose くださる, 差し上げる and いただく over くれる, あげる and
+        もらう, whose direction the frame decides.
+      hypothesis: true
+  stubs: [SituationHead]
+  acceptance: test_situation_is_an_input
+  touches: [rules_ja.py, gen_module.py, parser_matrix.py, harness/adjudications.json, schemas/adjudications.schema.json, harness/lattice.py]
+  notes: Proposed for a later round and not in scope now; recorded so that the verdicts of round 5 are read with it in mind.
+
+- id: verdict-audit
+  title: A person's verdict in every group of judged outputs
+  status: open
+  round: 6
+  context:
+    - text: No group of judged outputs — a level, and for a stiff or wrong output its cause — holds a verdict that records a person
+        as its judge.
+      pinned_by: check_todo
+    - text: A verdict is permanent and is about one output of one sentence, so an audit adds a person's verdict beside the model's
+        or corrects the cause, and a sample from every group shows where the model's reading of naturalness can be trusted.
+      hypothesis: true
+  acceptance: test_model_verdicts_audited
   touches: [harness/adjudications.json]
 
 # ---------------------------------------------------------------------------------------------------- round 2, carried over

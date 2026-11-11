@@ -3,9 +3,11 @@ improvement exactly when no item moves down and the frontier is the set of items
 
 Items and their chains (levels rise left to right; a lower index is worse):
   sentence <split> <citation>   the rule transducer's output for a corpus sentence
-        WRONG < REFUSED < RIGHT, and UNKNOWN below RIGHT but incomparable with WRONG and REFUSED
-        RIGHT    = the reference, or an output adjudicated right; for an input adjudicated ungrammatical, a refusal
-        WRONG    = an output adjudicated wrong; any output for an ungrammatical input
+        WRONG < REFUSED < STIFF < RIGHT, and UNKNOWN below RIGHT but incomparable with WRONG, REFUSED and STIFF
+        RIGHT    = the reference, or an output judged right — natural Japanese that says what the English says; for an input
+                   judged ungrammatical, a refusal
+        STIFF    = an output judged stiff — grammatical and faithful, but not how it is said
+        WRONG    = an output judged wrong; any output for an ungrammatical input
         REFUSED  = no output (and the input is not adjudicated ungrammatical)
         UNKNOWN  = an output nobody has judged — a change away from it, to a refusal or to another unjudged output,
                    needs a verdict on the unjudged output(s) (harness/adjudications.json)
@@ -25,7 +27,11 @@ Coverage and quality are views of this state, not gates: coverage = |RIGHT ∪ U
 import json, os, collections
 
 # the poset of sentence levels: pairs (lower, higher)
-SENTENCE_ORDER = {("WRONG", "REFUSED"), ("WRONG", "RIGHT"), ("REFUSED", "RIGHT"), ("UNKNOWN", "RIGHT")}
+SENTENCE_ORDER = {("WRONG", "REFUSED"), ("WRONG", "STIFF"), ("WRONG", "RIGHT"), ("REFUSED", "STIFF"), ("REFUSED", "RIGHT"), ("STIFF", "RIGHT"), ("UNKNOWN", "RIGHT")}
+VERDICT_LEVEL = {"right": "RIGHT", "stiff": "STIFF", "wrong": "WRONG"}
+# what a stiff or wrong verdict blames — the grouping of the frontier's judged outputs (schemas/adjudications.schema.json)
+CAUSES = ("sense", "preposition", "idiom", "case", "giving", "structure", "tense", "morphology", "it", "quantity", "negation", "pronoun", "register",
+          "omission", "literal", "order")
 CHAINS = {"matrix": ["MISFIRE", "GAP", "AGREE"], "negative": ["ACCEPTED", "REFUSED"], "control": ["REFUSED", "ACCEPTED"],
           "negative.matrix": ["ACCEPTED", "REFUSED"], "np.exhaustive": ["MISMATCHES", "MATCH"], "suite": ["WRONG", "REFUSED", "RIGHT"],
           "torch.exact": ["DIVERGING", "EXACT"], "printer": ["MISFIRE", "GAP", "AGREE"], "printer.sweep": ["MISMATCHES", "MATCH"]}
@@ -58,12 +64,19 @@ def load_adjudications(path, suites_dir=None):
             if case.get("citation"): verdicts[f"{case['citation']}: {case['sentence']}"].setdefault(case["expect"], "right")
     return verdicts, ungrammatical
 
+def load_causes(path):
+    """-> {citation: {output: cause}}: what each stiff or wrong verdict blames"""
+    causes = collections.defaultdict(dict)
+    if os.path.exists(path):
+        for a in json.load(open(path, encoding="utf-8")).get("sentences", []):
+            if a.get("cause"): causes[a["citation"]][a["output"]] = a["cause"]
+    return causes
+
 def sentence_level(output, reference, key, verdicts, ungrammatical):
     if key in ungrammatical: return "RIGHT" if not output else "WRONG"
     if not output: return "REFUSED"
     if output == reference: return "RIGHT"
-    v = verdicts.get(key, {}).get(output)
-    return "RIGHT" if v == "right" else "WRONG" if v == "wrong" else "UNKNOWN"
+    return VERDICT_LEVEL.get(verdicts.get(key, {}).get(output), "UNKNOWN")
 
 def matrix_level(rules_out, matrix_out):
     if rules_out and matrix_out == rules_out: return "AGREE"
@@ -114,18 +127,19 @@ def summary(L):
     """counts per kind and level, in chain order"""
     by = collections.defaultdict(collections.Counter)
     for item, (kind, lv, det) in L.items(): by[kind][lv] += 1
-    order = {"sentence": ["RIGHT", "UNKNOWN", "REFUSED", "WRONG"]}
+    order = {"sentence": ["RIGHT", "STIFF", "UNKNOWN", "REFUSED", "WRONG"]}
     return {k: {lv: c[lv] for lv in order.get(k, list(reversed(CHAINS.get(k, [])))) if c[lv]} for k, c in by.items()}
 
-def frontier(L, refusal_reasons=None):
-    """the items not at the top of their chain, grouped by what blocks them"""
-    groups = collections.defaultdict(list); reasons = refusal_reasons or {}
+def frontier(L, refusal_reasons=None, causes=None):
+    """the items not at the top of their chain, grouped by what blocks them: a refusal by where the parser stopped, a judged
+    output by the cause its verdict names (causes: load_causes)"""
+    groups = collections.defaultdict(list); reasons = refusal_reasons or {}; causes = causes or {}
     for item, (kind, lv, det) in L.items():
         if lv == TOP[kind]: continue
         if kind == "sentence":
             if lv == "REFUSED": groups[f"sentence refused: {reasons.get(item.split(' ', 1)[1], 'unknown reason')}"].append(item)
             elif lv == "UNKNOWN": groups["sentence output unjudged"].append(item)
-            else: groups["sentence output wrong"].append(item)
+            else: groups[f"sentence output {lv.lower()}: {causes.get(item.split(' ', 1)[1], {}).get(det) or 'no cause recorded'}"].append(item)
         elif kind == "matrix": groups[f"matrix {lv.lower()}"].append(item)
         elif kind == "suite": groups[f"suite {item.split(' ')[1]} {lv.lower()}"].append(item)
         else: groups[f"{kind} {lv.lower()}"].append(item)

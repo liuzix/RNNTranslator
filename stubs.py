@@ -61,3 +61,10 @@ class ControlClause(Stub):
     """an object-control clause: the object moved into the inner clause's frame as its subject (item control-clauses)"""
     item = "control-clauses"
     def control_rules(self): return self._hit("control_rules")               # -> the move of the object across the boundary and the decoder's rules: ように, or the causative with the outer tense
+
+class SituationHead(Stub):
+    """the situation as an input: a block beside the sentence block that the caller sets and the decoder reads (item situation-head)"""
+    item = "situation-head"
+    def values(self): return self._hit("values")                             # -> the values of the head, plain and polite among them
+    def translate(self, tokens, situation): return self._hit("translate")    # -> the output printed for that situation, "" where the sentence's own clue disagrees with it
+    def clue(self, tokens): return self._hit("clue")                         # -> the situation the sentence's own words ask for (a vocative, an honorific), or None

@@ -241,6 +241,51 @@ def test_every_output_is_judged(root):
                if LAT.sentence_level(out, refs[split].get(key), f"{split} {key}", verdicts, ungrammatical) == "UNKNOWN"]
     assert not unknown, f"{len(unknown)} outputs nobody has judged, e.g. {unknown[0]}"
 
+# ---------------------------------------------------------------- round 6: what the verdicts on every output blame
+def none_judged(root, levels, causes):
+    """no output of the baseline carries a verdict of one of these levels that names one of these causes"""
+    outs = baseline(root)["outputs"]["rules"]; live = {f"{split} {key}": out for split in ("dev", "test") for key, out in outs[split].items()}
+    doc = json.load(open(os.path.join(root, "harness", "adjudications.json"), encoding="utf-8"))["sentences"]
+    bad = [a for a in doc if a["verdict"] in levels and a.get("cause") in causes and live.get(a["citation"]) == a.get("output")]
+    assert not bad, f"{len(bad)} outputs judged {' or '.join(levels)} for {', '.join(causes)}, e.g. {bad[0]['citation']} -> {bad[0]['output']}"
+
+def test_no_idiom_read_word_for_word(root): none_judged(root, ("wrong",), ("idiom",))
+def test_no_sense_against_its_argument(root): none_judged(root, ("wrong",), ("sense",))
+def test_no_preposition_against_its_noun(root): none_judged(root, ("wrong",), ("preposition",))
+def test_no_particle_against_its_verb(root): none_judged(root, ("wrong",), ("case",))
+def test_no_giving_verb_against_its_persons(root): none_judged(root, ("wrong",), ("giving",))
+def test_no_form_that_is_not_japanese(root): none_judged(root, ("wrong",), ("morphology",))
+def test_no_modal_or_tense_misread(root): none_judged(root, ("wrong",), ("tense",))
+def test_no_construction_misread(root): none_judged(root, ("wrong",), ("structure",))
+def test_no_count_without_its_counter(root): none_judged(root, ("wrong",), ("quantity",))
+def test_no_dummy_it_printed(root): none_judged(root, ("wrong",), ("it",))
+def test_no_word_dropped(root): none_judged(root, ("wrong",), ("omission",))
+def test_no_negation_lost_or_widened(root): none_judged(root, ("wrong",), ("negation",))
+def test_pronouns_said_once(root): none_judged(root, ("stiff", "wrong"), ("pronoun",))
+def test_no_output_stiff(root): none_judged(root, ("stiff",), tuple(c for c in LAT.CAUSES if c != "pronoun"))
+
+def test_situation_is_an_input(root):
+    """the register is an input and not a choice of the rules: a situation head beside the sentence block has at least the values
+    plain and polite, the same sentence prints in either form as the head says, a sentence whose own words ask for the other
+    form is refused, and every judged output is labelled with the value of the head it was printed for"""
+    head = ST.SituationHead(); values = head.values(); s = "she broke the cup .".split()
+    plain, polite = head.translate(s, "plain"), head.translate(s, "polite")
+    clue, none = head.clue("she broke the cup , sir .".split()), head.clue(s)
+    refused = head.translate("she broke the cup , sir .".split(), "plain")
+    doc = json.load(open(os.path.join(root, "harness", "adjudications.json"), encoding="utf-8"))["sentences"]
+    unlabelled = [a["citation"] for a in doc if a.get("output") and a.get("situation") not in tuple(values) + ("any",)]
+    assert {"plain", "polite"} <= set(values), values
+    assert plain == "彼女はカップを壊した。" and polite == "彼女はカップを壊しました。", (plain, polite)
+    assert clue == "polite" and none is None and refused == "", (clue, none, refused)
+    assert not unlabelled, f"{len(unlabelled)} judged outputs carry no situation, e.g. {unlabelled[0]}"
+
+def test_model_verdicts_audited(root):
+    """a person has given or confirmed at least one verdict in every group of judged outputs — each level, and each cause of a
+    stiff or wrong one — so no group of the frontier rests on the model's reading alone"""
+    doc = json.load(open(os.path.join(root, "harness", "adjudications.json"), encoding="utf-8"))["sentences"]
+    groups = {(a["verdict"], a.get("cause")) for a in doc}; human = {(a["verdict"], a.get("cause")) for a in doc if a.get("judge") == "human"}
+    assert groups == human, f"{len(groups - human)} of {len(groups)} groups hold no verdict a person gave, e.g. {sorted(groups - human, key=str)[0]}"
+
 # ---------------------------------------------------------------- carried over from round 2
 def test_matrix_items_scope(root):
     """a matrix item exists only for sentences the rules parse, so both parsers refusing is not an AGREE that a rule gain can lose"""

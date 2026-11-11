@@ -33,18 +33,48 @@
      "verdict": {
       "enum": [
        "right",
+       "stiff",
        "wrong",
        "input_ungrammatical"
-      ]
+      ],
+      "description": "right: natural Japanese that says what the English says, plain or polite; stiff: grammatical and faithful but not how it is said; wrong: the meaning is lost or changed, a form or particle is ungrammatical, the giving or receiving verb points the wrong way, or the plain or polite form contradicts a clue in the sentence; input_ungrammatical: the corpus line's English is not standard"
      },
      "output": {
       "type": "string",
       "minLength": 1,
-      "description": "the exact output judged (required for right / wrong)"
+      "description": "the exact output judged (required for right / stiff / wrong)"
      },
      "reason": {
       "type": "string",
       "minLength": 1
+     },
+     "cause": {
+      "enum": [
+       "sense",
+       "preposition",
+       "idiom",
+       "case",
+       "giving",
+       "structure",
+       "tense",
+       "morphology",
+       "it",
+       "quantity",
+       "negation",
+       "pronoun",
+       "register",
+       "omission",
+       "literal",
+       "order"
+      ],
+      "description": "what a stiff or wrong verdict blames (required for both): sense — a word's wrong sense or choice; preposition — a preposition's wrong particle or sense; idiom — a multiword expression or construction read word for word; case — the wrong particle on a verb's argument; giving — the direction of あげる / くれる / もらう; structure — attachment, scope or clause structure misread; tense — tense, aspect or modality; morphology — an ill-formed Japanese form; it — a dummy or deictic it / there; quantity — number, quantifier, determiner or degree; negation — polarity; pronoun — a pronoun or possessive, wrong or redundant; register — plain or polite against a clue in the sentence; omission — a content word dropped; literal — a literal wording where Japanese has a set one; order — word order"
+     },
+     "judge": {
+      "enum": [
+       "human",
+       "model"
+      ],
+      "description": "who gave the verdict; absent on the verdicts recorded before the field existed"
      }
     },
     "allOf": [
@@ -54,6 +84,7 @@
         "verdict": {
          "enum": [
           "right",
+          "stiff",
           "wrong"
          ]
         }
@@ -77,6 +108,42 @@
        "not": {
         "required": [
          "output"
+        ]
+       }
+      }
+     },
+     {
+      "if": {
+       "properties": {
+        "verdict": {
+         "enum": [
+          "stiff",
+          "wrong"
+         ]
+        }
+       }
+      },
+      "then": {
+       "required": [
+        "cause"
+       ]
+      }
+     },
+     {
+      "if": {
+       "properties": {
+        "verdict": {
+         "enum": [
+          "right",
+          "input_ungrammatical"
+         ]
+        }
+       }
+      },
+      "then": {
+       "not": {
+        "required": [
+         "cause"
         ]
        }
       }

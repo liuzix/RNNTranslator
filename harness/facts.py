@@ -68,8 +68,15 @@ def facts(root=ROOT):
     for kind, counts in S.items():
         for lv, n in counts.items(): f[f"lattice.{kind}.{lv.lower()}"] = n
     for kind in ("sentence", "matrix", "negative", "control", "negative.matrix", "np.exhaustive", "suite", "torch.exact", "printer", "printer.sweep"):
-        for lv in (["RIGHT", "UNKNOWN", "REFUSED", "WRONG"] if kind == "sentence" else LT.CHAINS[kind]): f.setdefault(f"lattice.{kind}.{lv.lower()}", 0)
-    F = LT.frontier(L, {f"{s} {k}": r for s, m in base["outputs"]["refusals"].items() for k, r in m.items()})
+        for lv in (["RIGHT", "STIFF", "UNKNOWN", "REFUSED", "WRONG"] if kind == "sentence" else LT.CHAINS[kind]): f.setdefault(f"lattice.{kind}.{lv.lower()}", 0)
+    causes = LT.load_causes(os.path.join(root, "harness", "adjudications.json"))
+    F = LT.frontier(L, {f"{s} {k}": r for s, m in base["outputs"]["refusals"].items() for k, r in m.items()}, causes)
+    # the judged outputs by level and cause, and the sentences the transducer translates (every sentence item that is not a refusal)
+    f["quality.translated"] = sum(1 for item, (kind, lv, det) in L.items() if kind == "sentence" and det)
+    for lv in ("RIGHT", "STIFF", "WRONG"): f[f"quality.{lv.lower()}"] = sum(1 for item, (kind, l, det) in L.items() if kind == "sentence" and det and l == lv)
+    f["quality.judges.model"] = sum(1 for a in json.load(open(os.path.join(root, "harness", "adjudications.json"), encoding="utf-8"))["sentences"] if a.get("judge") == "model")
+    for lv in ("stiff", "wrong"):
+        for c in LT.CAUSES: f[f"quality.{lv}.{c}"] = len(F.get(f"sentence output {lv}: {c}", []))
     f["lattice.frontier.items"] = sum(len(v) for v in F.values()); f["lattice.frontier.groups"] = len(F)
     f["lattice.items"] = len(L); f["lattice.adjudications"] = len(verdicts) + len(ungrammatical)
     # constants of the parser
