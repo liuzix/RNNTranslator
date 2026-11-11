@@ -62,6 +62,27 @@ class ControlClause(Stub):
     item = "control-clauses"
     def control_rules(self): return self._hit("control_rules")               # -> the move of the object across the boundary and the decoder's rules: ように, or the causative with the outer tense
 
+class HeldOut(Stub):
+    """the held-out split: lines of train pinned in the corpus lock, on which the transducer and the cell are run (item held-out-split)"""
+    item = "held-out-split"
+    def lines(self): return self._hit("lines")                               # -> the pinned lines, as sentences: none of them a line of dev or test
+    def levels(self): return self._hit("levels")                             # -> {line: MISFIRE | GAP | AGREE}, the cell against the rules on each
+
+class VerbPhraseModule(Stub):
+    """verb_phrase and its objects translated by hand, in the module rule format (item verb-phrase-by-hand)"""
+    item = "verb-phrase-by-hand"
+    def rules(self): return self._hit("rules")                               # -> the module's rules: per position, an ordered decision whose last rule is the refusal
+
+class SentenceStartModule(Stub):
+    """pre, after_wh and question_inversion translated by hand, in the module rule format (item sentence-start-by-hand)"""
+    item = "sentence-start-by-hand"
+    def rules(self): return self._hit("rules")                               # -> the module's rules: the opening word, the inverted auxiliary, the subject's place
+
+class EmbeddedQuestion(Stub):
+    """an embedded question as a frame of its own, linked from the frame of the verb before it (item embedded-questions)"""
+    item = "embedded-questions"
+    def link_rules(self): return self._hit("link_rules")                     # -> the rules at its opening, and the decoder's: plain form with か, かどうか or べきか
+
 class SituationHead(Stub):
     """the situation as an input: a block beside the sentence block that the caller sets and the decoder reads (item situation-head)"""
     item = "situation-head"

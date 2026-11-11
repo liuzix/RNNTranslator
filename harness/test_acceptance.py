@@ -46,7 +46,13 @@ def small_cell(root):
                  "when i was a child , i loved reading when it rains .", "in fact , when i was a child , i loved reading .",
                  "what a lovely day .", "thank you for your cooperation .", "three years is a long time , i feel .",
                  "how many pens do you have ?", "he can speak both english and french .", "jim is not a lawyer but a doctor .",
-                 "the policeman 's quick arrival surprised us .", "she is now staying at her uncle 's house .", "he is reading a book .")
+                 "the policeman 's quick arrival surprised us .", "she is now staying at her uncle 's house .", "he is reading a book .",
+                 # round 7: the folds and registers no earlier item names; the sentences of its held-out tests (he went home, he can come,
+                 # the train arrived, did you read a book) stay out of this list on purpose
+                 "do you know how to drive a car ?", "i don 't care whether he agrees or not .", "please tell me where the bus stop is .",
+                 "i wonder what he bought .", "you have no obligation to help us .",
+                 "my father boasts of the fact that he has never had a traffic accident .", "how about going to the movies tonight ?",
+                 "the mystery story is so hard that i don 't like it .", "i can hear someone talking in the next room .")
         sents = [R.merge_multiword(en) for en, ja in H.load("dev")[:60]] + [R.merge_multiword(s.split()) for s in extra]
         _cache["comp"] = PM.build_hybrid(sents); _cache["mp"] = PM.MatrixParser(_cache["comp"]); _cache["sents"] = sents
     return _cache["comp"], _cache["mp"], _cache["sents"]
@@ -73,19 +79,24 @@ def agrees(root, sentences):
         if got != want: bad.append((s, want, got))
     assert not bad, f"{len(bad)} of {len(sentences)} sentences differ from the rules: {bad[0]}"
 
-def translates(root, sentences):
-    """the whole cell — encoder, context, decoder — prints for every sentence what the rule transducer prints"""
+def differing(root, sentences):
+    """the sentences for which the whole cell — encoder, context, decoder — does not print what the rule transducer prints"""
     comp, mp, sents = small_cell(root); bad = []
     for s in sentences:
         toks = R.merge_multiword(s.split()); want = R.translate(s.split())
         try: got = mp.translate(toks)
         except PR.ParseFail as e: got = f"refused: {str(e)[:60]}"
         if got != want: bad.append((s, want, got))
+    return bad
+
+def translates(root, sentences):
+    """the whole cell — encoder, context, decoder — prints for every sentence what the rule transducer prints"""
+    bad = differing(root, sentences)
     assert not bad, f"{len(bad)} of {len(sentences)} sentences differ from the rules: {bad[0]}"
 
-def judged_right(root, sentences):
-    """the rule transducer translates each of these corpus sentences, and what it prints is RIGHT in the lattice's sense: the
-    corpus reference, or an output a verdict in harness/adjudications.json calls right"""
+def not_right(root, sentences):
+    """the corpus sentences among these that the rule transducer refuses, or translates into something that is not RIGHT in the
+    lattice's sense: the corpus reference, or an output a verdict in harness/adjudications.json calls right"""
     verdicts, ungrammatical = LAT.load_adjudications(os.path.join(root, "harness", "adjudications.json"))
     index = {" ".join(en): (split, line, ja) for split in ("dev", "test") for line, en, ja in H.load_indexed(split)}
     bad = []
@@ -95,6 +106,11 @@ def judged_right(root, sentences):
         except PR.ParseFail as e: out = ""; why = str(e)[:50]
         level = LAT.sentence_level(out, ja, f"{split} {line}: {s}", verdicts, ungrammatical)
         if level != "RIGHT": bad.append((s, level, out or why))
+    return bad
+
+def judged_right(root, sentences):
+    """the rule transducer translates each of these corpus sentences, and what it prints is RIGHT in the lattice's sense"""
+    bad = not_right(root, sentences)
     assert not bad, f"{len(bad)} of {len(sentences)} sentences are not right: {bad[0]}"
 
 def test_clause_kinds_end_at_stem_forms(root):
@@ -285,6 +301,198 @@ def test_model_verdicts_audited(root):
     doc = json.load(open(os.path.join(root, "harness", "adjudications.json"), encoding="utf-8"))["sentences"]
     groups = {(a["verdict"], a.get("cause")) for a in doc}; human = {(a["verdict"], a.get("cause")) for a in doc if a.get("judge") == "human"}
     assert groups == human, f"{len(groups - human)} of {len(groups)} groups hold no verdict a person gave, e.g. {sorted(groups - human, key=str)[0]}"
+
+# ---------------------------------------------------------------- round 7: out of sample
+HELD_OUT = ("he went home .", "he can come .", "the train arrived .", "did you read a book ?")     # never among the sentences the small cell is compiled from
+
+def heldout_misfires(root):
+    """the lines of dev the small cell was not compiled from on which it prints what the rule transducer does not print: another
+    translation, or a translation of a sentence the rules refuse"""
+    if "heldout" not in _cache:
+        comp, mp, sents = small_cell(root); bad = []
+        for line, en, ja in H.load_indexed("dev")[60:]:
+            toks = R.merge_multiword(en)
+            if toks in sents: continue
+            try: want = R.translate(en)
+            except PR.ParseFail: want = ""
+            try: got = mp.translate(toks)
+            except PR.ParseFail: got = ""
+            if got and got != want: bad.append((" ".join(en), want or "(refused)", got))
+        _cache["heldout"] = bad
+    return _cache["heldout"]
+
+def induced_in(root, methods):
+    """the rules of the small cell induced from traces at a control point inside one of these methods of the rule parser"""
+    comp, mp, sents = small_cell(root)
+    assert not any(R.merge_multiword(s.split()) in sents for s in HELD_OUT), "a held-out sentence is among those the small cell is compiled from"
+    return [prev for prev, lits, out in comp["encoder"]["rules"] if out[0] != PM.FAIL and isinstance(prev[0], tuple) and prev[0] and prev[0][-1] in methods]
+
+def refused_for(reason, sentences):
+    """the sentences the rule parser refuses for this reason"""
+    bad = []
+    for s in sentences:
+        try: R.translate(s.split())
+        except PR.ParseFail as e:
+            if reason in str(e): bad.append((s, str(e)))
+    return bad
+
+def test_held_out_split_is_measured(root):
+    """lines of train — sentences no rule, no table row and no trace of the cell was written from — are pinned in the corpus lock, none
+    of them a line of dev or test; an action runs the transducer and the cell on them, every line is an item on the matrix chain, the
+    cell against the rules, and the baseline holds what both printed"""
+    held = ST.HeldOut(); lines = held.lines(); levels = held.levels()
+    lock = json.load(open(os.path.join(root, "harness", "corpus.lock.json"), encoding="utf-8"))
+    seen = {" ".join(en) for split in ("dev", "test") for line, en, ja in H.load_indexed(split)}
+    assert {"train.en", "train.ja"} <= set(lock["files"]), f"the corpus lock pins {sorted(lock['files'])} and no line of train"
+    assert lines and not seen & set(lines), "no held-out lines, or lines of dev and test among them"
+    assert set(levels) == set(lines) and set(levels.values()) <= set(LAT.CHAINS["matrix"]), "a held-out line with no level on the matrix chain"
+    assert baseline(root)["outputs"].get("heldout"), "the baseline holds no held-out outputs"
+
+def test_cell_on_a_control_is_an_item(root):
+    """the cell on a grammatical control is an item on the matrix chain — AGREE when it prints what the rules print, GAP when it
+    refuses, MISFIRE when it prints anything else — so a control the cell translates differently is counted and the gate holds it"""
+    rows = baseline(root)["outputs"]["negatives"]
+    want = {r["control"]: "AGREE" if r.get("control.matrix") == r["control.rules"] else ("MISFIRE" if r.get("control.matrix") else "GAP") for r in rows}
+    L = LAT.levels({}, {}, rows, 0, {}, {}, {})
+    got = {c: L.get(f"control.matrix {c}", (None, None, None))[1] for c in want}
+    differ = sorted(c for c, lv in want.items() if lv == "MISFIRE"); refused = sorted(c for c, lv in want.items() if lv == "GAP")
+    assert got == want, (f"the lattice holds no item for the cell on a control: {len(differ)} the cell translates differently from the rules "
+                         f"({', '.join(differ)}) and {len(refused)} it refuses ({', '.join(refused)}) are counted nowhere")
+    assert LAT.cmp("control.matrix", "MISFIRE", "GAP") == "up" and LAT.TOP["control.matrix"] == "AGREE"
+
+def test_frontier_names_every_blocker(root):
+    """every sentence the cell or the printing rules refuse where the rules translate carries, in the baseline, the reason it was
+    refused — outputs.gaps.<matrix|printer>.<split citation> — and every refusal of the rule parser names what it stopped on beside
+    where (`<phase>: <why> at <the class of the token>`), so no group of the frontier is a bare `matrix gap`, `printer gap` or `VP0: tail`"""
+    outs = baseline(root)["outputs"]; why = outs.get("gaps", {})
+    unnamed = [(kind, f"{split} {key}") for kind in ("matrix", "printer") for split in ("dev", "test") for key, out in outs["rules"][split].items()
+               if out and key in outs[kind][split] and not outs[kind][split][key] and not why.get(kind, {}).get(f"{split} {key}")]
+    bare = [f"{split} {key}: {reason}" for split in ("dev", "test") for key, reason in outs["refusals"][split].items() if " at " not in reason]
+    assert not unnamed and not bare, (f"{len(unnamed)} gaps of the cell and the printing rules carry no reason, e.g. {unnamed[:1]}; "
+                                      f"{len(bare)} refusals name where the parser stopped and not what it stopped on, e.g. {bare[:1]}")
+
+def test_comment_pins_resolve(root):
+    """every pin a comment or a docstring of the code names — a test, a check, an action in backticks, a suite — exists, and a static
+    check of the harness says so on every commit"""
+    import re
+    C = load_module(os.path.join(root, "harness", "check_todo.py"), "check_todo_for_pins")
+    pins = C.pins_available(root) | {n for n in globals() if n.startswith("test_")}
+    suites = {os.path.basename(p)[:-5] for p in glob.glob(os.path.join(root, "harness", "suites", "*.json"))}
+    dangling = []
+    for path in sorted(glob.glob(os.path.join(root, "*.py")) + glob.glob(os.path.join(root, "harness", "*.py")) + glob.glob(os.path.join(root, "tables", "*.tbl"))):
+        for name in re.findall(r"pinned by[\s#]+(?:the[\s#]+)?(test_\w+|check_\w+|`\w+`|suite [A-Z])", open(path, encoding="utf-8").read()):
+            if not (name[6:] in suites if name.startswith("suite ") else name.strip("`") in pins): dangling.append((os.path.relpath(path, root), name))
+    checked = '"harness/check_comments.py"' in open(os.path.join(root, "harness", "run.py"), encoding="utf-8").read()
+    assert not dangling and checked, (f"{len(dangling)} pin(s) named in a comment that no test, action, check or suite answers to, e.g. {dangling[:1]}; "
+                                      + ("a static check reads the comments" if checked else "no static check of the harness reads the comments"))
+
+def test_table_rows_are_reachable(root):
+    """no row of a table keys on a word the lexicon does not hold as the part of speech the row needs, and the integrity file declares
+    every such reference an error, so a row no sentence can reach cannot be committed"""
+    CS = load_module(os.path.join(root, "harness", "check_schemas.py"), "check_schemas_for_acceptance")
+    errors, warnings, rows = CS.check_tables(root)
+    soft = [f"{r['from']['table']}.{r['from']['field']}" for r in json.load(open(os.path.join(root, "schemas", "tables", "integrity.json"), encoding="utf-8"))["references"] if r["level"] != "error"]
+    assert not errors and not warnings and not soft, (f"{len(soft)} reference(s) declared at the level of a warning ({', '.join(soft)}); {len(errors + warnings)} of the references hold "
+                                                      f"rows that key on a word the lexicon lacks, e.g. {(errors + warnings)[:1]}")
+
+def test_verb_phrase_by_hand(root):
+    """verb_phrase is a module written by hand: a sentence the cell was not compiled from — `he went home .` — gets the verb phrase the
+    rules give it, the module's rules exist, and no rule induced from traces is left at a control point inside the method"""
+    rules = ST.VerbPhraseModule().rules(); induced = induced_in(root, ("verb_phrase",)); bad = differing(root, ["he went home ."])
+    assert not bad and not induced and rules, (f"a sentence the cell was not compiled from differs from the rules: {bad[:1]}; {len(induced)} rules induced from traces at "
+                                               f"control points inside verb_phrase; {'a' if rules else 'no'} module written by hand")
+
+def test_sentence_start_by_hand(root):
+    """pre, after_wh and question_inversion are a module written by hand: a question that opens as no sentence the cell was compiled from
+    does is not refused at its first token, the module's rules exist, and no rule induced from traces is left inside the three methods"""
+    rules = ST.SentenceStartModule().rules(); induced = induced_in(root, ("pre", "after_wh", "question_inversion"))
+    comp, mp, sents = small_cell(root); stopped = []
+    for s in ("did you read a book ?",):
+        try: mp.translate(R.merge_multiword(s.split()))
+        except PR.ParseFail as e:
+            if e.pos == 0: stopped.append((s, str(e)))
+    assert not stopped and not induced and rules, (f"refused at the first token: {stopped[:1]}; {len(induced)} rules induced from traces at control points inside pre, after_wh "
+                                                   f"and question_inversion; {'a' if rules else 'no'} module written by hand")
+
+def test_no_rule_is_induced(root):
+    """what the cell does with a sentence does not depend on the sentences it was compiled from: on the lines of dev the small cell was
+    not compiled from it prints what the rules print or refuses, the simple sentences whose path no trace took are translated — by the
+    small cell and by the committed one — and no row of the compiler comes from a trace"""
+    comp, mp, sents = small_cell(root); bad = heldout_misfires(root); gaps = differing(root, ["he can come .", "the train arrived ."])
+    committed = {r["control"]: r.get("control.matrix") for r in baseline(root)["outputs"]["negatives"]}
+    refused = [c for c in ("he can come .", "the train arrived .") if not committed[c]]
+    assert not any(R.merge_multiword(s.split()) in sents for s in HELD_OUT), "a held-out sentence is among those the small cell is compiled from"
+    assert not bad and not gaps and not refused and not comp["rows"], (
+        f"{len(bad)} lines of dev the small cell was not compiled from are translated differently from the rules, e.g. {bad[:1]}; it differs on {len(gaps)} simple "
+        f"sentences whose path no trace took, e.g. {gaps[:1]}; the committed cell refuses {refused}; {len(comp['rows'])} rows of the compiler come from traces")
+
+def test_embedded_questions_agree(root):
+    """an embedded question is a frame of its own, linked from the frame of the verb before it and printed in plain form with か,
+    かどうか or べきか"""
+    rules = ST.EmbeddedQuestion().link_rules()
+    translates(root, ["do you know how to drive a car ?", "i don 't care whether he agrees or not .", "please tell me where the bus stop is .", "i wonder what he bought ."])
+    assert rules, "no rules at the opening of an embedded question"
+
+def test_unnamed_folds_agree(root):
+    """a clause after a noun, how about, the result clause after so, make it a rule to and a perception verb's clause are frames the
+    cell reads and prints"""
+    translates(root, ["you have no obligation to help us .", "my father boasts of the fact that he has never had a traffic accident .",
+                      "how about going to the movies tonight ?", "the mystery story is so hard that i don 't like it .",
+                      "i make it a rule to get up at six every morning .", "i can hear someone talking in the next room ."])
+
+def test_transducer_is_total(root):
+    """translate() returns a string or raises a refusal, whatever the sentence: none of these, each of which raises another exception
+    today, and generate() raises on no frame of the printer's sweep"""
+    crashed = []
+    for s in ("the story appears to be true .", "he used to be a nice boy .", "i want to know about this mountain .", "please let me know about it .",
+              "don 't have me on !", "let it be on your head !", "i want the concert to be a success at any cost ."):
+        try: R.translate(s.split())
+        except PR.ParseFail: pass
+        except Exception as e: crashed.append(f"{s} ({type(e).__name__})")
+    sweep = baseline(root)["detail"]["printer"]["sweep"]
+    assert not crashed and sweep["generate_crash"] == 0, (f"{len(crashed)} sentences raise an exception that is not a refusal: {'; '.join(crashed)}; "
+                                                          f"generate() raises on {sweep['generate_crash']} frames of the sweep, which skips them")
+
+def test_passive_voice_right(root): judged_right(root, ["the tower can be seen from here .", "the water was cut off yesterday .", "this box is made of paper ."])
+
+def test_bare_time_phrases_right(root):
+    """a time phrase with no preposition is read as when: not as the object of a verb that has none, and not refused after an object"""
+    objects = []
+    for s, wrong in (("he came last month .", "最後"), ("he came every night .", "毎夜を")):
+        try: out = R.translate(s.split())
+        except PR.ParseFail as e: out = f"{wrong} (refused: {e})"
+        if wrong in out: objects.append((s, out))
+    bad = not_right(root, ["he will be playing tennis tomorrow afternoon .", "i want to come here next winter again ."])
+    assert not objects and not bad, f"{len(objects)} time phrases read as an object, e.g. {objects[:1]}; {len(bad)} sentences with one after the object are not right, e.g. {bad[:1]}"
+
+def test_sentence_initial_adverbs_right(root):
+    """the adverb and the conjunction the parser reads after the subject, or does without, it reads before the subject too"""
+    assert R.translate("i sometimes run out of money .".split()) and R.translate("his name is slightly familiar to me .".split())
+    opening = refused_for("PRE: noun phrase", ["sometimes i run out of money .", "but his name is slightly familiar to me .", "and i will raise it again in three days ."])
+    bad = not_right(root, ["sometimes i run out of money .", "but his name is slightly familiar to me ."])
+    assert not opening and not bad, f"{len(opening)} sentences refused at the word they open with: {opening}; {len(bad)} are not right"
+
+def test_missing_readings_right(root):
+    """the lexicon holds the noun a sentence uses: love, meaning and building are not verbs alone, and their sentences are right"""
+    verbs = [w for w in ("love", "meaning", "building") if {cls for cls, payload in R.classify(w)} == {"verb"}]
+    bad = not_right(root, ["his love grew cold .", "the meaning of the words is intelligible .", "the fire destroyed the tall building ."])
+    assert not verbs and not bad, f"the lexicon holds {', '.join(verbs) or 'none of them'} as a verb alone; {len(bad)} of their sentences are not right: {bad}"
+
+def test_possessive_own_right(root):
+    """own after a possessive is read, before a noun and at the end of an of-phrase"""
+    bad = refused_for("possessive pronoun without noun", ["we want a house of our own .", "show your own business .", "this is a problem of your own making ."])
+    assert not bad, f"{len(bad)} possessives with own refused: {bad}"
+    judged_right(root, ["we want a house of our own ."])
+
+def test_subject_case_guard_spares_one(root):
+    """the refusal for a subject's case fires on a pronoun in subject position and on nothing else"""
+    bad = refused_for("subject case", ["one day the men got to his village .", "one morning he went for a walk .", "do one thing at a time .", "no one is coming ."])
+    kept = refused_for("subject case", ["me went to the store .", "himself saw john ."])
+    assert not bad and len(kept) == 2, f"{len(bad)} grammatical sentences refused for the case of a subject: {bad}; {len(kept)} of 2 object pronouns as subjects refused for it"
+    judged_right(root, ["no one is coming ."])
+
+def test_experiential_perfect_right(root):
+    judged_right(root, ["he has been to london three times .", "i have been to the station .", "i 've never been to such a nice party ."])
 
 # ---------------------------------------------------------------- carried over from round 2
 def test_matrix_items_scope(root):

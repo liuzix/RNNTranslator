@@ -708,6 +708,327 @@ items:
   acceptance: test_model_verdicts_audited
   touches: [harness/adjudications.json]
 
+# ---------------------------------------------------------------------------------------------------- round 7
+# Out of sample.  Every item of the lattice is measured on the sentences the machine was built from: the rules and the tables were
+# written against dev and test, the clause-level rules of the cell are induced from the traces of dev and test, and both are scored
+# there.  This round measures the machine on sentences it was not built from and opens what that shows.  First the measurement, and
+# the checks the harness still leaves to review; then the cell off its traces — the paths still induced, by hand; then the cell's
+# gaps no item names; then the transducer off its corpus — an exception that is no refusal, and the refusals the unseen lines hold
+# most, each anchored on the lines of dev and test that hold it too.
+- id: held-out-split
+  title: A held-out split — lines of train pinned, the transducer and the cell run on them, every line an item
+  status: open
+  round: 7
+  context:
+    - text: The corpus lock pins dev and test alone — the two splits the rules and the tables were written against and the cell is
+        compiled from — so nothing the harness measures is measured on a sentence the machine was not built from.
+      pinned_by: test_corpus_pinned
+    - text: On lines of train whose every word the lexicon holds, the cell compiled on dev and test prints translations the rules do
+        not print and translates sentences the rules refuse, where on dev and test it does neither; and compiled on one of the two
+        splits it does the same on the other.
+      hypothesis: true
+    - text: A held-out line needs no judge to be an item — the cell against the rules on it is on the matrix chain, and the
+        transducer on it is total or it is not — while its outputs stay views until someone judges them; the lines are chosen by a
+        rule fixed before any of them is read, and a word the lexicon lacks is a refusal like another.
+      hypothesis: true
+  stubs: [HeldOut]
+  acceptance: test_held_out_split_is_measured
+  touches: [harness/corpus.lock.json, schemas/corpus-lock.schema.json, harness/run.py, harness/lattice.py, harness/baseline.json,
+            schemas/baseline.schema.json, harness/test_claims.py, docs/README.tmpl.md]
+
+- id: control-agreement
+  title: The cell on a control is an item of the lattice — printing something else there is a misfire
+  status: open
+  round: 7
+  context:
+    - text: The negatives action records what the rules and the cell print for every grammatical control, sentences of no corpus split.
+      pinned_by: negatives
+    - text: The lattice makes an item of the rules on a control and of the cell on a negative and none of the cell on a control, so the
+        control the cell translates differently from the rules (he went home) and the controls it refuses are counted nowhere.
+      pinned_by: check_todo
+    - text: The cell on a control is on the matrix chain as the cell on a corpus sentence is, and with the item in the baseline the
+        gate holds it — the misfire stands in the frontier until the path that makes it is written by hand.
+      hypothesis: true
+  acceptance: test_cell_on_a_control_is_an_item
+  touches: [harness/lattice.py, harness/run.py, harness/facts.py, harness/baseline.json, docs/README.tmpl.md]
+
+- id: frontier-blockers
+  title: Every gap and every refusal names its blocker — the cell's reason, the class of the token the parser stopped on
+  status: open
+  round: 7
+  context:
+    - text: The baseline holds no reason for a sentence the cell or the printing rules refuse, so the frontier holds each kind in one
+        group, and it holds a refusal of the rule parser by where the parser stopped and not by what it stopped on.
+      pinned_by: check_todo
+    - text: Read one by one, the cell's gaps fall under the registers and marks the open items of rounds four and five name, under a
+        folded inner clause — kinds no item names among them — and under a handful of paths; the cell says which when it refuses, and
+        the action that runs it drops the reason.
+      hypothesis: true
+    - text: The class of the token the parser stopped on splits its coarse groups into constructions without a judge — a past
+        participle after be, an -ing form where a noun phrase opens, a determiner of time after the object.
+      hypothesis: true
+  acceptance: test_frontier_names_every_blocker
+  touches: [harness/eval_matrix.py, harness/eval_printer.py, harness/eval_rules.py, run_rules.py, harness/lattice.py, harness/run.py,
+            schemas/baseline.schema.json, harness/baseline.json]
+
+- id: comment-pins
+  title: A pin named in a comment resolves — a static check reads the comments and docstrings of the code
+  status: open
+  round: 7
+  context:
+    - text: A docstring of the tree names as its pin a test that does not exist, and no static check of the harness reads the comments.
+      pinned_by: check_todo
+    - text: Whether a name answers is checkable today — pinned by a test, a check, an action in backticks or a suite, against what
+        the tree holds — and whether a comment that states a claim carries a pin at all stays a matter of review, as CLAUDE.md says.
+      hypothesis: true
+  acceptance: test_comment_pins_resolve
+  touches: [harness/check_comments.py, harness/run.py, rules_ja.py, harness/test_claims.py, CLAUDE.md, docs/README.tmpl.md]
+
+- id: table-references
+  title: Every table row keys on a word the lexicon holds — the references of the integrity file are errors
+  status: open
+  round: 7
+  context:
+    - text: The integrity file declares the references from the verb-class, use, idiom and complement tables to the lexicon at the
+        level of a warning, and rows of those tables key on a word the lexicon does not hold as the part of speech the row needs —
+        rows no sentence can reach.
+      pinned_by: check_todo
+    - text: Each is one of two things — a row for a word no sentence of the corpus uses, which leaves, or a word the lexicon lacks,
+        which it gains — and with none left the level is error, so a later dead row cannot be committed.
+      hypothesis: true
+  acceptance: test_table_rows_are_reachable
+  touches: [schemas/tables/integrity.json, tables/lexicon.tbl, tables/verb_classes.tbl, tables/use.tbl, tables/idioms.tbl,
+            tables/complements.tbl]
+
+- id: verb-phrase-by-hand
+  title: The verb phrase and its objects by hand — the largest family of rules still induced from traces
+  status: open
+  round: 7
+  context:
+    - text: What is still extracted from traces is the start of the sentence, the question paths, the verb phrase, its objects and
+        the end.
+      pinned_by: test_clause_modules_replace_extraction
+    - text: The small cell of the acceptance run was not compiled from `he went home .` and prints for it a verb phrase the rules do
+        not print, and rules induced from traces stand at control points inside verb_phrase.
+      pinned_by: check_todo
+    - text: An induced rule writes what its traces wrote — where the rows that reach a leaf all hold one verb, one tense or one
+        particle, the rule writes it as a constant under a guard that never tested for it, and a sentence the cell was not compiled
+        from that reaches the leaf is given that value.
+      hypothesis: true
+    - text: verb_phrase is a decision over the verb's class, its form and the window — the auxiliaries, the complement the verb takes,
+        the objects in order, the particle its table row gives — written by hand as the predicate module is, and its rules replace
+        every induced row whose control point lies in it.
+      hypothesis: true
+    - text: A hand translation is not proved by equality with the induced diagram, which is the one that is wrong off its traces — it
+        agrees with the induced rules on every row of the traces and with the rule parser on sentences neither was built from.
+      hypothesis: true
+  stubs: [VerbPhraseModule]
+  acceptance: test_verb_phrase_by_hand
+  touches: [parser_matrix.py, predicate_module.py, canon.py, harness/test_claims.py]
+
+- id: sentence-start-by-hand
+  title: The start of the sentence and the question paths by hand
+  status: open
+  round: 7
+  context:
+    - text: Rules induced from traces stand at control points inside pre, after_wh and question_inversion, and the small cell of the
+        acceptance run refuses at its first token a question that opens as no sentence it was compiled from does (did you read a
+        book ?).
+      pinned_by: check_todo
+    - text: The three methods are small machines over the first tokens — which word opens, whether an auxiliary is inverted, where
+        the subject stands — and by hand they decide every opening alike; the tense a question's auxiliary carries is then read from
+        the auxiliary and not written as the constant a trace saw.
+      hypothesis: true
+  stubs: [SentenceStartModule]
+  acceptance: test_sentence_start_by_hand
+  touches: [parser_matrix.py, predicate_module.py, canon.py, harness/test_claims.py]
+
+- id: no-induced-rule
+  title: No rule induced from traces — what the cell does with a sentence does not depend on what it was compiled from
+  status: open
+  round: 7
+  depends_on: [verb-phrase-by-hand, sentence-start-by-hand, sentence-end-by-hand]
+  context:
+    - text: The matrix action counts no misfire on dev and test, the sentences the cell it runs is compiled from.
+      pinned_by: matrix
+    - text: On lines of dev it was not compiled from, the small cell of the acceptance run prints translations the rules do not
+        print; it refuses simple sentences whose path no trace took (he can come, the train arrived), as the committed cell does;
+        and rows of its compiler come from traces.
+      pinned_by: check_todo
+    - text: With every method of the rule parser translated by hand the compiler induces nothing — the rows of the traces are a test
+        of the modules and no longer their source, two cells compiled from different sentences differ in vocabulary alone, and a
+        misfire is a bug in a module that one counter-example pins, out of sample as in it.
+      hypothesis: true
+  acceptance: test_no_rule_is_induced
+  touches: [parser_matrix.py, harness/eval_matrix.py, harness/test_claims.py, docs/README.tmpl.md, CLAUDE.md]
+
+- id: embedded-questions
+  title: Embedded questions — a question word's clause, whether and if, how to V — a frame each
+  status: open
+  round: 7
+  context:
+    - text: An embedded question — the clause of a question word, a clause under whether or if, a question word with an infinitive —
+        is folded into its role as a string, the frame is marked folded, and the cell refuses the sentence the rules translate; a
+        control of the negatives (i wonder what he bought) is among them.
+      pinned_by: check_todo
+    - text: It is a that-clause with another ending — the frame of the verb before it is flushed with a link of the question's kind,
+        the clause is read into the cleared frame with its question word in the slot a direct question uses, and the decoder prints
+        it in plain form with か, かどうか or べきか where と goes.
+      hypothesis: true
+    - text: No open item names this fold — the inner clauses of round four are the coordinated, relative, infinitive, purpose, gerund
+        and control clauses — and among the sentences whose frame is marked folded it is the most frequent kind.
+      hypothesis: true
+  stubs: [EmbeddedQuestion]
+  acceptance: test_embedded_questions_agree
+  touches: [parser_matrix.py, gen_module.py, parser_rules.py]
+
+- id: unnamed-folds
+  title: The folds and registers no item names — a clause after a noun, how about, so … that, make it a rule to
+  status: open
+  round: 7
+  depends_on: [relative-clauses]
+  context:
+    - text: A noun with its infinitive (no obligation to help us), a noun with its that-clause (the fact that …), a suggestion with
+        how about, a result clause after so and an adjective, make it a rule with its infinitive and the clause a perception verb
+        takes (hear someone talking) each hold an inner clause in a folded role or in a register the frame has no slot for, and the
+        cell refuses the sentences.
+      pinned_by: check_todo
+    - text: Each is a mechanism another item builds — the clause after a noun prints as a relative clause does, before the noun, with
+        という after a clause of fact; how about is a fixed template around a clause that ends at の; the result clause is a
+        subordinate frame whose conjunction is read after the adjective; make it a rule and the perception clause are frames linked
+        where the object goes — and none needs one of its own.
+      hypothesis: true
+  acceptance: test_unnamed_folds_agree
+  touches: [parser_matrix.py, gen_module.py, np_module.py]
+
+- id: transducer-total
+  title: Every sentence is translated or refused — no exception that is not a refusal leaves the transducer
+  status: open
+  round: 7
+  context:
+    - text: For sentences whose every word the lexicon holds, translate() raises exceptions that are not refusals — the parser hands
+        generate() a frame it cannot print, a purpose clause whose predicate is a copula (the story appears to be true) or a
+        predicate with no stem for the form asked of it (please let me know about it).
+      pinned_by: check_todo
+    - text: The printer's sweep skips the frames on which generate() raises, and counts them.
+      pinned_by: printer
+    - text: No sentence of dev or test raises one, since the rules action catches a refusal and nothing else.
+      pinned_by: rules
+    - text: generate() refuses with a reason where it cannot print, as the parser does where it cannot read, and the sweep then counts
+        refusals and no crash; behind each crash is a reading the parser should not have taken — an infinitive of be read as a
+        purpose — which becomes a refusal or a reading of its own.
+      hypothesis: true
+  acceptance: test_transducer_is_total
+  touches: [rules_ja.py, parser_rules.py, harness/eval_printer.py, harness/eval_rules.py]
+
+- id: passive-voice
+  title: The passive — a flag of the frame, the verb's passive stem a form of the morphology table
+  status: open
+  round: 7
+  context:
+    - text: The rule parser refuses a past participle after be — by name, or as no predicate of the copula — and the corpus sentences
+        that hold a passive are refused.
+      pinned_by: check_todo
+    - text: On lines the transducer was not written against, the passive is the construction it refuses most often.
+      hypothesis: true
+    - text: Japanese forms it regularly — the stem of the negative with れる or られる, the agent with に or によって, the subject
+        kept — so it is a flag of the frame beside the progressive and the perfect, one more form of the morphology table and one
+        more stage of the predicate in the printing rules; a passive Japanese says otherwise (is made of, was born, was surprised)
+        is a row of the idiom table read before the rule.
+      hypothesis: true
+  acceptance: test_passive_voice_right
+  touches: [parser_rules.py, rules_ja.py, gen_module.py, predicate_module.py, tables/godan.tbl, tables/idioms.tbl]
+  notes: Reopens what item passives (round 2, deferred) records as refused by design; what the transducer refuses out of sample is
+    the reason to.
+
+- id: bare-time-phrases
+  title: A time phrase with no preposition — last month, tomorrow afternoon, every night — read as when
+  status: open
+  round: 7
+  context:
+    - text: The rule parser refuses a noun phrase of time after the object that no preposition introduces (tomorrow afternoon, next
+        winter), and where the verb has no object yet it reads one as the object (he came last month → 最後の月を来た).
+      pinned_by: check_todo
+    - text: The time register already holds the single words (yesterday) and the merged ones (last night); last, next, this, every
+        and all before a noun of time are a closed pattern of the lexical layer that yields the same reading — 先月, 来年の冬,
+        明日の午後, 毎晩, 一日中 — and the parser gains no rule.
+      hypothesis: true
+  acceptance: test_bare_time_phrases_right
+  touches: [rules_ja.py, tables/lexicon.tbl, tables/duration.tbl, parser_rules.py]
+
+- id: sentence-initial-adverbs
+  title: An adverb or a conjunction before the subject with no comma — sometimes, and, but
+  status: open
+  round: 7
+  context:
+    - text: The rule parser refuses a sentence that opens with an adverb of frequency or with and or but and no comma, and reads the
+        same sentence when the adverb follows the subject or the conjunction is left out.
+      pinned_by: check_todo
+    - text: The front register holds an adverb a comma follows; without the comma it takes an adverb that has no other reading,
+        そして and しかし for an opening and and but, and the inversion after never is the question path with the negative written.
+      hypothesis: true
+  acceptance: test_sentence_initial_adverbs_right
+  touches: [parser_rules.py, rules_ja.py, tables/connectives.tbl]
+
+- id: missing-readings
+  title: The reading a sentence needs — a noun the lexicon holds as a verb alone (love, meaning, building)
+  status: open
+  round: 7
+  context:
+    - text: Every token of dev and test has a reading, yet the lexicon gives love, meaning and building the readings of a verb alone,
+        and the rule parser refuses the sentences in which they are nouns — one of them for a possessive without its noun.
+      pinned_by: check_todo
+    - text: These are rows of the lexicon, not grammar, and they are found without reading the corpus again — a refusal where a noun
+        phrase is read, on a token whose every reading is a verb's, which the class of the stopping token shows once the frontier
+        names it.
+      hypothesis: true
+  acceptance: test_missing_readings_right
+  touches: [tables/lexicon.tbl]
+
+- id: possessive-own
+  title: A possessive with own — his own way, a house of our own
+  status: open
+  round: 7
+  context:
+    - text: Own is a determiner of the table, and after a possessive the noun phrase refuses it as a possessive pronoun without its
+        noun — before a noun (your own business) and at the end of an of-phrase (a house of our own).
+      pinned_by: check_todo
+    - text: Own after a possessive is one more slot of the noun-phrase module's determiner sequence, printed 自分の in place of the
+        pronoun where the possessor is the subject, and of one's own is the same slot after the head.
+      hypothesis: true
+  acceptance: test_possessive_own_right
+  touches: [parser_rules.py, np_module.py, tables/determiners.tbl]
+
+- id: subject-case-guard
+  title: The subject-case refusal fires on a pronoun alone — one day, one morning, no one, one thing are read
+  status: open
+  round: 7
+  context:
+    - text: The rule parser refuses an object-form or reflexive pronoun as a subject.
+      pinned_by: test_subject_case_and_agreement
+    - text: One is a row of the pronoun table with the object role, so a sentence that opens with one day or one morning, an
+        imperative whose object is one thing, and a sentence whose subject is no one are refused for the case of a subject.
+      pinned_by: check_todo
+    - text: One before a noun is the numeral the number table holds, no one a pronoun of its own beside nobody, one day and one
+        morning time words of the lexical layer; the refusal of an object pronoun as a subject stays, and the negatives pin it.
+      hypothesis: true
+  acceptance: test_subject_case_guard_spares_one
+  touches: [parser_rules.py, tables/pronouns.tbl, tables/lexicon.tbl]
+
+- id: experiential-perfect
+  title: have been to — 行ったことがある with a count or never, 行ってきたところだ without
+  status: open
+  round: 7
+  context:
+    - text: The rule parser refuses have been to before a noun phrase by name, a form the generator does not print.
+      pinned_by: check_todo
+    - text: It is a predicate kind over 行く, and the frame already holds what tells its two readings apart — with a count of times,
+        ever or never it is the experience (ことがある, ことがない), bare or with just it is a visit just made (行ってきたところだ) —
+        so one branch of the predicate's finishing stage prints each.
+      hypothesis: true
+  acceptance: test_experiential_perfect_right
+  touches: [parser_rules.py, rules_ja.py, gen_module.py, predicate_module.py]
+
 # ---------------------------------------------------------------------------------------------------- round 2, carried over
 - id: matrix-chain-scope
   title: Matrix items only for sentences the rules parse
