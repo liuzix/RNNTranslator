@@ -257,28 +257,54 @@ def test_every_output_is_judged(root):
                if LAT.sentence_level(out, refs[split].get(key), f"{split} {key}", verdicts, ungrammatical) == "UNKNOWN"]
     assert not unknown, f"{len(unknown)} outputs nobody has judged, e.g. {unknown[0]}"
 
-# ---------------------------------------------------------------- round 6: what the verdicts on every output blame
-def none_judged(root, levels, causes):
-    """no output of the baseline carries a verdict of one of these levels that names one of these causes"""
-    outs = baseline(root)["outputs"]["rules"]; live = {f"{split} {key}": out for split in ("dev", "test") for key, out in outs[split].items()}
-    doc = json.load(open(os.path.join(root, "harness", "adjudications.json"), encoding="utf-8"))["sentences"]
-    bad = [a for a in doc if a["verdict"] in levels and a.get("cause") in causes and live.get(a["citation"]) == a.get("output")]
-    assert not bad, f"{len(bad)} outputs judged {' or '.join(levels)} for {', '.join(causes)}, e.g. {bad[0]['citation']} -> {bad[0]['output']}"
+# ---------------------------------------------------------------- round 6: what the outputs judged wrong show
+def none_wrong(root, sentences):
+    """none of these corpus sentences is printed wrong: each is right — the reference, or an output a verdict calls right — or refused.
+    A verdict names no cause, so an item of this round is a diagnosis and these are the sentences that show it; the item closes when the
+    rule or the table row behind each is fixed, or the sentence is refused, never by re-judging"""
+    bad = [(s, level, out) for s, level, out in not_right(root, sentences) if level != "REFUSED"]
+    assert not bad, f"{len(bad)} of {len(sentences)} sentences are printed wrong: " + "; ".join(f"{s} -> {out}" for s, level, out in bad[:4])
 
-def test_no_idiom_read_word_for_word(root): none_judged(root, ("wrong",), ("idiom",))
-def test_no_sense_against_its_argument(root): none_judged(root, ("wrong",), ("sense",))
-def test_no_preposition_against_its_noun(root): none_judged(root, ("wrong",), ("preposition",))
-def test_no_particle_against_its_verb(root): none_judged(root, ("wrong",), ("case",))
-def test_no_giving_verb_against_its_persons(root): none_judged(root, ("wrong",), ("giving",))
-def test_no_form_that_is_not_japanese(root): none_judged(root, ("wrong",), ("morphology",))
-def test_no_modal_or_tense_misread(root): none_judged(root, ("wrong",), ("tense",))
-def test_no_construction_misread(root): none_judged(root, ("wrong",), ("structure",))
-def test_no_count_without_its_counter(root): none_judged(root, ("wrong",), ("quantity",))
-def test_no_dummy_it_printed(root): none_judged(root, ("wrong",), ("it",))
-def test_no_word_dropped(root): none_judged(root, ("wrong",), ("omission",))
-def test_no_negation_lost_or_widened(root): none_judged(root, ("wrong",), ("negation",))
-def test_pronouns_said_once(root): none_judged(root, ("stiff", "wrong"), ("pronoun",))
-def test_no_output_stiff(root): none_judged(root, ("stiff",), tuple(c for c in LAT.CAUSES if c != "pronoun"))
+def test_no_idiom_read_word_for_word(root):
+    none_wrong(root, ["please put on your shoes .", "i got out of the taxi .", "he shook hands with his friend .", "she keeps company with a foreign student .",
+                      "i saw a koala for the first time .", "i met him in tokyo by chance .", "he applied himself to the study of music .", "i wish i could speak english .",
+                      "it took them two years to build the house .", "his opinion is for the birds ."])
+def test_no_sense_against_its_argument(root):
+    none_wrong(root, ["i want to have a cup of coffee .", "i want to see my friends in canada .", "please tell me where the bus stop is .", "she asked him to open the window .",
+                      "i will stay at home .", "you must think of your old parents at home .", "i slept well last night .", "it rained hard last night .", "it 's just a cold .",
+                      "the movie starts .", "the political situation has changed ."])
+def test_no_preposition_against_its_noun(root):
+    none_wrong(root, ["the snow lasted for two days .", "i 'll be here by monday .", "our teacher comes to school by car .", "we will get to tokyo station at noon .",
+                      "my father and i played tennis on sunday .", "i 'll give you a call in the morning .", "i saw a boat above the bridge .", "she is in bed with a cold ."])
+def test_no_particle_against_its_verb(root):
+    none_wrong(root, ["he got on the train .", "i met him on the street by chance .", "i have to oppose this idea .", "he arrived the day she left .", "mary became a typist .",
+                      "if you telephone her again , that 'll be the last straw !", "i 'll let you know in advance .", "she did not marry the man .", "what time do you leave here ?",
+                      "she left home after three days .", "someone is at the door ."])
+def test_no_giving_verb_against_its_persons(root): none_wrong(root, ["please give me this book .", "give me the details of it ."])
+def test_no_form_that_is_not_japanese(root):
+    none_wrong(root, ["it is too expensive for me to buy .", "the student failed to account for the mistake .", "i was absent from the meeting .", "he doesn 't know a lot about japan .",
+                      "he still wants to come .", "the more i get , the more i want .", "you have the same camera as mine .", "choose any dress you like .", "it 's touch and go .",
+                      "unless it rains , i will go , too ."])
+def test_no_modal_or_tense_misread(root):
+    none_wrong(root, ["may i go home now ?", "i would like to go with you .", "shall i cook dinner today ?", "she put down her pen .", "he promised not to tell .",
+                      "i am going to be fourteen .", "she is getting prettier .", "you may be right ."])
+def test_no_construction_misread(root):
+    none_wrong(root, ["my hobby is to read .", "she recollected the first day when she went to school .", "i 'll never forget what you told me .", "how far is it to the station ?",
+                      "how 's the weather there ?", "he engaged to pay the bill as soon as possible .", "you will do exactly as i say .", "he comes to see me nearly every day .",
+                      "a child today would not do that ."])
+def test_no_count_without_its_counter(root):
+    none_wrong(root, ["she has a husband and two daughters .", "i have three tickets for it .", "he slept an hour .", "how many boys are there in this class ?",
+                      "few people know each other well .", "there is little water in the bucket .", "none of the telephones are working ."])
+def test_no_dummy_it_printed(root): none_wrong(root, ["it 's hot today .", "it was sunday yesterday .", "it is a good idea to read this book ."])
+def test_no_word_dropped(root):
+    none_wrong(root, ["he looks tired .", "he wanted to be rich .", "how tall are you ?", "what are you going to do today ?", "where was tony playing then ?",
+                      "thank you very much for the wonderful dinner last night ."])
+def test_no_negation_lost_or_widened(root): none_wrong(root, ["she didn 't need to come .", "he had no hat on .", "i don 't always get up early .", "i do not quite agree with you ."])
+def test_pronouns_said_once(root):
+    none_wrong(root, ["he fell behind in his english class .", "i loved reading when i was a child .", "please show me your bag .", "jane always made out that she was very rich ."])
+def test_wording_is_japanese(root):
+    none_wrong(root, ["they have a ten-year-old son .", "i have some good news for you .", "if you are going to have a party , please count me in .", "don 't break the branches .",
+                      "he sat there with his eyes closed .", "this morning i got up later than usual .", "she broke the cup , too ."])
 
 def test_situation_is_an_input(root):
     """the register is an input and not a choice of the rules: a situation head beside the sentence block has at least the values
@@ -296,11 +322,11 @@ def test_situation_is_an_input(root):
     assert not unlabelled, f"{len(unlabelled)} judged outputs carry no situation, e.g. {unlabelled[0]}"
 
 def test_model_verdicts_audited(root):
-    """a person has given or confirmed at least one verdict in every group of judged outputs — each level, and each cause of a
-    stiff or wrong one — so no group of the frontier rests on the model's reading alone"""
+    """a person has given or confirmed at least one verdict at every level of the verdicts — right, wrong, an ungrammatical input — so
+    no level rests on the model's reading alone"""
     doc = json.load(open(os.path.join(root, "harness", "adjudications.json"), encoding="utf-8"))["sentences"]
-    groups = {(a["verdict"], a.get("cause")) for a in doc}; human = {(a["verdict"], a.get("cause")) for a in doc if a.get("judge") == "human"}
-    assert groups == human, f"{len(groups - human)} of {len(groups)} groups hold no verdict a person gave, e.g. {sorted(groups - human, key=str)[0]}"
+    levels = {a["verdict"] for a in doc}; human = {a["verdict"] for a in doc if a.get("judge") == "human"}
+    assert levels == human, f"{len(levels - human)} of {len(levels)} levels hold no verdict a person gave: {sorted(levels - human)}"
 
 # ---------------------------------------------------------------- round 7: out of sample
 HELD_OUT = ("he went home .", "he can come .", "the train arrived .", "did you read a book ?")     # never among the sentences the small cell is compiled from

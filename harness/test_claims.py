@@ -724,25 +724,28 @@ def _fake_world(tmp, dev_outputs, matrix_outputs, negatives, adjudications=None)
     return corpus, os.path.join(tmp, "src"), results
 
 def test_lattice_order(root):
-    """the item order: WRONG < REFUSED < STIFF < RIGHT, UNKNOWN below RIGHT and incomparable with the rest; the other chains total.
-    A verdict is right, stiff or wrong, a stiff or wrong one names its cause, and the frontier groups the judged outputs by it"""
+    """the item order: WRONG < REFUSED < RIGHT, UNKNOWN below RIGHT and incomparable with the rest; the other chains total.
+    A verdict is right or wrong and names no cause: an output that is faithful but not how it is said is wrong like any other that is
+    not right, and the frontier holds the outputs judged wrong as one group"""
     import importlib.util
     spec = importlib.util.spec_from_file_location("lattice", os.path.join(root, "harness", "lattice.py")); LT = importlib.util.module_from_spec(spec); spec.loader.exec_module(LT)
     assert LT.cmp("sentence", "WRONG", "REFUSED") == "up" and LT.cmp("sentence", "REFUSED", "RIGHT") == "up" and LT.cmp("sentence", "WRONG", "RIGHT") == "up"
     assert LT.cmp("sentence", "RIGHT", "REFUSED") == "down" and LT.cmp("sentence", "RIGHT", "UNKNOWN") == "down"
     assert LT.cmp("sentence", "UNKNOWN", "REFUSED") == "incomparable" and LT.cmp("sentence", "REFUSED", "UNKNOWN") == "incomparable" and LT.cmp("sentence", "UNKNOWN", "WRONG") == "incomparable"
     assert LT.cmp("sentence", "UNKNOWN", "RIGHT") == "up" and LT.cmp("matrix", "GAP", "AGREE") == "up" and LT.cmp("matrix", "AGREE", "MISFIRE") == "down" and LT.cmp("negative", "REFUSED", "ACCEPTED") == "down"
-    # a stiff output: better than a wrong one or a refusal, worse than natural Japanese
-    assert LT.cmp("sentence", "WRONG", "STIFF") == "up" and LT.cmp("sentence", "REFUSED", "STIFF") == "up" and LT.cmp("sentence", "STIFF", "RIGHT") == "up"
-    assert LT.cmp("sentence", "STIFF", "REFUSED") == "down" and LT.cmp("sentence", "RIGHT", "STIFF") == "down" and LT.cmp("sentence", "UNKNOWN", "STIFF") == "incomparable" and LT.cmp("sentence", "STIFF", "UNKNOWN") == "incomparable"
+    # two levels of verdict and no third: nothing ranks between a refusal and a right output, and a verdict of any other name is no level
+    assert {lv for pair in LT.SENTENCE_ORDER for lv in pair} == {"WRONG", "REFUSED", "RIGHT", "UNKNOWN"} and LT.VERDICT_LEVEL == {"right": "RIGHT", "wrong": "WRONG"}
+    assert not hasattr(LT, "CAUSES") and not hasattr(LT, "load_causes")
     V = {"k": {"bad": "wrong", "ok": "right", "so-so": "stiff"}}; U = {"u": "ungrammatical"}
     assert LT.sentence_level("ref", "ref", "k", V, U) == "RIGHT" and LT.sentence_level("", "ref", "k", V, U) == "REFUSED" and LT.sentence_level("bad", "ref", "k", V, U) == "WRONG"
-    assert LT.sentence_level("ok", "ref", "k", V, U) == "RIGHT" and LT.sentence_level("new", "ref", "k", V, U) == "UNKNOWN" and LT.sentence_level("so-so", "ref", "k", V, U) == "STIFF"
-    Lq = {"sentence dev 1: a .": ("sentence", "WRONG", "x"), "sentence dev 2: b .": ("sentence", "STIFF", "y"), "sentence dev 3: c .": ("sentence", "RIGHT", "z")}
-    Fq = LT.frontier(Lq, {}, {"dev 1: a .": {"x": "idiom"}, "dev 2: b .": {"y": "pronoun"}})
-    assert set(Fq) == {"sentence output wrong: idiom", "sentence output stiff: pronoun"}, Fq
+    assert LT.sentence_level("ok", "ref", "k", V, U) == "RIGHT" and LT.sentence_level("new", "ref", "k", V, U) == "UNKNOWN" and LT.sentence_level("so-so", "ref", "k", V, U) == "UNKNOWN"
+    Lq = {"sentence dev 1: a .": ("sentence", "WRONG", "x"), "sentence dev 2: b .": ("sentence", "WRONG", "y"), "sentence dev 3: c .": ("sentence", "RIGHT", "z")}
+    Fq = LT.frontier(Lq, {})
+    assert set(Fq) == {"sentence output wrong"} and len(Fq["sentence output wrong"]) == 2, Fq
     adj = json.load(open(os.path.join(root, "harness", "adjudications.json"), encoding="utf-8"))["sentences"]
-    assert all(("cause" in a) == (a["verdict"] in ("stiff", "wrong")) and a.get("cause", LT.CAUSES[0]) in LT.CAUSES for a in adj) and {a["verdict"] for a in adj} >= {"right", "stiff", "wrong"}
+    assert all("cause" not in a for a in adj) and {a["verdict"] for a in adj} == {"right", "wrong", "input_ungrammatical"}
+    schema = json.load(open(os.path.join(root, "schemas", "adjudications.schema.json"), encoding="utf-8"))["properties"]["sentences"]["items"]["properties"]
+    assert schema["verdict"]["enum"] == ["right", "wrong", "input_ungrammatical"] and "cause" not in schema
     assert LT.sentence_level("", "ref", "u", V, U) == "RIGHT" and LT.sentence_level("anything", "ref", "u", V, U) == "WRONG"
     assert LT.matrix_level("a", "a") == "AGREE" and LT.matrix_level("", "") == "AGREE" and LT.matrix_level("a", "") == "GAP" and LT.matrix_level("", "b") == "MISFIRE" and LT.matrix_level("a", "b") == "MISFIRE"
     assert LT.CHAINS["torch.exact"] == ["DIVERGING", "EXACT"] and LT.TOP["torch.exact"] == "EXACT" and LT.cmp("torch.exact", "EXACT", "DIVERGING") == "down"

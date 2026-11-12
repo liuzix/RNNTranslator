@@ -1,12 +1,11 @@
 {
  "$schema": "../schemas/adjudications.schema.json",
- "description": "Verdicts on the rule transducer's outputs, the judge the lattice needs where the single reference cannot decide (harness/lattice.py). `right`, `stiff` and `wrong` judge one specific output of one corpus sentence: right is natural Japanese that says what the English says; stiff is grammatical and faithful but not how it is said — better than a wrong output or a refusal, worse than natural Japanese; wrong is an output whose meaning is lost or changed, or whose Japanese is ill-formed. Plain against polite does not matter unless the sentence holds a clue that contradicts the form chosen, which is then wrong as an agreement error is; the wrong one of あげる / くれる / もらう is wrong in the same way. A stiff or wrong verdict names its cause, by which the frontier groups them. `input_ungrammatical` marks a corpus line whose English is not standard, so that refusing it is the top of its chain. `judge` says who gave a verdict — a human or the model; the verdicts recorded before the field existed carry none. The hook demands a verdict whenever an unjudged output changes or disappears; each unjudged output shown (old, new or both) gets a verdict, and a verdict is permanent.",
+ "description": "Verdicts on the rule transducer's outputs, the judge the lattice needs where the single reference cannot decide (harness/lattice.py). `right` and `wrong` judge one specific output of one corpus sentence: right is natural Japanese that says what the English says; wrong is anything else — an output whose meaning is lost or changed, whose Japanese is ill-formed, or that is grammatical and faithful but not how it is said. Plain against polite does not matter unless the sentence holds a clue that contradicts the form chosen, which is then wrong as an agreement error is; the wrong one of あげる / くれる / もらう is wrong in the same way. A verdict says that an output is wrong, not why: it names no cause. `input_ungrammatical` marks a corpus line whose English is not standard, so that refusing it is the top of its chain. `judge` says who gave a verdict — a human or the model; the verdicts recorded before the field existed carry none. The hook demands a verdict whenever an unjudged output changes or disappears; each unjudged output shown (old, new or both) gets a verdict, and a verdict is permanent.",
  "sentences": [
   {
    "citation": "test 160: no one is coming .",
    "verdict": "wrong",
    "output": "一つは来ている。",
-   "cause": "negation",
    "reason": "'no one' is the negative quantifier 誰も…ない; 一つ is 'one thing', and the negation is lost. The transducer refuses this sentence since 2026-11-08 ('no one' is a lexical gap)."
   },
   {
@@ -16,17 +15,15 @@
   },
   {
    "citation": "dev 130: bring me a cup of coffee , will you ?",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私に一杯のコーヒーを持ってきてくださいね。",
-   "cause": "literal",
    "reason": "Faithful and grammatical, but 私に一杯のコーヒーを is the English shape; one says コーヒーを一杯持ってきてくださいね.",
    "judge": "model"
   },
   {
    "citation": "dev 131: please show me your bag .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私にあなたのかばんを見せてください。",
-   "cause": "pronoun",
    "reason": "The double-object frame is right; 私に and あなたの are not said (かばんを見せてください).",
    "judge": "model"
   },
@@ -40,42 +37,36 @@
    "citation": "dev 141: he brought me back in his car .",
    "verdict": "wrong",
    "output": "彼は彼の車で私を戻って持ってくた。",
-   "cause": "idiom",
    "reason": "'brought me back' is 'took me home' (送ってくれた / 連れて帰った); 戻って持ってくた is a broken te-form (持ってくる inflects 持ってきて) glued to a literal 'carry back'."
   },
   {
    "citation": "dev 141: he brought me back in his car .",
    "verdict": "wrong",
    "output": "彼は彼の車で私を戻って持ってきた。",
-   "cause": "idiom",
    "reason": "The conjugation is now right (持ってきた) but the reading is still literal: 'brought me back' is 'took me home', not 戻って持ってきた."
   },
   {
    "citation": "dev 209: i can 't bring myself to eat anything .",
    "verdict": "wrong",
    "output": "私は何かを食べるために自分が持ってくられない。",
-   "cause": "idiom",
    "reason": "'bring oneself to V' is the idiom 'cannot make oneself V' (〜する気になれない); the output carries 持ってくる literally and a broken potential 持ってくられない."
   },
   {
    "citation": "dev 209: i can 't bring myself to eat anything .",
    "verdict": "wrong",
    "output": "私は何かを食べるために自分が持ってこられない。",
-   "cause": "idiom",
    "reason": "The potential is now 持ってこられない, but 'bring oneself to V' is still read literally; the idiom is 〜する気になれない."
   },
   {
    "citation": "dev 337: he gave me a piece of advice .",
    "verdict": "wrong",
    "output": "彼は私に忠告の一片をあげた。",
-   "cause": "idiom",
    "reason": "'a piece of advice' is a measure phrase, not 忠告の一片 ('a fragment of the advice'), and 'give advice' is 忠告をする, not あげる."
   },
   {
    "citation": "dev 337: he gave me a piece of advice .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼は私に一つの忠告をした。",
-   "cause": "literal",
    "reason": "Faithful, with 忠告をする and 私に, but 一つの忠告をした is the English shape (忠告してくれた).",
    "judge": "model"
   },
@@ -83,91 +74,78 @@
    "citation": "dev 445: i want to have a cup of coffee .",
    "verdict": "wrong",
    "output": "私はコーヒーのカップを持ちたい。",
-   "cause": "sense",
    "reason": "コーヒーのカップ is 'a coffee cup', not 'a cup of coffee', and 'have (a drink)' is 飲む, not 持つ."
   },
   {
    "citation": "dev 445: i want to have a cup of coffee .",
    "verdict": "wrong",
    "output": "私は一杯のコーヒーを持ちたい。",
-   "cause": "sense",
    "reason": "The measure phrase is right (一杯のコーヒー) but 'have a cup of coffee' is 飲む; 持ちたい means 'want to hold'."
   },
   {
    "citation": "test 196: i 'd like to have a glass of wine .",
    "verdict": "wrong",
    "output": "私はワインのグラスを持ちたかった。",
-   "cause": "sense",
    "reason": "ワインのグラス is 'a wine glass', 'have a glass of wine' is 飲む not 持つ, and 'would like' is a present wish, not the past 〜たかった."
   },
   {
    "citation": "test 196: i 'd like to have a glass of wine .",
    "verdict": "wrong",
    "output": "私は一杯のワインを持ちたかった。",
-   "cause": "sense",
    "reason": "一杯のワイン is right, but 'have (a drink)' is 飲む, and 'would like to' is not the past 〜たかった."
   },
   {
    "citation": "test 414: he is giving an address .",
    "verdict": "wrong",
    "output": "彼は住所にあげている。",
-   "cause": "sense",
    "reason": "'giving an address' is 'making a speech' (演説をしている); 住所 is a postal address and に is the wrong particle for an object."
   },
   {
    "citation": "test 414: he is giving an address .",
    "verdict": "wrong",
    "output": "彼は住所をあげている。",
-   "cause": "sense",
    "reason": "The particle is now を, but 'an address' here is a speech (演説), not 住所."
   },
   {
    "citation": "test 438: you brought it on yourself .",
    "verdict": "wrong",
    "output": "あなたは自分でそれを持ってくた。",
-   "cause": "idiom",
    "reason": "'bring it on oneself' is the idiom 自業自得 / 自分で招いた; the output is a literal 'carried it by yourself' with a broken te-form (持ってくた)."
   },
   {
    "citation": "test 438: you brought it on yourself .",
    "verdict": "wrong",
    "output": "あなたは自分でそれを持ってきた。",
-   "cause": "idiom",
    "reason": "The conjugation is now right (持ってきた) but the idiom 'bring it on oneself' (自分で招いた) is still read literally."
   },
   {
    "citation": "dev 55: is this your first visit here ?",
    "verdict": "wrong",
    "output": "これはここにあなたの最初の訪問ですか。",
-   "cause": "structure",
    "reason": "'your first visit here' is ここへの初めての訪問 (the destination of the visit); ここに…訪問 attaches the place to the copula, and これは for 'is this' is unnatural (the reference drops it)."
   },
   {
    "citation": "dev 55: is this your first visit here ?",
    "verdict": "wrong",
    "output": "これはここであなたの最初の訪問ですか。",
-   "cause": "structure",
    "reason": "Same reading with で: the visit's destination is not a place where the visit happens; ここへの初めての訪問 is needed."
   },
   {
    "citation": "dev 96: i have lived here for a long time .",
    "verdict": "wrong",
    "output": "私は長い時間のためにここに住んだ。",
-   "cause": "preposition",
    "reason": "'for a long time' is the duration 長い間, not the purpose 長い時間のために; and 'have lived' is 住んでいる, not 住んだ."
   },
   {
    "citation": "dev 96: i have lived here for a long time .",
    "verdict": "wrong",
    "output": "私はここに長い時間のために住んだ。",
-   "cause": "preposition",
    "reason": "The place particle is right (ここに住む) but 'for a long time' is still 長い時間のために and the perfect is still 住んだ."
   },
   {
    "citation": "dev 474: please wait here .",
    "verdict": "wrong",
    "output": "ここに待ってください。",
-   "cause": "case",
    "reason": "待つ takes で for the place of waiting (ここで待つ); ここに待つ is ungrammatical."
   },
   {
@@ -178,17 +156,15 @@
   },
   {
    "citation": "test 23: i often go swimming in the river .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私は川で水泳によく行く。",
-   "cause": "literal",
    "reason": "川で with 泳ぎに行く is acceptable; 水泳に行く is correct but not how it is said.",
    "judge": "model"
   },
   {
    "citation": "test 23: i often go swimming in the river .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私は川に水泳によく行く。",
-   "cause": "literal",
    "reason": "川に, the destination, is equally acceptable; 水泳に行く is correct but not how it is said.",
    "judge": "model"
   },
@@ -208,21 +184,18 @@
    "citation": "test 67: i 'll be here by monday .",
    "verdict": "wrong",
    "output": "私は月曜日でここにいる。",
-   "cause": "preposition",
    "reason": "'by Monday' is the deadline 月曜日までに; 月曜日で is wrong."
   },
   {
    "citation": "test 67: i 'll be here by monday .",
    "verdict": "wrong",
    "output": "私は月曜日のそばにここにいる。",
-   "cause": "preposition",
    "reason": "'by Monday' is the deadline 月曜日までに; のそばに is the spatial 'beside'."
   },
   {
    "citation": "test 185: let 's meet here again tomorrow .",
    "verdict": "wrong",
    "output": "明日ここにまた会いましょう。",
-   "cause": "case",
    "reason": "会う takes で for the place of meeting (ここで会う); ここに会う is ungrammatical."
   },
   {
@@ -233,17 +206,15 @@
   },
   {
    "citation": "test 213: we 'll fly there in 50 minutes .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私たちは５０分でそこに飛ぶ。",
-   "cause": "literal",
    "reason": "そこに飛ぶ with ５０分で is correct Japanese, but literal: the reference says 着く.",
    "judge": "model"
   },
   {
    "citation": "test 213: we 'll fly there in 50 minutes .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私たちはそこに５０分で飛ぶ。",
-   "cause": "literal",
    "reason": "The same with the place first: correct, but literal.",
    "judge": "model"
   },
@@ -251,28 +222,24 @@
    "citation": "test 216: we should be there by noon .",
    "verdict": "wrong",
    "output": "私たちは正午でそこにいる。",
-   "cause": "preposition",
    "reason": "'by noon' is the deadline 正午までに; 正午で is wrong, and 'should' is lost."
   },
   {
    "citation": "test 216: we should be there by noon .",
    "verdict": "wrong",
    "output": "私たちは正午のそばにそこにいる。",
-   "cause": "preposition",
    "reason": "'by noon' is the deadline 正午までに; のそばに is the spatial 'beside', and 'should' is lost."
   },
   {
    "citation": "test 244: the road divides here into two .",
    "verdict": "wrong",
    "output": "道路は２にここに分かれる。",
-   "cause": "case",
    "reason": "分かれる takes で for the place where the road divides; ここに is wrong and the order 二つにここに is garbled."
   },
   {
    "citation": "test 244: the road divides here into two .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "道路はここで２に分かれる。",
-   "cause": "quantity",
    "reason": "ここで分かれる is right; ２に for 'into two' lacks the counter (二つに) but is understood.",
    "judge": "model"
   },
@@ -280,35 +247,30 @@
    "citation": "test 252: he came back to japan for the first time in eight years .",
    "verdict": "wrong",
    "output": "彼は日本に最初の時間のために８年で戻った。",
-   "cause": "idiom",
    "reason": "'for the first time in eight years' is the idiom ８年ぶりに; 最初の時間のために is a literal misreading."
   },
   {
    "citation": "test 252: he came back to japan for the first time in eight years .",
    "verdict": "wrong",
    "output": "彼は日本に最初の時間のために８年間で戻った。",
-   "cause": "idiom",
    "reason": "The same misreading of 'for the first time in eight years' (８年ぶりに), now with ８年間で."
   },
   {
    "citation": "test 258: what time do you leave here ?",
    "verdict": "wrong",
    "output": "あなたは何時にここに出ますか。",
-   "cause": "case",
    "reason": "'leave here' is ここを出る (the place left takes を); ここに出る is wrong."
   },
   {
    "citation": "test 258: what time do you leave here ?",
    "verdict": "wrong",
    "output": "あなたは何時にここで出ますか。",
-   "cause": "case",
    "reason": "'leave here' is ここを出る; ここで出る is wrong."
   },
   {
    "citation": "test 300: his father eats there twice a week .",
    "verdict": "wrong",
    "output": "彼の父はそこに週に二回食べる。",
-   "cause": "case",
    "reason": "食べる takes で for the place of eating (そこで食べる); そこに食べる is ungrammatical."
   },
   {
@@ -327,28 +289,24 @@
    "citation": "test 201: i don 't care too much for hot food .",
    "verdict": "wrong",
    "output": "私は暑い食べ物のためにもたくさん気にしない。",
-   "cause": "idiom",
    "reason": "'care for' is 'like' (好む), 'hot food' here is 辛い食べ物, 'too much' is not もたくさん, and のために misreads 'for'."
   },
   {
    "citation": "test 201: i don 't care too much for hot food .",
    "verdict": "wrong",
    "output": "私は暑い食べ物のためにあまりにたくさん気にしない。",
-   "cause": "idiom",
    "reason": "Same misreadings ('care for', 'hot', 'for'); あまりにたくさん for 'too much' does not rescue it."
   },
   {
    "citation": "test 431: don 't eat too much .",
    "verdict": "wrong",
    "output": "もたくさん食べないでください。",
-   "cause": "quantity",
    "reason": "'eat too much' is 食べすぎる (食べすぎないでください); もたくさん reads 'too' as 'also'."
   },
   {
    "citation": "test 431: don 't eat too much .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "あまりにたくさん食べないでください。",
-   "cause": "quantity",
    "reason": "'eat too much' is 食べすぎる; あまりにたくさん食べない is understood and grammatical, but not how the excess is said.",
    "judge": "model"
   },
@@ -356,28 +314,24 @@
    "citation": "dev 195: how many boys are there in this class ?",
    "verdict": "wrong",
    "output": "この授業に少年たちはいくついますか。",
-   "cause": "quantity",
    "reason": "People are counted with 何人, not いくつ; 少年たち for 'boys' under a count is wrong; and 'class' here is the group (クラス), not the lesson."
   },
   {
    "citation": "dev 195: how many boys are there in this class ?",
    "verdict": "wrong",
    "output": "このクラスに少年たちはいくついますか。",
-   "cause": "quantity",
    "reason": "クラス is right now, but people are counted with 何人 (何人の男の子がいますか), not いくつ with 少年たち."
   },
   {
    "citation": "dev 273: he wanted to absent himself from the class .",
    "verdict": "wrong",
    "output": "彼は授業から自分を欠席したかった。",
-   "cause": "idiom",
    "reason": "'absent oneself from the class' is 授業を休む; 授業から自分を欠席する is a literal rendering with a wrong valency."
   },
   {
    "citation": "dev 273: he wanted to absent himself from the class .",
    "verdict": "wrong",
    "output": "彼はクラスから自分を欠席したかった。",
-   "cause": "idiom",
    "reason": "Still the literal 自分を欠席する; 'absent oneself from the class' is 授業を休む (here the lesson, the one reading of 'class' the lexicon no longer has)."
   },
   {
@@ -388,17 +342,15 @@
   },
   {
    "citation": "test 251: he fell behind in his english class .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼は彼の英語の授業で遅れた。",
-   "cause": "pronoun",
    "reason": "英語の授業で遅れた is acceptable (遅れをとった is the idiom); 彼は彼の repeats the pronoun.",
    "judge": "model"
   },
   {
    "citation": "test 251: he fell behind in his english class .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼は彼の英語のクラスで遅れた。",
-   "cause": "pronoun",
    "reason": "英語のクラス is also current; 彼は彼の repeats the pronoun.",
    "judge": "model"
   },
@@ -412,14 +364,12 @@
    "citation": "dev 193: i 'll never do this again .",
    "verdict": "wrong",
    "output": "私はこれを決してまたする。",
-   "cause": "negation",
    "reason": "'never' lost its negation: 決してまたする is affirmative."
   },
   {
    "citation": "dev 193: i 'll never do this again .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私はこれを決してまたしない。",
-   "cause": "literal",
    "reason": "決して〜しない with また is correct, but the set form is 二度としない.",
    "judge": "model"
   },
@@ -427,21 +377,18 @@
    "citation": "dev 449: a child today would not do that .",
    "verdict": "wrong",
    "output": "今日子供はそれをしない。",
-   "cause": "structure",
    "reason": "'a child today' is 今日の子供 / いまどきの子供, not the time adverb 今日; and 'would' (conjecture) is lost."
   },
   {
    "citation": "dev 449: a child today would not do that .",
    "verdict": "wrong",
    "output": "今日子供はそれをしないだろう。",
-   "cause": "structure",
    "reason": "だろう is right for 'would', but 'a child today' is still read as the time adverb 今日."
   },
   {
    "citation": "dev 484: he never breaks his promise .",
    "verdict": "wrong",
    "output": "彼は約束を決して破る。",
-   "cause": "negation",
    "reason": "'never' lost its negation: 決して破る is affirmative."
   },
   {
@@ -454,56 +401,48 @@
    "citation": "dev 59: he has been to london three times .",
    "verdict": "wrong",
    "output": "彼はロンドンに３回いた。",
-   "cause": "tense",
    "reason": "'has been to' is the experiential 行ったことがある; ロンドンにいた is 'was in London'."
   },
   {
    "citation": "test 260: my father boasts of the fact that he has never had a traffic accident .",
    "verdict": "wrong",
    "output": "私の父は彼が交通の事故に決して遭ったという事実を自慢する。",
-   "cause": "negation",
    "reason": "'never' lost its negation, and 'has never had' is 一度も遭ったことがない."
   },
   {
    "citation": "test 260: my father boasts of the fact that he has never had a traffic accident .",
    "verdict": "wrong",
    "output": "私の父は彼が交通の事故に決して遭っていなかったという事実を自慢する。",
-   "cause": "tense",
    "reason": "The negation is back but the tense is wrong: 遭っていなかった is a past perfect; the present perfect of experience is 遭ったことがない."
   },
   {
    "citation": "test 351: i 'll never forget what you told me .",
    "verdict": "wrong",
    "output": "私はあなたが私に何を話したか決して忘れる。",
-   "cause": "negation",
    "reason": "'never' lost its negation, and 'what you told me' is the free relative 言ったこと, not the question 何を話したか."
   },
   {
    "citation": "test 351: i 'll never forget what you told me .",
    "verdict": "wrong",
    "output": "私はあなたが私に何を話したか決して忘れない。",
-   "cause": "structure",
    "reason": "The negation is back, but 'what you told me' is still read as an indirect question (何を話したか) instead of 言ったこと."
   },
   {
    "citation": "test 355: it would rain just when i wanted to go out .",
    "verdict": "wrong",
    "output": "私が出かけたかったときちょうど雨が降る。",
-   "cause": "tense",
    "reason": "Narrative 'would rain' is a past habitual/past event (雨が降った / 降ったものだ); the present 降る is wrong."
   },
   {
    "citation": "test 355: it would rain just when i wanted to go out .",
    "verdict": "wrong",
    "output": "私が出かけたかったときちょうど雨が降るだろう。",
-   "cause": "tense",
    "reason": "だろう reads 'would' as a conjecture; here it is the narrative past (雨が降った)."
   },
   {
    "citation": "test 483: i have been to the station .",
    "verdict": "wrong",
    "output": "私は駅にいた。",
-   "cause": "tense",
    "reason": "'have been to the station' is 駅に行ってきた / 行ったことがある; 駅にいた is 'was at the station'."
   },
   {
@@ -520,9 +459,8 @@
   },
   {
    "citation": "dev 157: i will make you happy .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私はあなたを嬉しくさせる。",
-   "cause": "literal",
    "reason": "あなたを嬉しくさせる is correct, but the idiom is 幸せにする.",
    "judge": "model"
   },
@@ -536,7 +474,6 @@
    "citation": "dev 114: they haven 't come back home yet .",
    "verdict": "wrong",
    "output": "彼らは家にまだ戻っていなかった。",
-   "cause": "tense",
    "reason": "A present perfect negative (haven't come back yet) is まだ戻っていない; the past ていなかった is wrong."
   },
   {
@@ -549,7 +486,6 @@
    "citation": "dev 271: mother has not cooked dinner yet .",
    "verdict": "wrong",
    "output": "母は夕食をまだ料理していなかった。",
-   "cause": "tense",
    "reason": "A present perfect negative is まだ〜していない; the past ていなかった is wrong."
   },
   {
@@ -562,14 +498,12 @@
    "citation": "test 260: my father boasts of the fact that he has never had a traffic accident .",
    "verdict": "wrong",
    "output": "私の父は彼が交通の事故に決して遭っていないという事実を自慢する。",
-   "cause": "tense",
    "reason": "The tense is right now, but 'traffic accident' is the compound 交通事故 (not 交通の事故) and 'has never had' is the experiential 一度も遭ったことがない."
   },
   {
    "citation": "dev 2: he lived a hard life .",
    "verdict": "wrong",
    "output": "彼は難しい人生を住んでいた。",
-   "cause": "sense",
    "reason": "'live a life' is 人生を送る; 住む is to reside, and a hard life is つらい, not 難しい.",
    "judge": "model"
   },
@@ -577,7 +511,6 @@
    "citation": "dev 4: she wrote to me to come at once .",
    "verdict": "wrong",
    "output": "彼女はすぐに来るために私に書いた。",
-   "cause": "structure",
    "reason": "'wrote to me to come' asks me to come (来るようにと書いた); 来るために makes it her own purpose.",
    "judge": "model"
   },
@@ -590,17 +523,15 @@
   },
   {
    "citation": "dev 6: is there any hope of his success ?",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼の成功の希望がありますか。",
-   "cause": "literal",
    "reason": "Faithful, but 'hope of success' is 成功の見込み; 成功の希望 is not the set wording.",
    "judge": "model"
   },
   {
    "citation": "dev 7: i 'll pick him up at 5 .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私は５時に彼を拾う。",
-   "cause": "literal",
    "reason": "彼を拾う is understood for picking someone up, but 迎えに行く is how it is said.",
    "judge": "model"
   },
@@ -608,7 +539,6 @@
    "citation": "dev 8: it 's so lovely a day .",
    "verdict": "wrong",
    "output": "それは一日とても素敵だ。",
-   "cause": "structure",
    "reason": "'so lovely a day' is 'such a lovely day'; the output says 'it is lovely all day', with a spurious それ.",
    "judge": "model"
   },
@@ -616,7 +546,6 @@
    "citation": "dev 9: you 've just been down in the dumps .",
    "verdict": "wrong",
    "output": "あなたは落ち込みでちょうど下にいた。",
-   "cause": "idiom",
    "reason": "'down in the dumps' is 落ち込んでいる; 落ち込みで…下にいた reads it word for word.",
    "judge": "model"
   },
@@ -629,9 +558,8 @@
   },
   {
    "citation": "dev 14: you can 't have lost your coat in the house .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "あなたは家でコートを失ったはずがない。",
-   "cause": "literal",
    "reason": "Meaning kept; for mislaying a coat one says なくした, 失った is bookish.",
    "judge": "model"
   },
@@ -660,7 +588,6 @@
    "citation": "dev 18: i like french food very much .",
    "verdict": "wrong",
    "output": "私はフランス語の食べ物がとてもたくさん好きだ。",
-   "cause": "sense",
    "reason": "'French food' is フランス料理; フランス語 is the language, and とてもたくさん好き is not a form of 'like very much'.",
    "judge": "model"
   },
@@ -668,7 +595,6 @@
    "citation": "dev 20: how 's the weather there ?",
    "verdict": "wrong",
    "output": "天気はそこにありますか。",
-   "cause": "structure",
    "reason": "'How is the weather' — the question word is lost; the output asks whether the weather is there.",
    "judge": "model"
   },
@@ -676,7 +602,6 @@
    "citation": "dev 24: i couldn 't get him on the phone .",
    "verdict": "wrong",
    "output": "私は電話に彼が得られなかった。",
-   "cause": "idiom",
    "reason": "'get him on the phone' is 電話で連絡がつく; 電話に彼が得られない is word for word.",
    "judge": "model"
   },
@@ -684,15 +609,13 @@
    "citation": "dev 27: what time does the shuttle bus leave for the airport ?",
    "verdict": "wrong",
    "output": "シャトルのバスは何時に空港のために出ますか。",
-   "cause": "preposition",
    "reason": "'leave for the airport' is 空港へ / 空港に向けて; のために is purpose or benefit.",
    "judge": "model"
   },
   {
    "citation": "dev 28: i have some good news for you .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私はあなたのために良いニュースを持っている。",
-   "cause": "literal",
    "reason": "Understood, but good news is あなたに良い知らせがある; ニュースを持っている is the English wording.",
    "judge": "model"
   },
@@ -700,7 +623,6 @@
    "citation": "dev 29: she wants to keep a cat .",
    "verdict": "wrong",
    "output": "彼女は猫を保ちたい。",
-   "cause": "sense",
    "reason": "To keep a cat is 飼う; 保つ is to maintain.",
    "judge": "model"
   },
@@ -708,7 +630,6 @@
    "citation": "dev 30: the hill is bare of trees .",
    "verdict": "wrong",
    "output": "丘は木の裸だ。",
-   "cause": "idiom",
    "reason": "'bare of trees' is 木がない; 木の裸だ is word for word and means nothing.",
    "judge": "model"
   },
@@ -716,7 +637,6 @@
    "citation": "dev 31: it was sunday yesterday .",
    "verdict": "wrong",
    "output": "昨日それは日曜日だった。",
-   "cause": "it",
    "reason": "The date has no subject in Japanese (昨日は日曜日だった); それは points at something.",
    "judge": "model"
   },
@@ -729,9 +649,8 @@
   },
   {
    "citation": "dev 34: i am tired from a long walk .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私は長い散歩から疲れている。",
-   "cause": "preposition",
    "reason": "Understood, but the cause of tiredness takes で (長い散歩で疲れている), not から.",
    "judge": "model"
   },
@@ -739,7 +658,6 @@
    "citation": "dev 35: it is a good idea to read this book .",
    "verdict": "wrong",
    "output": "それはこの本を読むのには良い考えだ。",
-   "cause": "it",
    "reason": "Extraposed 'it': この本を読むのは良い考えだ; それは…読むのには says something else is a good idea for reading it.",
    "judge": "model"
   },
@@ -747,15 +665,13 @@
    "citation": "dev 37: i 'll give you a call in the morning .",
    "verdict": "wrong",
    "output": "私は朝であなたに電話をかける。",
-   "cause": "preposition",
    "reason": "'in the morning' is 朝に; 朝で is not a time expression.",
    "judge": "model"
   },
   {
    "citation": "dev 38: wash your hands before meals .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "食事の前にあなたの手を洗ってください。",
-   "cause": "pronoun",
    "reason": "Natural but for あなたの手: Japanese says 手を洗ってください.",
    "judge": "model"
   },
@@ -763,7 +679,6 @@
    "citation": "dev 39: tell me about your program for the future .",
    "verdict": "wrong",
    "output": "あなたの番組について未来のために私に話してください。",
-   "cause": "sense",
    "reason": "'program for the future' is 将来の計画; 番組 is a broadcast, and 'for the future' is detached from it.",
    "judge": "model"
   },
@@ -771,7 +686,6 @@
    "citation": "dev 40: he applied himself to the study of music .",
    "verdict": "wrong",
    "output": "彼は音楽の研究に自分を当てはまった。",
-   "cause": "idiom",
    "reason": "'applied himself to' is 専念した; 自分を当てはまった is word for word and ill-formed.",
    "judge": "model"
   },
@@ -779,15 +693,13 @@
    "citation": "dev 41: i lay down to rest .",
    "verdict": "wrong",
    "output": "私は休息に下に横になった。",
-   "cause": "structure",
    "reason": "'lay down to rest': the purpose infinitive is read as a noun and 'down' as 下に (休むために横になった).",
    "judge": "model"
   },
   {
    "citation": "dev 42: where is the information counter ?",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "情報のカウンターはどこですか。",
-   "cause": "literal",
    "reason": "Understood, but the set word is 案内所; 情報のカウンター is a calque.",
    "judge": "model"
   },
@@ -802,7 +714,6 @@
    "citation": "dev 48: please give me this book .",
    "verdict": "wrong",
    "output": "私にこの本をあげてください。",
-   "cause": "giving",
    "reason": "A gift to the speaker is ください / くれる; あげてください sends the book away from me.",
    "judge": "model"
   },
@@ -810,7 +721,6 @@
    "citation": "dev 49: i 'm afraid she will fail .",
    "verdict": "wrong",
    "output": "私は彼女が失敗すると怖い。",
-   "cause": "idiom",
    "reason": "'I'm afraid (that) S' is 〜ではないかと思う; と怖い is not Japanese and makes it fear.",
    "judge": "model"
   },
@@ -818,7 +728,6 @@
    "citation": "dev 51: the day will come someday when the business will succeed .",
    "verdict": "wrong",
    "output": "仕事が成功するときいつか日は来る。",
-   "cause": "structure",
    "reason": "'the day when the business will succeed' is a relative clause; the output makes it a time clause, 'when it succeeds, the day will come'.",
    "judge": "model"
   },
@@ -826,7 +735,6 @@
    "citation": "dev 53: he spends a great deal of money on books .",
    "verdict": "wrong",
    "output": "彼は本でお金の素晴らしい取引を使う。",
-   "cause": "idiom",
    "reason": "'a great deal of money' is たくさんのお金; 素晴らしい取引 is 'a wonderful deal'.",
    "judge": "model"
   },
@@ -846,9 +754,8 @@
   },
   {
    "citation": "dev 62: i am pleased at your success .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私はあなたの成功で喜んでいる。",
-   "cause": "preposition",
    "reason": "Faithful, but one is pleased at something with を (成功を喜んでいる); 成功で is awkward.",
    "judge": "model"
   },
@@ -856,7 +763,6 @@
    "citation": "dev 65: he will be back in a couple of days .",
    "verdict": "wrong",
    "output": "彼は日の夫婦で戻っている。",
-   "cause": "idiom",
    "reason": "'a couple of days' is ２、３日; 日の夫婦 is 'a married couple of days'.",
    "judge": "model"
   },
@@ -864,7 +770,6 @@
    "citation": "dev 66: they are very thick with our family .",
    "verdict": "wrong",
    "output": "彼らは私たちの家族ととても厚い。",
-   "cause": "sense",
    "reason": "'thick with' is 親しい; 厚い is physical thickness.",
    "judge": "model"
   },
@@ -872,15 +777,13 @@
    "citation": "dev 67: how can you break the news to her ?",
    "verdict": "wrong",
    "output": "あなたはどうやって彼女にニュースが壊せますか。",
-   "cause": "idiom",
    "reason": "'break the news' is 知らせる / 打ち明ける; ニュースが壊せます breaks it physically.",
    "judge": "model"
   },
   {
    "citation": "dev 68: don 't run so fast .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "とても速く走らないでください。",
-   "cause": "sense",
    "reason": "Understood, but 'so fast' is そんなに速く; とても with a prohibition is not how it is said.",
    "judge": "model"
   },
@@ -888,7 +791,6 @@
    "citation": "dev 70: will you tell me how to play the guitar ?",
    "verdict": "wrong",
    "output": "あなたは私にどうやってギターを弾くべきか話しますか。",
-   "cause": "sense",
    "reason": "'tell me how' is 教える, and 'will you' is a request (教えてくれませんか); 話しますか asks whether you will speak.",
    "judge": "model"
   },
@@ -896,7 +798,6 @@
    "citation": "dev 71: i can 't leave work until five .",
    "verdict": "wrong",
    "output": "私は５時まで仕事が出られない。",
-   "cause": "case",
    "reason": "仕事が出られない has the wrong particle and verb: 仕事を離れられない.",
    "judge": "model"
   },
@@ -904,7 +805,6 @@
    "citation": "dev 74: the important thing is to call the police at once .",
    "verdict": "wrong",
    "output": "大切なことは警察をすぐに呼ぶことになっている。",
-   "cause": "structure",
    "reason": "'the thing is to call' is a copula with an infinitive (呼ぶことだ); ことになっている makes it an arrangement.",
    "judge": "model"
   },
@@ -912,7 +812,6 @@
    "citation": "dev 79: he looks tired .",
    "verdict": "wrong",
    "output": "彼は疲れている。",
-   "cause": "omission",
    "reason": "'looks' is dropped: 疲れているようだ; the output asserts that he is tired.",
    "judge": "model"
   },
@@ -920,7 +819,6 @@
    "citation": "dev 80: your behavior is too extraordinary .",
    "verdict": "wrong",
    "output": "あなたの行動はすぎ並外れた。",
-   "cause": "morphology",
    "reason": "すぎ並外れた is not a form; 'too extraordinary' is 並外れすぎている.",
    "judge": "model"
   },
@@ -928,7 +826,6 @@
    "citation": "dev 82: do you take me for a fool ?",
    "verdict": "wrong",
    "output": "あなたはばかのために私を取りますか。",
-   "cause": "idiom",
    "reason": "'take me for a fool' is 私をばかだと思う; ばかのために私を取る is word for word.",
    "judge": "model"
   },
@@ -936,7 +833,6 @@
    "citation": "dev 83: i 'm sure she will come .",
    "verdict": "wrong",
    "output": "私は彼女が来ると確かだ。",
-   "cause": "idiom",
    "reason": "'I am sure (that) S' is きっと〜と思う / 確信している; 〜と確かだ is not a Japanese construction.",
    "judge": "model"
   },
@@ -944,7 +840,6 @@
    "citation": "dev 84: he 's sympathetic to our plan .",
    "verdict": "wrong",
    "output": "彼は私たちの計画に同情的だ。",
-   "cause": "sense",
    "reason": "'sympathetic to our plan' is 好意的; 同情的 is pity.",
    "judge": "model"
   },
@@ -952,7 +847,6 @@
    "citation": "dev 88: i just went into debt .",
    "verdict": "wrong",
    "output": "私は借金にちょうど行った。",
-   "cause": "idiom",
    "reason": "'went into debt' is 借金をした; 借金に行った goes somewhere.",
    "judge": "model"
   },
@@ -967,7 +861,6 @@
    "citation": "dev 90: he arrived the day she left .",
    "verdict": "wrong",
    "output": "彼は彼女が出た日を着いた。",
-   "cause": "case",
    "reason": "'the day she left' is a time (彼女が出た日に着いた); 日を着いた makes the day an object.",
    "judge": "model"
   },
@@ -975,15 +868,13 @@
    "citation": "dev 91: his name has slipped my mind .",
    "verdict": "wrong",
    "output": "彼の名前は私の心を滑った。",
-   "cause": "idiom",
    "reason": "'slipped my mind' is 思い出せない / 忘れた; 心を滑った is word for word.",
    "judge": "model"
   },
   {
    "citation": "dev 92: tears filled her eyes .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "涙は彼女の目を満たした。",
-   "cause": "literal",
    "reason": "Understood, but tears 目にあふれる; 目を満たした is the English wording.",
    "judge": "model"
   },
@@ -991,7 +882,6 @@
    "citation": "dev 93: he is too ready to speak .",
    "verdict": "wrong",
    "output": "彼は用意ができていすぎて話せない。",
-   "cause": "structure",
    "reason": "'too ready to speak' is 'over-eager to speak'; the output reads too … to as 'so ready that he cannot speak'.",
    "judge": "model"
   },
@@ -999,7 +889,6 @@
    "citation": "dev 97: the student failed to account for the mistake .",
    "verdict": "wrong",
    "output": "学生は間違いを説明するのに失敗すた。",
-   "cause": "morphology",
    "reason": "失敗すた is not a form (失敗した), and 'failed to account for' is 説明できなかった.",
    "judge": "model"
   },
@@ -1007,7 +896,6 @@
    "citation": "dev 98: he wanted to be rich .",
    "verdict": "wrong",
    "output": "彼は金持ちだ。",
-   "cause": "omission",
    "reason": "'wanted to be' is dropped: 金持ちになりたかった; the output says he is rich.",
    "judge": "model"
   },
@@ -1015,15 +903,13 @@
    "citation": "dev 103: i am thinking of going to the mountains .",
    "verdict": "wrong",
    "output": "私は山に行くのを思いついている。",
-   "cause": "sense",
    "reason": "'thinking of going' is 行こうと思っている; 思いつく is to hit upon an idea.",
    "judge": "model"
   },
   {
    "citation": "dev 104: i loved reading when i was a child .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私が子供だったとき私は読むのが好きだった。",
-   "cause": "pronoun",
    "reason": "Faithful; the repeated 私が … 私は is not how it is said (子供のころ読書が好きだった).",
    "judge": "model"
   },
@@ -1038,7 +924,6 @@
    "citation": "dev 108: he was burning to go home .",
    "verdict": "wrong",
    "output": "彼は帰って燃えていた。",
-   "cause": "idiom",
    "reason": "'burning to go home' is 帰りたくてたまらない; 帰って燃えていた burns literally.",
    "judge": "model"
   },
@@ -1053,23 +938,20 @@
    "citation": "dev 112: he compensated me for the accident with money .",
    "verdict": "wrong",
    "output": "彼は事故のためにお金で私を補償した。",
-   "cause": "case",
    "reason": "One compensates a person with に and the damage with を (事故の補償をした); 私を補償した and 事故のために are both off.",
    "judge": "model"
   },
   {
    "citation": "dev 113: the doctor advised me to give up smoking .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "医者は私に喫煙を諦めるように忠告した。",
-   "cause": "sense",
    "reason": "Understood, but giving up smoking is 喫煙をやめる; 諦める is to abandon a hope.",
    "judge": "model"
   },
   {
    "citation": "dev 116: i don 't smoke .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私は吸わない。",
-   "cause": "omission",
    "reason": "Understood in context, but Japanese names what is smoked: タバコは吸わない.",
    "judge": "model"
   },
@@ -1077,7 +959,6 @@
    "citation": "dev 119: he rescued the little girl at the cost of his life .",
    "verdict": "wrong",
    "output": "彼は彼の人生の費用で小さい少女を救った。",
-   "cause": "idiom",
    "reason": "'at the cost of his life' is 命を犠牲にして; 人生の費用で is 'with the expenses of his life'.",
    "judge": "model"
   },
@@ -1085,7 +966,6 @@
    "citation": "dev 121: my father has been dead for ten years .",
    "verdict": "wrong",
    "output": "私の父は１０年のために死んでいた。",
-   "cause": "preposition",
    "reason": "'for ten years' is １０年 / １０年前に; のために is purpose, and 死んでいた misses 'has been dead'.",
    "judge": "model"
   },
@@ -1093,15 +973,13 @@
    "citation": "dev 122: i don 't always get up early .",
    "verdict": "wrong",
    "output": "私はいつも早く起きない。",
-   "cause": "negation",
    "reason": "'not always' is partial (いつも早く起きるわけではない); いつも…起きない negates every day.",
    "judge": "model"
   },
   {
    "citation": "dev 124: he is much older than ken .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼はケンよりたくさん年上だ。",
-   "cause": "sense",
    "reason": "Understood, but 'much older' is ずっと年上; たくさん counts things.",
    "judge": "model"
   },
@@ -1109,7 +987,6 @@
    "citation": "dev 125: it looks like snow .",
    "verdict": "wrong",
    "output": "それは雪のように見る。",
-   "cause": "idiom",
    "reason": "'It looks like snow' is 雪になりそうだ; それは雪のように見る has a spurious subject and 見る for 'look'.",
    "judge": "model"
   },
@@ -1117,7 +994,6 @@
    "citation": "dev 126: i had a call from her for the first time in a long time .",
    "verdict": "wrong",
    "output": "私は彼女から最初の時間のために長い時間で電話を持っていた。",
-   "cause": "idiom",
    "reason": "'for the first time in a long time' is 久しぶりに; the output strings the words together, and a call is 電話があった.",
    "judge": "model"
   },
@@ -1146,7 +1022,6 @@
    "citation": "dev 134: it 's about time i was going home .",
    "verdict": "wrong",
    "output": "それは私が帰っていた時間についている。",
-   "cause": "idiom",
    "reason": "'It's about time I was going home' is そろそろ帰る時間だ; the output is word for word.",
    "judge": "model"
   },
@@ -1154,7 +1029,6 @@
    "citation": "dev 136: i have given myself to music .",
    "verdict": "wrong",
    "output": "私は音楽に自分をあげた。",
-   "cause": "idiom",
    "reason": "'given myself to music' is 音楽に打ち込んだ; 自分をあげた hands oneself over as a gift.",
    "judge": "model"
   },
@@ -1176,7 +1050,6 @@
    "citation": "dev 143: i was watching tv at this time yesterday .",
    "verdict": "wrong",
    "output": "昨日私はこの時間でテレビを見ていた。",
-   "cause": "preposition",
    "reason": "'at this time yesterday' is 昨日の今ごろ; この時間で is not a time expression.",
    "judge": "model"
   },
@@ -1189,9 +1062,8 @@
   },
   {
    "citation": "dev 145: i usually went to the movies on sunday .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私は映画に日曜日にたいてい行った。",
-   "cause": "order",
    "reason": "Faithful, but the order is 日曜日にはたいてい映画に行った.",
    "judge": "model"
   },
@@ -1206,7 +1078,6 @@
    "citation": "dev 149: what would you like for dessert ?",
    "verdict": "wrong",
    "output": "あなたはデザートのために何を好きですか。",
-   "cause": "idiom",
    "reason": "'What would you like' is 何がよろしいですか / 何にしますか; 何を好きですか asks about taste, and のために is purpose.",
    "judge": "model"
   },
@@ -1214,7 +1085,6 @@
    "citation": "dev 151: how far is it to the station ?",
    "verdict": "wrong",
    "output": "それは駅にいますか。",
-   "cause": "structure",
    "reason": "'How far is it' — the question is lost; the output asks whether it is at the station.",
    "judge": "model"
   },
@@ -1229,7 +1099,6 @@
    "citation": "dev 153: i would like to see you again some day .",
    "verdict": "wrong",
    "output": "私はあなたをまた数日見たかった。",
-   "cause": "sense",
    "reason": "'some day' is いつか, not 数日; 'would like to see' is 会いたい, and the past 見たかった is wrong.",
    "judge": "model"
   },
@@ -1237,7 +1106,6 @@
    "citation": "dev 154: he started an argument for smoking .",
    "verdict": "wrong",
    "output": "彼は喫煙のために議論を始めた。",
-   "cause": "preposition",
    "reason": "'an argument for smoking' is one in favour of it (喫煙に賛成する議論); のために makes smoking the purpose.",
    "judge": "model"
   },
@@ -1257,9 +1125,8 @@
   },
   {
    "citation": "dev 159: i don 't have much money .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私はたくさんのお金がない。",
-   "cause": "quantity",
    "reason": "Understood, but 'not much money' is あまりお金がない; たくさんのお金がない is the English shape.",
    "judge": "model"
   },
@@ -1267,7 +1134,6 @@
    "citation": "dev 162: she didn 't need to come .",
    "verdict": "wrong",
    "output": "彼女は来る必要がある。",
-   "cause": "negation",
    "reason": "'didn't need to come' is 来る必要はなかった; the output says she needs to come.",
    "judge": "model"
   },
@@ -1282,7 +1148,6 @@
    "citation": "dev 164: i get two hour 's exercise every day .",
    "verdict": "wrong",
    "output": "毎日私は時間の運動を得る。",
-   "cause": "quantity",
    "reason": "'two hours' exercise' loses the two (２時間の運動), and 運動を得る is not said (運動をする).",
    "judge": "model"
   },
@@ -1290,7 +1155,6 @@
    "citation": "dev 165: he comes to see me nearly every day .",
    "verdict": "wrong",
    "output": "彼は毎日私をほとんど見に来る。",
-   "cause": "structure",
    "reason": "'nearly' belongs to 'every day' (ほとんど毎日); the output attaches it to the verb, and seeing a person is 会いに来る.",
    "judge": "model"
   },
@@ -1310,9 +1174,8 @@
   },
   {
    "citation": "dev 170: i found a dollar in the street .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私は通りでドルを見つけた。",
-   "cause": "quantity",
    "reason": "Understood, but a dollar is １ドル; bare ドル is not how an amount is given.",
    "judge": "model"
   },
@@ -1320,7 +1183,6 @@
    "citation": "dev 171: our teacher comes to school by car .",
    "verdict": "wrong",
    "output": "私たちの先生は学校に車のそばに来る。",
-   "cause": "preposition",
    "reason": "'by car' is 車で; 車のそばに is 'beside the car'.",
    "judge": "model"
   },
@@ -1328,7 +1190,6 @@
    "citation": "dev 172: i chanced to meet him at the airport .",
    "verdict": "wrong",
    "output": "私は空港で彼を会うために偶然した。",
-   "cause": "idiom",
    "reason": "'chanced to meet' is 偶然会った; 会うために偶然した is not Japanese.",
    "judge": "model"
   },
@@ -1336,7 +1197,6 @@
    "citation": "dev 175: how long does it take to your office from the airport ?",
    "verdict": "wrong",
    "output": "それはどのくらいあなたの事務所に空港から取りますか。",
-   "cause": "idiom",
    "reason": "'How long does it take' is どのくらいかかりますか; それは…取りますか is word for word.",
    "judge": "model"
   },
@@ -1344,7 +1204,6 @@
    "citation": "dev 177: we will get to tokyo station at noon .",
    "verdict": "wrong",
    "output": "私たちは正午で東京の駅に着く。",
-   "cause": "preposition",
    "reason": "'at noon' is 正午に, not 正午で; and Tokyo Station is 東京駅.",
    "judge": "model"
   },
@@ -1359,7 +1218,6 @@
    "citation": "dev 179: i 'll come and see you later .",
    "verdict": "wrong",
    "output": "私は来る、あなたをより遅く見る。",
-   "cause": "idiom",
    "reason": "'come and see you later' is 後で会いに行く; the output lists two acts and turns 'later' into 'more late'.",
    "judge": "model"
   },
@@ -1374,7 +1232,6 @@
    "citation": "dev 183: what do you think about this plan ?",
    "verdict": "wrong",
    "output": "あなたはこの計画を何を考えますか。",
-   "cause": "case",
    "reason": "'think about this plan' is この計画についてどう思うか; この計画を何を has two objects and 'what' for 'how'.",
    "judge": "model"
   },
@@ -1382,7 +1239,6 @@
    "citation": "dev 184: he got on the train .",
    "verdict": "wrong",
    "output": "彼は電車を乗った。",
-   "cause": "case",
    "reason": "One boards a train with に: 電車に乗った.",
    "judge": "model"
   },
@@ -1390,7 +1246,6 @@
    "citation": "dev 187: this bus will take you around the city .",
    "verdict": "wrong",
    "output": "このバスは都市ごろあなたを取る。",
-   "cause": "sense",
    "reason": "'take you around the city' is 市内を回る; 取る is 'take hold of' and ごろ is 'around' of a time.",
    "judge": "model"
   },
@@ -1398,7 +1253,6 @@
    "citation": "dev 191: my father and i played tennis on sunday .",
    "verdict": "wrong",
    "output": "私の父と私は日曜日でテニスをした。",
-   "cause": "preposition",
    "reason": "'on Sunday' is 日曜日に, not 日曜日で.",
    "judge": "model"
   },
@@ -1420,7 +1274,6 @@
    "citation": "dev 205: i have to oppose this idea .",
    "verdict": "wrong",
    "output": "私はこの考えを反対しなければならない。",
-   "cause": "case",
    "reason": "One opposes an idea with に: この考えに反対しなければならない.",
    "judge": "model"
   },
@@ -1428,7 +1281,6 @@
    "citation": "dev 206: it rained for several days on end .",
    "verdict": "wrong",
    "output": "いくつかの日のために終わりで雨が降った。",
-   "cause": "idiom",
    "reason": "'for several days on end' is 何日も続けて; the output reads 'for' as purpose and 'on end' as 終わりで.",
    "judge": "model"
   },
@@ -1436,7 +1288,6 @@
    "citation": "dev 207: i see a house among the trees .",
    "verdict": "wrong",
    "output": "私は木の間で家を見る。",
-   "cause": "sense",
    "reason": "'I see a house' is perception (家が見える); 家を見る is to look at it, and で puts me among the trees.",
    "judge": "model"
   },
@@ -1444,7 +1295,6 @@
    "citation": "dev 212: that 's too bad .",
    "verdict": "wrong",
    "output": "それはすぎ悪い。",
-   "cause": "morphology",
    "reason": "すぎ悪い is not a form, and 'that's too bad' is それは残念だ / お気の毒に.",
    "judge": "model"
   },
@@ -1452,15 +1302,13 @@
    "citation": "dev 213: he asked after my wife when i met him today .",
    "verdict": "wrong",
    "output": "今日私が彼を会ったとき彼は私の妻の後で尋ねた。",
-   "cause": "idiom",
    "reason": "'asked after my wife' is 妻の様子を尋ねた; 妻の後で is 'behind my wife', and 彼を会った should be 彼に.",
    "judge": "model"
   },
   {
    "citation": "dev 214: you look very pale .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "あなたはとても青白い。",
-   "cause": "literal",
    "reason": "Understood, but paleness is said of the face: 顔色がとても悪い / 青白い顔をしている.",
    "judge": "model"
   },
@@ -1468,7 +1316,6 @@
    "citation": "dev 216: she has a husband and two daughters .",
    "verdict": "wrong",
    "output": "彼女は夫と２娘を持っている。",
-   "cause": "quantity",
    "reason": "２娘 is not a count (２人の娘), and a family is いる, not 持っている.",
    "judge": "model"
   },
@@ -1518,15 +1365,13 @@
    "citation": "dev 228: please put on your shoes .",
    "verdict": "wrong",
    "output": "あなたの靴に置いてください。",
-   "cause": "idiom",
    "reason": "'put on your shoes' is 靴を履く; 靴に置く puts something on the shoes.",
    "judge": "model"
   },
   {
    "citation": "dev 229: it is quite a sorry sight .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "それはかなり残念な光景だ。",
-   "cause": "sense",
    "reason": "Faithful, but a 'sorry sight' is 哀れな / 悲しい光景; 残念な is 'regrettable'.",
    "judge": "model"
   },
@@ -1534,7 +1379,6 @@
    "citation": "dev 230: it is no easy task to write a letter .",
    "verdict": "wrong",
    "output": "それは手紙を書くのには易しい仕事ではない。",
-   "cause": "it",
    "reason": "Extraposed 'it': 手紙を書くのは易しい仕事ではない; それは…書くのには talks about something else.",
    "judge": "model"
   },
@@ -1542,7 +1386,6 @@
    "citation": "dev 231: how can i get to the police station ?",
    "verdict": "wrong",
    "output": "私はどうやって警察の駅に着けますか。",
-   "cause": "sense",
    "reason": "A police station is 警察署; 警察の駅 is a railway station.",
    "judge": "model"
   },
@@ -1557,7 +1400,6 @@
    "citation": "dev 233: he has experience as well as knowledge .",
    "verdict": "wrong",
    "output": "彼は知識と同じくらい経験を上手に持っている。",
-   "cause": "idiom",
    "reason": "'as well as' is 〜だけでなく…も; the output reads it as 'as much as' and adds 上手に.",
    "judge": "model"
   },
@@ -1565,7 +1407,6 @@
    "citation": "dev 237: words failed her .",
    "verdict": "wrong",
    "output": "言葉は彼女を失敗した。",
-   "cause": "idiom",
    "reason": "'Words failed her' is 彼女は言葉に詰まった; 言葉は彼女を失敗した is word for word.",
    "judge": "model"
   },
@@ -1573,7 +1414,6 @@
    "citation": "dev 238: i didn 't quite catch the name of that designer .",
    "verdict": "wrong",
    "output": "私はそのデザイナーの名前をかなり捕まえなかった。",
-   "cause": "idiom",
    "reason": "'didn't quite catch' is よく聞き取れなかった; かなり捕まえなかった is capture, with the degree wrong.",
    "judge": "model"
   },
@@ -1581,7 +1421,6 @@
    "citation": "dev 239: i can hear the sound in your mind .",
    "verdict": "wrong",
    "output": "私はあなたの心で音が聞ける。",
-   "cause": "preposition",
    "reason": "'the sound in your mind' is あなたの心の中の音; 心で makes the mind the instrument, and hearing is 聞こえる.",
    "judge": "model"
   },
@@ -1589,7 +1428,6 @@
    "citation": "dev 240: you may be right .",
    "verdict": "wrong",
    "output": "あなたは正しい。",
-   "cause": "tense",
    "reason": "'may be right' is 正しいかもしれない; the modal is lost.",
    "judge": "model"
   },
@@ -1602,9 +1440,8 @@
   },
   {
    "citation": "dev 242: she broke the cup , too .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼女はカップをも壊した。",
-   "cause": "literal",
    "reason": "Grammatical, but をも is bookish; 'too' is カップも.",
    "judge": "model"
   },
@@ -1612,7 +1449,6 @@
    "citation": "dev 243: will i be able to get well soon ?",
    "verdict": "wrong",
    "output": "私はすぐに良くなって可能ですか。",
-   "cause": "idiom",
    "reason": "'be able to get well' is 良くなれますか; 良くなって可能ですか is not Japanese.",
    "judge": "model"
   },
@@ -1620,7 +1456,6 @@
    "citation": "dev 244: do not bother to come to my home .",
    "verdict": "wrong",
    "output": "私の家に来るために悩まさないでください。",
-   "cause": "idiom",
    "reason": "'do not bother to come' is わざわざ来なくていい; 来るために悩まさない is word for word.",
    "judge": "model"
   },
@@ -1628,7 +1463,6 @@
    "citation": "dev 247: the political situation has changed .",
    "verdict": "wrong",
    "output": "政治的な状況は変えた。",
-   "cause": "sense",
    "reason": "The situation changed by itself (変わった); 変えた is transitive and has no object.",
    "judge": "model"
   },
@@ -1636,7 +1470,6 @@
    "citation": "dev 250: i am going to be fourteen .",
    "verdict": "wrong",
    "output": "私は１４だ。",
-   "cause": "tense",
    "reason": "'am going to be fourteen' is １４歳になる; the output says I am fourteen, without 歳.",
    "judge": "model"
   },
@@ -1644,7 +1477,6 @@
    "citation": "dev 252: two heads are better than one .",
    "verdict": "wrong",
    "output": "２頭は一つより良い。",
-   "cause": "sense",
    "reason": "２頭 counts large animals; 'two heads' here is two people's heads (二つの頭).",
    "judge": "model"
   },
@@ -1652,7 +1484,6 @@
    "citation": "dev 253: he came back last august .",
    "verdict": "wrong",
    "output": "彼は最後の８月を戻った。",
-   "cause": "sense",
    "reason": "'last August' is この前の８月に; 最後の is 'final', and を is not a time particle.",
    "judge": "model"
   },
@@ -1660,7 +1491,6 @@
    "citation": "dev 254: he left his luggage at the station .",
    "verdict": "wrong",
    "output": "彼は駅で荷物を出た。",
-   "cause": "sense",
    "reason": "To leave luggage is 預ける / 置いていく; 出た is to go out.",
    "judge": "model"
   },
@@ -1668,7 +1498,6 @@
    "citation": "dev 255: she left home after three days .",
    "verdict": "wrong",
    "output": "彼女は３日の後で家に出た。",
-   "cause": "case",
    "reason": "One leaves home with を (家を出た); 家に出た is not said, and 'after three days' is ３日後に.",
    "judge": "model"
   },
@@ -1676,7 +1505,6 @@
    "citation": "dev 256: i saw a boat above the bridge .",
    "verdict": "wrong",
    "output": "私は橋の上でボートを見た。",
-   "cause": "preposition",
    "reason": "'above the bridge' is upstream of it (橋の上手に); 橋の上で puts the seeing on the bridge.",
    "judge": "model"
   },
@@ -1691,7 +1519,6 @@
    "citation": "dev 259: bill kept on crying for hours .",
    "verdict": "wrong",
    "output": "請求書は時間のために泣いていた。",
-   "cause": "sense",
    "reason": "Bill is a person (ビル), not 請求書; and 'for hours' is 何時間も, 'kept on crying' 泣き続けた.",
    "judge": "model"
   },
@@ -1699,23 +1526,20 @@
    "citation": "dev 260: she is getting prettier .",
    "verdict": "wrong",
    "output": "彼女はよりきれいだ。",
-   "cause": "tense",
    "reason": "'is getting prettier' is きれいになってきている; the change is lost.",
    "judge": "model"
   },
   {
    "citation": "dev 265: the success resulted from your efforts .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "成功はあなたの努力から結果になった。",
-   "cause": "literal",
    "reason": "Understood, but it is 努力の結果だ; 努力から結果になった is the English shape.",
    "judge": "model"
   },
   {
    "citation": "dev 266: do you know how to drive a car ?",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "あなたはどうやって車を運転するべきか知っていますか。",
-   "cause": "literal",
    "reason": "Understood, but 'how to drive' is 運転の仕方; どうやって…べきか asks how one ought to.",
    "judge": "model"
   },
@@ -1723,7 +1547,6 @@
    "citation": "dev 267: it snowed for days on end .",
    "verdict": "wrong",
    "output": "日のために終わりで雪が降った。",
-   "cause": "idiom",
    "reason": "'for days on end' is 何日も続けて; 日のために終わりで is word for word.",
    "judge": "model"
   },
@@ -1736,9 +1559,8 @@
   },
   {
    "citation": "dev 269: i have just eaten lunch .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私は昼食をちょうど食べた。",
-   "cause": "tense",
    "reason": "Understood, but 'have just eaten' is 食べたところだ; ちょうど食べた is the English shape.",
    "judge": "model"
   },
@@ -1753,15 +1575,13 @@
    "citation": "dev 274: his house is across the street .",
    "verdict": "wrong",
    "output": "彼の家は通りを渡ってある。",
-   "cause": "preposition",
    "reason": "'across the street' is 通りの向こうにある; 通りを渡ってある is not a form.",
    "judge": "model"
   },
   {
    "citation": "dev 275: it 's a pity that he should be ill in bed .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼がベッドで病気なのは残念だ。",
-   "cause": "literal",
    "reason": "Faithful, but ill in bed is 病気で寝ている; ベッドで病気 is the English wording.",
    "judge": "model"
   },
@@ -1769,7 +1589,6 @@
    "citation": "dev 276: i slept well last night .",
    "verdict": "wrong",
    "output": "昨夜私は上手に眠った。",
-   "cause": "sense",
    "reason": "'slept well' is よく眠った; 上手に is 'skilfully'.",
    "judge": "model"
   },
@@ -1777,7 +1596,6 @@
    "citation": "dev 277: my father is going to make a trip to new york .",
    "verdict": "wrong",
    "output": "私の父は新しいニューヨークに旅行を作るつもりだ。",
-   "cause": "sense",
    "reason": "New York is ニューヨーク, not 新しいニューヨーク; and 'make a trip' is 旅行する, not 旅行を作る.",
    "judge": "model"
   },
@@ -1785,7 +1603,6 @@
    "citation": "dev 279: i was absent from the meeting .",
    "verdict": "wrong",
    "output": "私は会議を欠席すった。",
-   "cause": "morphology",
    "reason": "欠席すった is not a form: 欠席した.",
    "judge": "model"
   },
@@ -1807,7 +1624,6 @@
    "citation": "dev 289: the company has changed hands three times .",
    "verdict": "wrong",
    "output": "会社は手を３回変えた。",
-   "cause": "idiom",
    "reason": "'changed hands' is 経営者が変わった; 手を変えた changes one's hands.",
    "judge": "model"
   },
@@ -1815,7 +1631,6 @@
    "citation": "dev 290: it is windy today , isn 't it ?",
    "verdict": "wrong",
    "output": "今日それは風の強いですね。",
-   "cause": "it",
    "reason": "Weather has no subject (今日は風が強いですね); それは points at something, and 風の強い is not a predicate form.",
    "judge": "model"
   },
@@ -1823,7 +1638,6 @@
    "citation": "dev 291: he was really off the wall yesterday .",
    "verdict": "wrong",
    "output": "昨日彼は本当に離れて壁だった。",
-   "cause": "idiom",
    "reason": "'off the wall' is 様子がおかしかった; 離れて壁だった is word for word.",
    "judge": "model"
   },
@@ -1838,7 +1652,6 @@
    "citation": "dev 294: we saw clouds above the mountain .",
    "verdict": "wrong",
    "output": "私たちは山の上で雲を見た。",
-   "cause": "preposition",
    "reason": "'clouds above the mountain' is 山の上に雲が見えた; 山の上で puts us on the mountain.",
    "judge": "model"
   },
@@ -1846,7 +1659,6 @@
    "citation": "dev 297: he was hard up .",
    "verdict": "wrong",
    "output": "彼は上に難しかった。",
-   "cause": "idiom",
    "reason": "'hard up' is お金に困っていた; 上に難しかった is word for word.",
    "judge": "model"
   },
@@ -1854,7 +1666,6 @@
    "citation": "dev 299: the people present were surprised .",
    "verdict": "wrong",
    "output": "人々の贈り物は驚いていた。",
-   "cause": "sense",
    "reason": "'the people present' is 出席していた人々; 贈り物 is a gift.",
    "judge": "model"
   },
@@ -1869,15 +1680,13 @@
    "citation": "dev 301: hurry up , or you will be late for school .",
    "verdict": "wrong",
    "output": "上に急いでくださいか、学校に遅れる。",
-   "cause": "idiom",
    "reason": "'hurry up, or …' is 急ぎなさい、さもないと; 上に急いで and か、 are word for word.",
    "judge": "model"
   },
   {
    "citation": "dev 303: let me help you .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "あなたを助けさせてください。",
-   "cause": "literal",
    "reason": "Understood, but the offer is 手伝わせてください; あなたを助けさせて is the English shape.",
    "judge": "model"
   },
@@ -1885,7 +1694,6 @@
    "citation": "dev 304: this problem is difficult to solve .",
    "verdict": "wrong",
    "output": "この問題は解いて難しい。",
-   "cause": "structure",
    "reason": "'difficult to solve' is 解くのが難しい; 解いて難しい links the two as a sequence.",
    "judge": "model"
   },
@@ -1900,7 +1708,6 @@
    "citation": "dev 306: we visited his home country for the first time .",
    "verdict": "wrong",
    "output": "私たちは最初の時間のために彼の家の国を訪ねた。",
-   "cause": "idiom",
    "reason": "'for the first time' is 初めて, and 'home country' 故郷 / 母国; the output is word for word.",
    "judge": "model"
   },
@@ -1908,7 +1715,6 @@
    "citation": "dev 307: where did you come by the watch ?",
    "verdict": "wrong",
    "output": "あなたはどこに腕時計のそばに来ましたか。",
-   "cause": "idiom",
    "reason": "'come by the watch' is 手に入れる; 腕時計のそばに来た is 'came beside the watch'.",
    "judge": "model"
   },
@@ -1916,7 +1722,6 @@
    "citation": "dev 308: i am getting on well .",
    "verdict": "wrong",
    "output": "私は上手に乗っている。",
-   "cause": "idiom",
    "reason": "'getting on well' is うまくやっている; 上手に乗っている is riding skilfully.",
    "judge": "model"
   },
@@ -1931,7 +1736,6 @@
    "citation": "dev 311: he is in great trouble .",
    "verdict": "wrong",
    "output": "彼は素晴らしい困ったことにいる。",
-   "cause": "sense",
    "reason": "'in great trouble' is ひどく困っている; 素晴らしい is 'wonderful' and 困ったことにいる is not said.",
    "judge": "model"
   },
@@ -1939,7 +1743,6 @@
    "citation": "dev 312: his opinion is for the birds .",
    "verdict": "wrong",
    "output": "彼の意見は鳥のためにある。",
-   "cause": "idiom",
    "reason": "'for the birds' is くだらない; 鳥のためにある is 'exists for birds'.",
    "judge": "model"
   },
@@ -1968,7 +1771,6 @@
    "citation": "dev 320: now that he has gone , we miss him very much .",
    "verdict": "wrong",
    "output": "彼が行ったので私たちは彼をとてもたくさん逃す。",
-   "cause": "sense",
    "reason": "To miss a person is いなくて寂しい; 逃す is to let escape, and とてもたくさん is not a degree.",
    "judge": "model"
   },
@@ -1983,7 +1785,6 @@
    "citation": "dev 322: i 'm very sorry .",
    "verdict": "wrong",
    "output": "私はとても残念だ。",
-   "cause": "sense",
    "reason": "'I'm very sorry' apologises (申し訳ありません); 残念だ is 'it is a pity'.",
    "judge": "model"
   },
@@ -1991,7 +1792,6 @@
    "citation": "dev 323: you have the same camera as mine .",
    "verdict": "wrong",
    "output": "あなたは私のものとして同じなカメラを持っている。",
-   "cause": "morphology",
    "reason": "同じな is not a form, and 'the same … as mine' is 私のと同じカメラ; として is 'in the role of'.",
    "judge": "model"
   },
@@ -1999,7 +1799,6 @@
    "citation": "dev 325: i saw a koala for the first time .",
    "verdict": "wrong",
    "output": "私は最初の時間のためにコアラを見た。",
-   "cause": "idiom",
    "reason": "'for the first time' is 初めて; 最初の時間のために is word for word.",
    "judge": "model"
   },
@@ -2014,7 +1813,6 @@
    "citation": "dev 327: don 't go back on your promise .",
    "verdict": "wrong",
    "output": "あなたの約束で戻らないでください。",
-   "cause": "idiom",
    "reason": "'go back on your promise' is 約束を破る; 約束で戻る is word for word.",
    "judge": "model"
   },
@@ -2022,7 +1820,6 @@
    "citation": "dev 328: where was tony playing then ?",
    "verdict": "wrong",
    "output": "その時トニーはどこでしたか。",
-   "cause": "omission",
    "reason": "'playing' is dropped: どこで遊んでいましたか; the output asks where Tony was.",
    "judge": "model"
   },
@@ -2030,15 +1827,13 @@
    "citation": "dev 333: i met him on the street by chance .",
    "verdict": "wrong",
    "output": "私は通りで機会で彼を会った。",
-   "cause": "idiom",
    "reason": "'by chance' is 偶然; 機会で is 'by opportunity', and one meets a person with に.",
    "judge": "model"
   },
   {
    "citation": "dev 338: this is a direct road to london .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "これはロンドンに直接な道路だ。",
-   "cause": "literal",
    "reason": "Understood, but a direct road is まっすぐ行ける道 / 直通の道; 直接な道路 is a calque.",
    "judge": "model"
   },
@@ -2046,7 +1841,6 @@
    "citation": "dev 340: john went to america by air .",
    "verdict": "wrong",
    "output": "ジョンはアメリカに空気のそばに行った。",
-   "cause": "preposition",
    "reason": "'by air' is 飛行機で; 空気のそばに is 'beside the air'.",
    "judge": "model"
   },
@@ -2061,7 +1855,6 @@
    "citation": "dev 344: i was watching tv at this time yesterday .",
    "verdict": "wrong",
    "output": "昨日私はこの時間でテレビを見ていた。",
-   "cause": "preposition",
    "reason": "'at this time yesterday' is 昨日の今ごろ; この時間で is not a time expression.",
    "judge": "model"
   },
@@ -2069,7 +1862,6 @@
    "citation": "dev 346: the more i get , the more i want .",
    "verdict": "wrong",
    "output": "私が得るほど私はますます欲しがる。",
-   "cause": "morphology",
    "reason": "欲しがる is for someone else's wanting; of oneself it is 欲しくなる (得れば得るほど欲しくなる).",
    "judge": "model"
   },
@@ -2077,15 +1869,13 @@
    "citation": "dev 347: i leave home for the company at seven every morning .",
    "verdict": "wrong",
    "output": "毎朝私は会社のために７時に家に出る。",
-   "cause": "case",
    "reason": "One leaves home with を (家を出る), and 'for the company' is 会社へ, not 会社のために.",
    "judge": "model"
   },
   {
    "citation": "dev 348: it is definite that he will go to america .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼がアメリカに行くのは明確だ。",
-   "cause": "sense",
    "reason": "Faithful, but 'definite' is 確かだ / 確定している; 明確だ is 'clear'.",
    "judge": "model"
   },
@@ -2093,7 +1883,6 @@
    "citation": "dev 350: he jumped about the room .",
    "verdict": "wrong",
    "output": "彼は部屋について飛んだ。",
-   "cause": "preposition",
    "reason": "'jumped about the room' is 部屋中を跳び回った; について is 'concerning'.",
    "judge": "model"
   },
@@ -2106,9 +1895,8 @@
   },
   {
    "citation": "dev 352: what food don 't you like ?",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "あなたはどんな食べ物を好きではありませんか。",
-   "cause": "case",
    "reason": "Understood, but 好き takes が, and the question is said 嫌いな食べ物は何ですか.",
    "judge": "model"
   },
@@ -2116,7 +1904,6 @@
    "citation": "dev 353: the snow lasted for two days .",
    "verdict": "wrong",
    "output": "雪は２日のために続いた。",
-   "cause": "preposition",
    "reason": "'for two days' is ２日間; のために is purpose.",
    "judge": "model"
   },
@@ -2138,7 +1925,6 @@
    "citation": "dev 356: i would like to go with you .",
    "verdict": "wrong",
    "output": "私はあなたと行きたかった。",
-   "cause": "tense",
    "reason": "'would like to go' is 行きたい; the past 行きたかった says the wish is over.",
    "judge": "model"
   },
@@ -2146,7 +1932,6 @@
    "citation": "dev 359: we can see a lot of stars at night in summer .",
    "verdict": "wrong",
    "output": "私たちは星の夜で夏でたくさん見られる。",
-   "cause": "structure",
    "reason": "'a lot of stars at night in summer': the output scrambles it into 'the night of stars' (夏の夜にはたくさんの星が見える).",
    "judge": "model"
   },
@@ -2175,7 +1960,6 @@
    "citation": "dev 375: how do you like this whisky ?",
    "verdict": "wrong",
    "output": "あなたはどうやってこのウイスキーが好きですか。",
-   "cause": "idiom",
    "reason": "'How do you like this whisky?' is このウイスキーはどうですか; どうやって asks by what means.",
    "judge": "model"
   },
@@ -2183,7 +1967,6 @@
    "citation": "dev 376: she asked him to open the window .",
    "verdict": "wrong",
    "output": "彼女は彼に窓を開けるように尋ねた。",
-   "cause": "sense",
    "reason": "To ask someone to do something is 頼む; 尋ねる is to inquire.",
    "judge": "model"
   },
@@ -2191,7 +1974,6 @@
    "citation": "dev 378: the movie starts .",
    "verdict": "wrong",
    "output": "映画は始める。",
-   "cause": "sense",
    "reason": "The movie starts by itself (始まる); 始める is transitive and has no object.",
    "judge": "model"
   },
@@ -2199,7 +1981,6 @@
    "citation": "dev 379: i could read between the lines .",
    "verdict": "wrong",
    "output": "私は線の間で読めた。",
-   "cause": "idiom",
    "reason": "'read between the lines' is 行間を読む; 線の間で is 'between the wires'.",
    "judge": "model"
   },
@@ -2207,7 +1988,6 @@
    "citation": "dev 380: i fail to see the reason .",
    "verdict": "wrong",
    "output": "私は理由を見るのに失敗する。",
-   "cause": "idiom",
    "reason": "'I fail to see the reason' is 理由がわからない; 見るのに失敗する is word for word.",
    "judge": "model"
   },
@@ -2215,7 +1995,6 @@
    "citation": "dev 381: my hobby is to read .",
    "verdict": "wrong",
    "output": "私の趣味は読むことになっている。",
-   "cause": "structure",
    "reason": "'my hobby is to read' is a copula with an infinitive (読むことだ / 読書だ); ことになっている makes it an arrangement.",
    "judge": "model"
   },
@@ -2223,7 +2002,6 @@
    "citation": "dev 382: will you tell me the way to kyoto station ?",
    "verdict": "wrong",
    "output": "あなたは京都の駅に道を話しますか。",
-   "cause": "sense",
    "reason": "'tell me the way' is 道を教える; 話しますか is 'will you speak', and Kyoto Station is 京都駅.",
    "judge": "model"
   },
@@ -2231,7 +2009,6 @@
    "citation": "dev 383: the new year will come in an hour .",
    "verdict": "wrong",
    "output": "新しい年は時間を入る。",
-   "cause": "idiom",
    "reason": "'will come in an hour' is あと１時間で来る; the output reads 'come in' as enter and the hour as its object.",
    "judge": "model"
   },
@@ -2239,7 +2016,6 @@
    "citation": "dev 384: choose any dress you like .",
    "verdict": "wrong",
    "output": "あなたが好きだドレスを選んでください。",
-   "cause": "morphology",
    "reason": "好きだドレス is not a form: 好きなドレス.",
    "judge": "model"
   },
@@ -2254,7 +2030,6 @@
    "citation": "dev 386: we go to school to study .",
    "verdict": "wrong",
    "output": "私たちは学校に研究に行く。",
-   "cause": "sense",
    "reason": "To study at school is 勉強する; 研究 is research.",
    "judge": "model"
   },
@@ -2262,7 +2037,6 @@
    "citation": "dev 387: it is half a year since he went to tokyo .",
    "verdict": "wrong",
    "output": "彼が東京に行ったのでそれは一年間半分だ。",
-   "cause": "structure",
    "reason": "'since he went' is time (行ってから半年になる); the output makes it a reason, with それは and 一年間半分 for half a year.",
    "judge": "model"
   },
@@ -2277,7 +2051,6 @@
    "citation": "dev 391: we cannot go into the studio .",
    "verdict": "wrong",
    "output": "私たちはスタジオに行けない。",
-   "cause": "sense",
    "reason": "'go into the studio' is 入る; 行けない is 'cannot go to'.",
    "judge": "model"
   },
@@ -2285,7 +2058,6 @@
    "citation": "dev 395: he had an absent look on his face .",
    "verdict": "wrong",
    "output": "彼は彼の顔で欠席な一見を見た。",
-   "cause": "idiom",
    "reason": "'an absent look on his face' is ぼんやりした顔つきをしていた; 欠席な一見を見た is word for word.",
    "judge": "model"
   },
@@ -2300,15 +2072,13 @@
    "citation": "dev 397: i have three tickets for it .",
    "verdict": "wrong",
    "output": "私はそれのために３切符を持っている。",
-   "cause": "quantity",
    "reason": "３切符 is not a count (切符を３枚), and 'tickets for it' is not それのために.",
    "judge": "model"
   },
   {
    "citation": "dev 398: how many pens do you have ?",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "あなたはいくつのペンを持っていますか。",
-   "cause": "quantity",
    "reason": "Understood, but pens are counted 何本; いくつのペン is the English shape.",
    "judge": "model"
   },
@@ -2316,15 +2086,13 @@
    "citation": "dev 400: i am to blame for my son 's failure .",
    "verdict": "wrong",
    "output": "私は息子の失敗のために責めることになっている。",
-   "cause": "idiom",
    "reason": "'am to blame for' is 〜は私の責任だ; 責めることになっている is 'am scheduled to blame'.",
    "judge": "model"
   },
   {
    "citation": "dev 402: she speaks english and also speaks swahili .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼女は英語を話してスワヒリ語をも話す。",
-   "cause": "literal",
    "reason": "Grammatical, but をも is bookish: スワヒリ語も話す.",
    "judge": "model"
   },
@@ -2332,7 +2100,6 @@
    "citation": "dev 403: he ran up to her .",
    "verdict": "wrong",
    "output": "彼は彼女に上に走った。",
-   "cause": "idiom",
    "reason": "'ran up to her' is 彼女に駆け寄った; 彼女に上に走った is word for word.",
    "judge": "model"
   },
@@ -2340,7 +2107,6 @@
    "citation": "dev 406: he slept an hour .",
    "verdict": "wrong",
    "output": "彼は時間を眠った。",
-   "cause": "quantity",
    "reason": "'an hour' is １時間; 時間を眠った loses the amount and makes time an object.",
    "judge": "model"
   },
@@ -2348,7 +2114,6 @@
    "citation": "dev 409: he doesn 't know what to do with his money .",
    "verdict": "wrong",
    "output": "彼はお金で何をするべきか知っていない。",
-   "cause": "morphology",
    "reason": "知っていない is not said (知らない); 'what to do with his money' is お金をどうしたらよいか.",
    "judge": "model"
   },
@@ -2363,7 +2128,6 @@
    "citation": "dev 413: he doesn 't know a lot about japan .",
    "verdict": "wrong",
    "output": "彼は日本についてたくさん知っていない。",
-   "cause": "morphology",
    "reason": "知っていない is not said: 日本についてあまり知らない.",
    "judge": "model"
   },
@@ -2371,7 +2135,6 @@
    "citation": "dev 414: he set his house on fire .",
    "verdict": "wrong",
    "output": "彼は火事で家を置く。",
-   "cause": "idiom",
    "reason": "'set his house on fire' is 家に火をつけた; 火事で家を置く is word for word, in the wrong tense.",
    "judge": "model"
   },
@@ -2379,7 +2142,6 @@
    "citation": "dev 416: please give me a ring this evening .",
    "verdict": "wrong",
    "output": "今晩私に指輪をかけてください。",
-   "cause": "idiom",
    "reason": "'give me a ring' is 電話をください; 指輪をかけて is a finger ring.",
    "judge": "model"
   },
@@ -2387,7 +2149,6 @@
    "citation": "dev 417: he is in business .",
    "verdict": "wrong",
    "output": "彼は仕事にいる。",
-   "cause": "idiom",
    "reason": "'is in business' is 商売をしている; 仕事にいる is not said.",
    "judge": "model"
   },
@@ -2402,7 +2163,6 @@
    "citation": "dev 419: it 's just a cold .",
    "verdict": "wrong",
    "output": "それはちょうど風邪だ。",
-   "cause": "sense",
    "reason": "'just a cold' is ただの風邪; ちょうど is 'exactly'.",
    "judge": "model"
   },
@@ -2417,15 +2177,13 @@
    "citation": "dev 421: he went to new york on business .",
    "verdict": "wrong",
    "output": "彼は新しいニューヨークに仕事に行った。",
-   "cause": "sense",
    "reason": "New York is ニューヨーク, not 新しいニューヨーク; 'on business' is 仕事で.",
    "judge": "model"
   },
   {
    "citation": "dev 423: it was a very good experience for him .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "それは彼のためにとても良い経験だった。",
-   "cause": "preposition",
    "reason": "Understood, but 'for him' is 彼にとって; 彼のために is 'for his sake'.",
    "judge": "model"
   },
@@ -2433,7 +2191,6 @@
    "citation": "dev 425: he is a total stranger to me .",
    "verdict": "wrong",
    "output": "彼は私により奇妙に合計だ。",
-   "cause": "idiom",
    "reason": "'a total stranger to me' is 全く知らない人; the output is not a sentence.",
    "judge": "model"
   },
@@ -2448,7 +2205,6 @@
    "citation": "dev 428: can i call my friend in japan ?",
    "verdict": "wrong",
    "output": "私は日本で友達が呼べますか。",
-   "cause": "sense",
    "reason": "To call a friend is 電話する; 呼ぶ is to summon, and 日本で puts me in Japan.",
    "judge": "model"
   },
@@ -2463,7 +2219,6 @@
    "citation": "dev 431: she has him at her beck and call .",
    "verdict": "wrong",
    "output": "彼女は彼女のベックで彼を持っていて呼ぶ。",
-   "cause": "idiom",
    "reason": "'has him at her beck and call' is 彼を思いのままに使う; the output is word for word.",
    "judge": "model"
   },
@@ -2471,7 +2226,6 @@
    "citation": "dev 435: he still wants to come .",
    "verdict": "wrong",
    "output": "彼はまだ来たい。",
-   "cause": "morphology",
    "reason": "たい is for one's own wish; of him it is 来たがっている.",
    "judge": "model"
   },
@@ -2493,7 +2247,6 @@
    "citation": "dev 442: people are living in all parts of the world .",
    "verdict": "wrong",
    "output": "人々は全ての世界の部品に住んでいる。",
-   "cause": "sense",
    "reason": "'all parts of the world' is 世界のあらゆる所; 部品 is a machine part.",
    "judge": "model"
   },
@@ -2513,9 +2266,8 @@
   },
   {
    "citation": "dev 450: they have a ten-year-old son .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼らは十歳の息子を持っている。",
-   "cause": "literal",
    "reason": "Understood, but a son is いる (彼らには十歳の息子がいる); 持っている is the English wording.",
    "judge": "model"
   },
@@ -2528,9 +2280,8 @@
   },
   {
    "citation": "dev 453: don 't break the branches .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "枝を壊さないでください。",
-   "cause": "sense",
    "reason": "Understood, but branches are 折る; 壊す is for objects.",
    "judge": "model"
   },
@@ -2545,7 +2296,6 @@
    "citation": "dev 456: we expect much of him .",
    "verdict": "wrong",
    "output": "私たちは彼のたくさん期待する。",
-   "cause": "case",
    "reason": "'expect much of him' is 彼に多くを期待する; 彼のたくさん is not a phrase.",
    "judge": "model"
   },
@@ -2560,7 +2310,6 @@
    "citation": "dev 458: that singer is going to become popular .",
    "verdict": "wrong",
    "output": "その歌手は人気だ。",
-   "cause": "tense",
    "reason": "'is going to become popular' is 人気が出るだろう; the output says he is popular now.",
    "judge": "model"
   },
@@ -2573,17 +2322,15 @@
   },
   {
    "citation": "dev 463: nothing is more important in life than health .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "何も人生で健康よりもっと大切ではない。",
-   "cause": "literal",
    "reason": "Understood, but it is said 人生で健康より大切なものはない; 何も…大切ではない is the English shape.",
    "judge": "model"
   },
   {
    "citation": "dev 464: he entered into the game with great spirit .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼は試合に素晴らしい精神で入った。",
-   "cause": "literal",
    "reason": "Understood, but 'with great spirit' is 元気いっぱいに and joining a game is 参加する.",
    "judge": "model"
   },
@@ -2591,7 +2338,6 @@
    "citation": "dev 465: english is not easy for us .",
    "verdict": "wrong",
    "output": "英語は私たちのために易しくない。",
-   "cause": "preposition",
    "reason": "'not easy for us' is 私たちにとって; 私たちのために is 'for our benefit', which does not fit.",
    "judge": "model"
   },
@@ -2599,7 +2345,6 @@
    "citation": "dev 466: i 'm sorry to trouble you .",
    "verdict": "wrong",
    "output": "私はあなたを悩まして残念だ。",
-   "cause": "sense",
    "reason": "'I'm sorry to trouble you' apologises (ご迷惑をおかけしてすみません); 残念だ is 'it is a pity'.",
    "judge": "model"
   },
@@ -2614,7 +2359,6 @@
    "citation": "dev 469: go about your business .",
    "verdict": "wrong",
    "output": "あなたの仕事について行ってください。",
-   "cause": "idiom",
    "reason": "'go about your business' is 自分のことをしなさい; 仕事について行って is 'follow your work'.",
    "judge": "model"
   },
@@ -2622,7 +2366,6 @@
    "citation": "dev 471: how tall are you ?",
    "verdict": "wrong",
    "output": "あなたはどのくらいですか。",
-   "cause": "omission",
    "reason": "'tall' is dropped: 身長はどのくらいですか.",
    "judge": "model"
   },
@@ -2630,7 +2373,6 @@
    "citation": "dev 472: let 's live it up !",
    "verdict": "wrong",
    "output": "それを上に住みましょう。",
-   "cause": "idiom",
    "reason": "'live it up' is 楽しくやる; それを上に住む is word for word.",
    "judge": "model"
   },
@@ -2638,7 +2380,6 @@
    "citation": "dev 473: i passed the exam and so did tom .",
    "verdict": "wrong",
    "output": "私は試験を合格してトムをとてもした。",
-   "cause": "structure",
    "reason": "'and so did Tom' is トムも合格した; the output makes Tom an object of する, and 試験に合格 takes に.",
    "judge": "model"
   },
@@ -2646,23 +2387,20 @@
    "citation": "dev 475: i agree with what you say to some extent .",
    "verdict": "wrong",
    "output": "私はあなたが程度に何を言うか賛成する。",
-   "cause": "structure",
    "reason": "'agree with what you say to some extent' is あなたの言うことにある程度賛成する; the output turns it into an embedded question.",
    "judge": "model"
   },
   {
    "citation": "dev 476: he is sure of success in the end .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼は終わりで成功を確信している。",
-   "cause": "literal",
    "reason": "Understood, but 'in the end' is 結局は; 終わりで is the English wording.",
    "judge": "model"
   },
   {
    "citation": "dev 477: she insisted on going there .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼女はそこに行くのを主張した。",
-   "cause": "literal",
    "reason": "Understood, but one insists 行くと主張した; 行くのを主張した is the English shape.",
    "judge": "model"
   },
@@ -2677,7 +2415,6 @@
    "citation": "dev 479: i will stay at home .",
    "verdict": "wrong",
    "output": "私は家に泊まる。",
-   "cause": "sense",
    "reason": "'stay at home' is 家にいる; 泊まる is to stay overnight as a guest.",
    "judge": "model"
   },
@@ -2685,7 +2422,6 @@
    "citation": "dev 480: it is too expensive for me to buy .",
    "verdict": "wrong",
    "output": "私が買うのはすぎ高い。",
-   "cause": "morphology",
    "reason": "すぎ高い is not a form (高すぎる), and 'too expensive for me to buy' is 高すぎて私には買えない.",
    "judge": "model"
   },
@@ -2707,15 +2443,13 @@
    "citation": "dev 485: don 't trouble about me .",
    "verdict": "wrong",
    "output": "私について悩まさないでください。",
-   "cause": "idiom",
    "reason": "'don't trouble about me' is 私のことは心配しないで; 悩まさないで is 'do not bother (someone)'.",
    "judge": "model"
   },
   {
    "citation": "dev 486: he stopped smoking .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼は吸うのをやめた。",
-   "cause": "omission",
    "reason": "Understood in context, but Japanese names what is smoked: タバコを吸うのをやめた.",
    "judge": "model"
   },
@@ -2723,7 +2457,6 @@
    "citation": "dev 487: she 's much better today than yesterday .",
    "verdict": "wrong",
    "output": "今日彼女は昨日よりたくさんより良い。",
-   "cause": "morphology",
    "reason": "たくさんより良い is not a form; 'much better' is ずっと良い.",
    "judge": "model"
   },
@@ -2731,7 +2464,6 @@
    "citation": "dev 488: her father is liberal with money .",
    "verdict": "wrong",
    "output": "彼女の父はお金と寛大だ。",
-   "cause": "preposition",
    "reason": "'liberal with money' is お金に気前がいい; お金と is 'together with money'.",
    "judge": "model"
   },
@@ -2739,15 +2471,13 @@
    "citation": "dev 489: the examination is near at hand .",
    "verdict": "wrong",
    "output": "試験は手で近い。",
-   "cause": "idiom",
    "reason": "'near at hand' is 間近だ; 手で近い is word for word.",
    "judge": "model"
   },
   {
    "citation": "dev 490: my car broke down on the way .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私の車は道で故障した。",
-   "cause": "sense",
    "reason": "Understood, but 'on the way' is 途中で; 道で is 'on the road'.",
    "judge": "model"
   },
@@ -2755,7 +2485,6 @@
    "citation": "dev 492: she stood in admiration of the garden .",
    "verdict": "wrong",
    "output": "彼女は庭の称賛に立った。",
-   "cause": "idiom",
    "reason": "'stood in admiration of the garden' is 庭に見とれて立っていた; 庭の称賛に立った is word for word.",
    "judge": "model"
   },
@@ -2763,7 +2492,6 @@
    "citation": "dev 493: i just made it under the wire .",
    "verdict": "wrong",
    "output": "私は電線の下でそれをちょうど作った。",
-   "cause": "idiom",
    "reason": "'made it under the wire' is ぎりぎり間に合った; the output makes something under an electric wire.",
    "judge": "model"
   },
@@ -2771,7 +2499,6 @@
    "citation": "dev 497: the flower is crying out for water .",
    "verdict": "wrong",
    "output": "花は水のために外に泣いている。",
-   "cause": "idiom",
    "reason": "'crying out for water' is 水をひどく欲しがっている; the output has the flower weeping outside.",
    "judge": "model"
   },
@@ -2784,9 +2511,8 @@
   },
   {
    "citation": "dev 500: thank you for your cooperation .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "あなたの協力をありがとう。",
-   "cause": "pronoun",
    "reason": "Understood, but thanks are ご協力ありがとう; あなたの協力を is the English shape.",
    "judge": "model"
   },
@@ -2815,7 +2541,6 @@
    "citation": "test 5: break a leg .",
    "verdict": "wrong",
    "output": "足を壊してください。",
-   "cause": "idiom",
    "reason": "'break a leg' wishes luck (がんばって); 足を壊してください asks for an injury.",
    "judge": "model"
   },
@@ -2823,7 +2548,6 @@
    "citation": "test 6: she lives next door to us .",
    "verdict": "wrong",
    "output": "彼女は私たちに次のドアを住んでいる。",
-   "cause": "idiom",
    "reason": "'lives next door to us' is 私たちの隣に住んでいる; 次のドアを住んでいる is word for word.",
    "judge": "model"
   },
@@ -2831,7 +2555,6 @@
    "citation": "test 8: i 'm a person who lives for the moment .",
    "verdict": "wrong",
    "output": "私は瞬間のために住んでいる人だ。",
-   "cause": "sense",
    "reason": "'lives for the moment' is 今を生きる; 住む is to reside.",
    "judge": "model"
   },
@@ -2839,7 +2562,6 @@
    "citation": "test 9: we have this game on ice .",
    "verdict": "wrong",
    "output": "私たちは氷でこの試合を持っている。",
-   "cause": "idiom",
    "reason": "'have this game on ice' is この試合はもらった; 氷で…持っている is word for word.",
    "judge": "model"
   },
@@ -2861,7 +2583,6 @@
    "citation": "test 13: these shoes will last you two years .",
    "verdict": "wrong",
    "output": "これらの靴はあなたを２年間続く。",
-   "cause": "case",
    "reason": "'will last you two years' is ２年はもつ; あなたを…続く has an object it cannot take.",
    "judge": "model"
   },
@@ -2869,7 +2590,6 @@
    "citation": "test 14: he made his son attend the meeting in his place .",
    "verdict": "wrong",
    "output": "彼は彼の息子に彼の場所で会議を出席させた。",
-   "cause": "idiom",
    "reason": "'in his place' is 彼の代わりに; 彼の場所で is a location, and one attends 会議に.",
    "judge": "model"
   },
@@ -2877,15 +2597,13 @@
    "citation": "test 17: i was unable to look her in the face .",
    "verdict": "wrong",
    "output": "私は顔で彼女を見てできない。",
-   "cause": "idiom",
    "reason": "'unable to look her in the face' is 彼女の顔をまともに見られなかった; 顔で…見てできない is not Japanese.",
    "judge": "model"
   },
   {
    "citation": "test 18: some people go to church on sunday morning .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "人々は教会に日曜日の朝に行く。",
-   "cause": "quantity",
    "reason": "Understood, but 'some people' is 〜人もいる; 人々は says people in general, and the order is awkward.",
    "judge": "model"
   },
@@ -2893,7 +2611,6 @@
    "citation": "test 19: i must put my watch forward two minutes .",
    "verdict": "wrong",
    "output": "私は腕時計を前へ２分置かなければならない。",
-   "cause": "idiom",
    "reason": "'put my watch forward' is 時計を進める; 前へ置く moves it physically.",
    "judge": "model"
   },
@@ -2915,7 +2632,6 @@
    "citation": "test 22: i met him in tokyo by chance .",
    "verdict": "wrong",
    "output": "私は東京で機会で彼を会った。",
-   "cause": "idiom",
    "reason": "'by chance' is 偶然; 機会で is 'by opportunity', and one meets a person with に.",
    "judge": "model"
   },
@@ -2944,7 +2660,6 @@
    "citation": "test 27: we read the letter again and again .",
    "verdict": "wrong",
    "output": "私たちは手紙を何度も読む。",
-   "cause": "tense",
    "reason": "'read … again and again' narrates the past (何度も読んだ), as the suite expects; the output is the present.",
    "judge": "model"
   },
@@ -2952,7 +2667,6 @@
    "citation": "test 28: i 'm happy to see you .",
    "verdict": "wrong",
    "output": "私はあなたを見て嬉しい。",
-   "cause": "sense",
    "reason": "To see a person is 会う (会えて嬉しい); あなたを見て is looking at you.",
    "judge": "model"
   },
@@ -2960,7 +2674,6 @@
    "citation": "test 29: ask your dad to help you .",
    "verdict": "wrong",
    "output": "あなたのお父さんにあなたを助けるように尋ねてください。",
-   "cause": "sense",
    "reason": "To ask someone to help is 頼む; 尋ねる is to inquire, and あなたを助ける is the English wording.",
    "judge": "model"
   },
@@ -2975,7 +2688,6 @@
    "citation": "test 31: i feel good in a special way .",
    "verdict": "wrong",
    "output": "私は特別な道で良い。",
-   "cause": "sense",
    "reason": "'in a special way' is 特別に; 道 is a road.",
    "judge": "model"
   },
@@ -2988,9 +2700,8 @@
   },
   {
    "citation": "test 35: i still bear his name in mind .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私は彼の名前をまだ心に留める。",
-   "cause": "literal",
    "reason": "Faithful, but keeping something in mind now is 心に留めている / 覚えている.",
    "judge": "model"
   },
@@ -2998,15 +2709,13 @@
    "citation": "test 36: i want to marry you .",
    "verdict": "wrong",
    "output": "私はあなたを結婚したい。",
-   "cause": "case",
    "reason": "One marries a person with と: あなたと結婚したい.",
    "judge": "model"
   },
   {
    "citation": "test 37: we see them on occasion .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私たちは彼らを時々見る。",
-   "cause": "sense",
    "reason": "Understood, but seeing people is 会う; 見る is catching sight of them.",
    "judge": "model"
   },
@@ -3021,7 +2730,6 @@
    "citation": "test 39: tell me which you want .",
    "verdict": "wrong",
    "output": "私にあなたがどれを欲しがるか話してください。",
-   "cause": "sense",
    "reason": "'tell me which' is 教える / 言う; 話す is to speak, and 欲しがる is not said to the person addressed.",
    "judge": "model"
   },
@@ -3029,15 +2737,13 @@
    "citation": "test 40: i wish i knew where he was !",
    "verdict": "wrong",
    "output": "私は私が彼がどこだったか知っていたと願う。",
-   "cause": "idiom",
    "reason": "'I wish I knew' is 知っていればなあ; 知っていたと願う is word for word.",
    "judge": "model"
   },
   {
    "citation": "test 41: we took an examination in math last week .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "先週私たちは数学で試験を受けた。",
-   "cause": "preposition",
    "reason": "Understood, but it is 数学の試験; 数学で試験を受けた is the English shape.",
    "judge": "model"
   },
@@ -3045,7 +2751,6 @@
    "citation": "test 43: i listened , but i heard nothing .",
    "verdict": "wrong",
    "output": "私は聞いたが、私は何も聞かなかった。",
-   "cause": "sense",
    "reason": "'heard nothing' is 何も聞こえなかった; 聞かなかった is 'did not listen', which contradicts the first clause.",
    "judge": "model"
   },
@@ -3053,23 +2758,20 @@
    "citation": "test 44: she did not marry the man .",
    "verdict": "wrong",
    "output": "彼女は男を結婚しなかった。",
-   "cause": "case",
    "reason": "One marries a person with と: その男と結婚しなかった.",
    "judge": "model"
   },
   {
    "citation": "test 45: he doesn 't read many books .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼はたくさんの本を読まない。",
-   "cause": "quantity",
    "reason": "Understood, but 'not many books' is あまり本を読まない.",
    "judge": "model"
   },
   {
    "citation": "test 46: she doesn 't have any enemies .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼女は敵を持っていない。",
-   "cause": "literal",
    "reason": "Understood, but enemies are いる (敵がいない); 持っていない is the English wording.",
    "judge": "model"
   },
@@ -3077,15 +2779,13 @@
    "citation": "test 49: he got tired of reading .",
    "verdict": "wrong",
    "output": "彼は読書の疲れていた。",
-   "cause": "morphology",
    "reason": "読書の疲れていた is not a form, and 'got tired of' is 飽きた.",
    "judge": "model"
   },
   {
    "citation": "test 51: she played the piano well enough .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼女はピアノを上手に十分に弾いた。",
-   "cause": "literal",
    "reason": "Understood, but 'well enough' is かなり上手に; 上手に十分に is the English shape.",
    "judge": "model"
   },
@@ -3093,7 +2793,6 @@
    "citation": "test 52: i 'm still waiting for my order .",
    "verdict": "wrong",
    "output": "私は順序をまだ待っている。",
-   "cause": "sense",
    "reason": "'my order' is 注文; 順序 is sequence.",
    "judge": "model"
   },
@@ -3108,7 +2807,6 @@
    "citation": "test 54: you should avail yourself of every opportunity .",
    "verdict": "wrong",
    "output": "あなたは毎機会の自分を利用するべきだ。",
-   "cause": "idiom",
    "reason": "'avail yourself of every opportunity' is あらゆる機会を利用する; 毎機会の自分を is word for word.",
    "judge": "model"
   },
@@ -3135,9 +2833,8 @@
   },
   {
    "citation": "test 58: people of your age often have this problem .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "あなたの年齢の人々はこの問題をよく持っている。",
-   "cause": "literal",
    "reason": "Understood, but a problem is よくある; 問題を持っている is the English wording.",
    "judge": "model"
   },
@@ -3150,9 +2847,8 @@
   },
   {
    "citation": "test 60: she stood looking at a boat on the river .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼女は川でボートを見ながら立った。",
-   "cause": "literal",
    "reason": "Understood, but the boat is on the river (川のボートを見ながら立っていた); 川で places the looking there.",
    "judge": "model"
   },
@@ -3167,7 +2863,6 @@
    "citation": "test 63: any flower will do , so long as it is red .",
    "verdict": "wrong",
    "output": "それが赤い限り花はする。",
-   "cause": "idiom",
    "reason": "'any flower will do' is どんな花でもいい; 花はする is 'the flower does'.",
    "judge": "model"
   },
@@ -3182,7 +2877,6 @@
    "citation": "test 66: i stick to the point .",
    "verdict": "wrong",
    "output": "私は点に固執する。",
-   "cause": "sense",
    "reason": "'the point' is 要点; 点 is a dot or a score, and 固執する is to cling stubbornly.",
    "judge": "model"
   },
@@ -3190,7 +2884,6 @@
    "citation": "test 70: nothing is so precious as time .",
    "verdict": "wrong",
    "output": "何も時間としてとても貴重ではない。",
-   "cause": "idiom",
    "reason": "'nothing is so precious as time' is 時間ほど貴重なものはない; として is 'in the role of'.",
    "judge": "model"
   },
@@ -3198,23 +2891,20 @@
    "citation": "test 71: you did not need to come so early .",
    "verdict": "wrong",
    "output": "あなたはとても早く来る必要がある。",
-   "cause": "negation",
    "reason": "'did not need to come so early' is そんなに早く来る必要はなかった; the output says you need to.",
    "judge": "model"
   },
   {
    "citation": "test 72: i had some questions and raised my hand .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私は質問を持っていて私の手を上げた。",
-   "cause": "literal",
    "reason": "Understood, but it is 質問があって手を挙げた; 質問を持っていて and 私の手 are the English wording.",
    "judge": "model"
   },
   {
    "citation": "test 73: she expressed satisfaction with her life .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼女は彼女の人生で満足を表した。",
-   "cause": "preposition",
    "reason": "Understood, but satisfaction with her life is 人生への満足; 彼女の人生で is the English shape.",
    "judge": "model"
   },
@@ -3222,15 +2912,13 @@
    "citation": "test 74: it was around eight last night when the meeting broke up .",
    "verdict": "wrong",
    "output": "会議が上に壊したとき昨夜それは８時ごろいた。",
-   "cause": "structure",
    "reason": "'it was around eight … when the meeting broke up' is a cleft (会議が終わったのは８時ごろだった); the output is not a sentence.",
    "judge": "model"
   },
   {
    "citation": "test 75: the life of a person is a transient thing .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "人の人生は一時的なことだ。",
-   "cause": "sense",
    "reason": "Faithful, but a transient thing is はかないもの; 一時的なこと is 'a temporary matter'.",
    "judge": "model"
   },
@@ -3238,7 +2926,6 @@
    "citation": "test 76: don 't raise my hopes like that .",
    "verdict": "wrong",
    "output": "それのように私の希望を上げないでください。",
-   "cause": "idiom",
    "reason": "'raise my hopes like that' is そんなふうに期待させないで; それのように…上げる is word for word.",
    "judge": "model"
   },
@@ -3253,7 +2940,6 @@
    "citation": "test 79: it 's hot today .",
    "verdict": "wrong",
    "output": "今日それは暑い。",
-   "cause": "it",
    "reason": "Weather has no subject (今日は暑い); それは points at something.",
    "judge": "model"
   },
@@ -3268,15 +2954,13 @@
    "citation": "test 81: he always takes sides with her .",
    "verdict": "wrong",
    "output": "彼は彼女と側をいつも取る。",
-   "cause": "idiom",
    "reason": "'takes sides with her' is 彼女の味方をする; 側を取る is word for word.",
    "judge": "model"
   },
   {
    "citation": "test 82: jane always made out that she was very rich .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "ジェーンはいつも彼女がとても金持ちだと主張した。",
-   "cause": "pronoun",
    "reason": "Faithful, but 彼女が reads as another woman; of Jane herself it is 自分が.",
    "judge": "model"
   },
@@ -3291,15 +2975,13 @@
    "citation": "test 86: where does the answer lie ?",
    "verdict": "wrong",
    "output": "答えはどこで横になりますか。",
-   "cause": "sense",
    "reason": "'Where does the answer lie' is どこにあるか; 横になる is to lie down.",
    "judge": "model"
   },
   {
    "citation": "test 87: you may as well prepare for your examination .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "あなたはあなたの試験のために準備したほうがいい。",
-   "cause": "pronoun",
    "reason": "Faithful; あなたはあなたの試験 repeats the pronoun (試験の準備をしたほうがいい).",
    "judge": "model"
   },
@@ -3307,7 +2989,6 @@
    "citation": "test 88: i can 't see well .",
    "verdict": "wrong",
    "output": "私は上手に見られない。",
-   "cause": "sense",
    "reason": "'can't see well' is よく見えない; 上手に is 'skilfully'.",
    "judge": "model"
   },
@@ -3355,25 +3036,22 @@
   },
   {
    "citation": "test 96: let me see it .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "それを見させてください。",
-   "cause": "literal",
    "reason": "Grammatical, but the request is 見せてください; 見させてください is the English shape.",
    "judge": "model"
   },
   {
    "citation": "test 97: he sat there with his eyes closed .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼はそこに彼の目を閉めて座った。",
-   "cause": "sense",
    "reason": "Understood, but eyes are 閉じる, 閉める is for doors, and 彼の目 repeats the pronoun.",
    "judge": "model"
   },
   {
    "citation": "test 98: you should work hard while you are young .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "あなたが若い間あなたは一生懸命働いているべきだ。",
-   "cause": "pronoun",
    "reason": "Faithful; the repeated あなた and 働いているべきだ are not how it is said (若いうちは一生懸命働くべきだ).",
    "judge": "model"
   },
@@ -3381,15 +3059,13 @@
    "citation": "test 99: he made an abrupt departure .",
    "verdict": "wrong",
    "output": "彼は突然な出発を作った。",
-   "cause": "idiom",
    "reason": "'made an abrupt departure' is 突然出発した; 突然な出発を作った is word for word.",
    "judge": "model"
   },
   {
    "citation": "test 101: jane was a stewardess when she was young .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼女が若かったときジェーンはスチュワーデスだった。",
-   "cause": "pronoun",
    "reason": "Faithful, but 彼女が before ジェーン reads as someone else (ジェーンは若いころ).",
    "judge": "model"
   },
@@ -3404,7 +3080,6 @@
    "citation": "test 103: how far is it to the station ?",
    "verdict": "wrong",
    "output": "それは駅にいますか。",
-   "cause": "structure",
    "reason": "'How far is it' — the question is lost; the output asks whether it is at the station.",
    "judge": "model"
   },
@@ -3419,7 +3094,6 @@
    "citation": "test 109: i sometimes look back on the good days i had in london .",
    "verdict": "wrong",
    "output": "私は私がロンドンで持っていた良い日で時々戻って見る。",
-   "cause": "idiom",
    "reason": "'look back on the good days I had' is 楽しかった日々を思い出す; 持っていた良い日で…戻って見る is word for word.",
    "judge": "model"
   },
@@ -3427,7 +3101,6 @@
    "citation": "test 110: i got out of the taxi .",
    "verdict": "wrong",
    "output": "私はタクシーの外に得た。",
-   "cause": "idiom",
    "reason": "'got out of the taxi' is タクシーから降りた; 外に得た is word for word.",
    "judge": "model"
   },
@@ -3435,31 +3108,27 @@
    "citation": "test 111: i am due to speak tonight .",
    "verdict": "wrong",
    "output": "私は今夜話して予定だ。",
-   "cause": "morphology",
    "reason": "話して予定だ is not a form: 話す予定だ.",
    "judge": "model"
   },
   {
    "citation": "test 112: the girls are as busy as bees .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "少女は蜂と同じくらい忙しい。",
-   "cause": "literal",
    "reason": "Understood as a simile, but 'as busy as bees' is just とても忙しい.",
    "judge": "model"
   },
   {
    "citation": "test 113: there are more girls than boys in our school .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "少年たちより私たちの学校にもっと少女がいる。",
-   "cause": "order",
    "reason": "Understood, but the comparison is 少年より少女の方が多い.",
    "judge": "model"
   },
   {
    "citation": "test 114: the days are getting longer and longer .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "日はますます長い。",
-   "cause": "tense",
    "reason": "Understood, but 'are getting longer' is 長くなっている; ますます長い leaves the change to the adverb.",
    "judge": "model"
   },
@@ -3467,7 +3136,6 @@
    "citation": "test 115: lay it on the table .",
    "verdict": "wrong",
    "output": "テーブルでそれを横になってください。",
-   "cause": "sense",
    "reason": "'Lay it on the table' is 置く; 横になる is to lie down oneself.",
    "judge": "model"
   },
@@ -3475,7 +3143,6 @@
    "citation": "test 116: what are you going to do today ?",
    "verdict": "wrong",
    "output": "今日あなたは何ですか。",
-   "cause": "omission",
    "reason": "'going to do' is dropped: 何をするつもりですか; the output asks what you are.",
    "judge": "model"
   },
@@ -3483,7 +3150,6 @@
    "citation": "test 117: it rained hard last night .",
    "verdict": "wrong",
    "output": "昨夜一生懸命雨が降った。",
-   "cause": "sense",
    "reason": "'rained hard' is ひどく / 激しく; 一生懸命 is 'with effort'.",
    "judge": "model"
   },
@@ -3496,9 +3162,8 @@
   },
   {
    "citation": "test 119: you have no obligation to help us .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "あなたは私たちを助ける義務を持っていない。",
-   "cause": "literal",
    "reason": "Understood, but an obligation is ない (義務はない); 持っていない is the English wording.",
    "judge": "model"
   },
@@ -3511,9 +3176,8 @@
   },
   {
    "citation": "test 122: speak your mind .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "あなたの心を話してください。",
-   "cause": "literal",
    "reason": "Understood, but 'speak your mind' is 思っていることを言う; 心を話す is the English wording.",
    "judge": "model"
   },
@@ -3521,7 +3185,6 @@
    "citation": "test 123: the old man died last week .",
    "verdict": "wrong",
    "output": "先週古い男は死んだ。",
-   "cause": "sense",
    "reason": "An old man is 年老いた男 / 老人; 古い is for things.",
    "judge": "model"
   },
@@ -3529,7 +3192,6 @@
    "citation": "test 125: his hands had turned blue because of the cold .",
    "verdict": "wrong",
    "output": "彼の手は風邪のせいで青かった。",
-   "cause": "sense",
    "reason": "'the cold' is 寒さ; 風邪 is the illness, and 'had turned blue' is 青くなっていた.",
    "judge": "model"
   },
@@ -3537,7 +3199,6 @@
    "citation": "test 126: i couldn 't make her out at all .",
    "verdict": "wrong",
    "output": "私は彼女が外に全く作れなかった。",
-   "cause": "idiom",
    "reason": "'couldn't make her out' is 彼女が理解できなかった; 外に作れなかった is word for word.",
    "judge": "model"
   },
@@ -3545,7 +3206,6 @@
    "citation": "test 127: it is outside my area of study .",
    "verdict": "wrong",
    "output": "それは私の研究の分野の外にいる。",
-   "cause": "morphology",
    "reason": "A thing is ある, not いる; 'outside my area of study' is 研究分野の外だ.",
    "judge": "model"
   },
@@ -3553,7 +3213,6 @@
    "citation": "test 128: it was careless of you to forget your homework .",
    "verdict": "wrong",
    "output": "それはあなたが宿題を忘れるとは不注意だった。",
-   "cause": "it",
    "reason": "Extraposed 'it': あなたが宿題を忘れるとは不注意だった; それは has nothing to point at.",
    "judge": "model"
   },
@@ -3575,7 +3234,6 @@
    "citation": "test 134: i 'd like to go skiing with her .",
    "verdict": "wrong",
    "output": "私は彼女とスキーに行きたかった。",
-   "cause": "tense",
    "reason": "'I'd like to go' is 行きたい; the past 行きたかった says the wish is over.",
    "judge": "model"
   },
@@ -3604,15 +3262,13 @@
    "citation": "test 143: i want to marry a girl like her .",
    "verdict": "wrong",
    "output": "私は彼女のように少女を結婚したい。",
-   "cause": "case",
    "reason": "One marries a person with と, and 'a girl like her' is 彼女のような少女; 彼女のように is 'as she does'.",
    "judge": "model"
   },
   {
    "citation": "test 146: are you proud of your father ?",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "あなたは父を誇りに思っていますか。",
-   "cause": "pronoun",
    "reason": "Understood, but bare 父 is the speaker's own father; the addressee's is お父さん.",
    "judge": "model"
   },
@@ -3627,7 +3283,6 @@
    "citation": "test 148: this case has an affinity with that one .",
    "verdict": "wrong",
    "output": "この場合はそのものと似ている。",
-   "cause": "pronoun",
    "reason": "'that one' is あの場合 / あれ; そのもの is 'the thing itself'.",
    "judge": "model"
   },
@@ -3640,9 +3295,8 @@
   },
   {
    "citation": "test 151: my brother has no occupation now .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "今私の兄は職業を持っていない。",
-   "cause": "literal",
    "reason": "Understood, but it is 職がない / 失業中だ; 職業を持っていない is the English wording.",
    "judge": "model"
   },
@@ -3650,7 +3304,6 @@
    "citation": "test 152: he did not so much as turn his head .",
    "verdict": "wrong",
    "output": "彼は頭をさえ回らなかった。",
-   "cause": "morphology",
    "reason": "頭をさえ回らなかった mixes a transitive object with an intransitive verb: 頭を回しさえしなかった.",
    "judge": "model"
   },
@@ -3663,9 +3316,8 @@
   },
   {
    "citation": "test 158: there are all kinds of flowers in that garden .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "その庭に全ての花の種類がある。",
-   "cause": "order",
    "reason": "Understood, but it is あらゆる種類の花; 全ての花の種類 has the order of the English.",
    "judge": "model"
   },
@@ -3673,7 +3325,6 @@
    "citation": "test 159: he had a blue jacket on .",
    "verdict": "wrong",
    "output": "彼は青い上着を着ている。",
-   "cause": "tense",
    "reason": "'had … on' is past: 着ていた.",
    "judge": "model"
   },
@@ -3688,23 +3339,20 @@
    "citation": "test 162: she recollected the first day when she went to school .",
    "verdict": "wrong",
    "output": "彼女が学校に行ったとき彼女は最初の日を思い出した。",
-   "cause": "structure",
    "reason": "'the first day when she went to school' is a relative clause; the output makes it a time clause.",
    "judge": "model"
   },
   {
    "citation": "test 163: please take more care in the future .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "将来気をつけてください。",
-   "cause": "literal",
    "reason": "Understood, but 'more care in the future' is 今後はもっと気をつけて; the comparison is dropped.",
    "judge": "model"
   },
   {
    "citation": "test 165: the policeman 's quick arrival surprised us .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "警官の速い到着は私たちを驚かした。",
-   "cause": "literal",
    "reason": "Grammatical, but Japanese says 警官がすぐ到着したのに驚いた; an event as the subject of 驚かす is the English shape.",
    "judge": "model"
   },
@@ -3726,7 +3374,6 @@
    "citation": "test 169: thank you very much for the wonderful dinner last night .",
    "verdict": "wrong",
    "output": "素晴らしい夕食をありがとう。",
-   "cause": "omission",
    "reason": "'last night' is dropped (昨夜は素晴らしい夕食をありがとう).",
    "judge": "model"
   },
@@ -3734,7 +3381,6 @@
    "citation": "test 170: i was ten minutes late for school .",
    "verdict": "wrong",
    "output": "私は学校のために遅く１０分だった。",
-   "cause": "structure",
    "reason": "'ten minutes late for school' is 学校に１０分遅れた; the output is not a sentence.",
    "judge": "model"
   },
@@ -3756,7 +3402,6 @@
    "citation": "test 173: father took his place at the head of the table .",
    "verdict": "wrong",
    "output": "父はテーブルの頭で彼の場所を取った。",
-   "cause": "idiom",
    "reason": "'took his place at the head of the table' is 上座に着いた; テーブルの頭で彼の場所を取った is word for word.",
    "judge": "model"
   },
@@ -3764,7 +3409,6 @@
    "citation": "test 175: my father put a ladder against the tree .",
    "verdict": "wrong",
    "output": "私の父は木に反対してはしごを置く。",
-   "cause": "preposition",
    "reason": "'against the tree' is 木に立てかけた; 反対して is 'in opposition', and the tense is present.",
    "judge": "model"
   },
@@ -3772,7 +3416,6 @@
    "citation": "test 177: i am to have lunch with him .",
    "verdict": "wrong",
    "output": "私は彼と昼食を持つことになっている。",
-   "cause": "sense",
    "reason": "To have lunch is 食べる / とる; 昼食を持つ is to carry it.",
    "judge": "model"
   },
@@ -3794,15 +3437,13 @@
    "citation": "test 182: he is likely to win this game .",
    "verdict": "wrong",
    "output": "彼はこの試合に勝ってありそうだ。",
-   "cause": "morphology",
    "reason": "勝ってありそうだ is not a form: 勝ちそうだ.",
    "judge": "model"
   },
   {
    "citation": "test 184: there are many movie theaters in this city .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "この都市にたくさんの映画の映画館がある。",
-   "cause": "sense",
    "reason": "Understood, but a movie theater is 映画館; 映画の映画館 says it twice.",
    "judge": "model"
   },
@@ -3810,23 +3451,20 @@
    "citation": "test 186: unless it rains , i will go , too .",
    "verdict": "wrong",
    "output": "雨が降らなければ私はも行く。",
-   "cause": "morphology",
    "reason": "私はも is not a form: 私も行く.",
    "judge": "model"
   },
   {
    "citation": "test 187: i love this job from the bottom of my heart .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私は私の心の底からこの仕事を愛している。",
-   "cause": "pronoun",
    "reason": "Faithful; 私は私の心の底から repeats the pronoun (心の底から).",
    "judge": "model"
   },
   {
    "citation": "test 190: i 'll give you a call before i visit you .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私があなたを訪ねる前に私はあなたに電話をかける。",
-   "cause": "pronoun",
    "reason": "Faithful; the repeated 私 and あなた are not how it is said (伺う前に電話します).",
    "judge": "model"
   },
@@ -3846,9 +3484,8 @@
   },
   {
    "citation": "test 194: it is necessary for you to go there immediately .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "あなたがそこにすぐに行くのは必要だ。",
-   "cause": "literal",
    "reason": "Understood, but necessity is 行く必要がある; 行くのは必要だ is the English shape.",
    "judge": "model"
   },
@@ -3863,7 +3500,6 @@
    "citation": "test 197: he lived a simple life .",
    "verdict": "wrong",
    "output": "彼は簡単な人生を住んでいた。",
-   "cause": "sense",
    "reason": "'lived a simple life' is 質素な生活を送った; 住む is to reside and 簡単な is 'easy'.",
    "judge": "model"
   },
@@ -3871,7 +3507,6 @@
    "citation": "test 198: he had no hat on .",
    "verdict": "wrong",
    "output": "彼は帽子を着ている。",
-   "cause": "negation",
    "reason": "'had no hat on' is 帽子をかぶっていなかった; the output says he is wearing one, with 着る for a hat.",
    "judge": "model"
   },
@@ -3879,7 +3514,6 @@
    "citation": "test 199: my son has gone to america to study medicine .",
    "verdict": "wrong",
    "output": "私の息子はアメリカに研究の薬に行った。",
-   "cause": "sense",
    "reason": "'to study medicine' is 医学を勉強しに; 研究の薬 is 'the drug of research'.",
    "judge": "model"
   },
@@ -3901,7 +3535,6 @@
    "citation": "test 203: i am just a nobody .",
    "verdict": "wrong",
    "output": "私はちょうどつまらない人だ。",
-   "cause": "sense",
    "reason": "'just a nobody' is ただの; ちょうど is 'exactly'.",
    "judge": "model"
   },
@@ -3916,7 +3549,6 @@
    "citation": "test 205: may i go home now ?",
    "verdict": "wrong",
    "output": "今私は帰るかもしれないですか。",
-   "cause": "tense",
    "reason": "'May I' asks permission (帰ってもいいですか); かもしれない is possibility.",
    "judge": "model"
   },
@@ -3931,7 +3563,6 @@
    "citation": "test 208: i got some sand in my eye .",
    "verdict": "wrong",
    "output": "私は私の目に砂を得た。",
-   "cause": "idiom",
    "reason": "'got some sand in my eye' is 目に砂が入った; 目に砂を得た is word for word.",
    "judge": "model"
   },
@@ -3939,7 +3570,6 @@
    "citation": "test 209: the old man stopped for a moment to rest .",
    "verdict": "wrong",
    "output": "古い男は瞬間のために休息に止めた。",
-   "cause": "sense",
    "reason": "An old man is 老人, not 古い男; 'for a moment' is 少しの間, and 'to rest' is 休むために.",
    "judge": "model"
   },
@@ -3954,7 +3584,6 @@
    "citation": "test 214: she keeps company with a foreign student .",
    "verdict": "wrong",
    "output": "彼女は外国の学生と会社を保つ。",
-   "cause": "idiom",
    "reason": "'keeps company with' is 付き合っている; 会社を保つ is 'maintains a firm'.",
    "judge": "model"
   },
@@ -3962,7 +3591,6 @@
    "citation": "test 215: yesterday i ran across her at the station .",
    "verdict": "wrong",
    "output": "昨日私は彼女を渡って駅で走った。",
-   "cause": "idiom",
    "reason": "'ran across her' is 偶然会った; 彼女を渡って…走った is word for word.",
    "judge": "model"
   },
@@ -3970,7 +3598,6 @@
    "citation": "test 217: it was colder yesterday than today .",
    "verdict": "wrong",
    "output": "昨日それは今日よりより寒かった。",
-   "cause": "it",
    "reason": "Weather has no subject (昨日は今日より寒かった); それは points at something, and より is doubled.",
    "judge": "model"
   },
@@ -3978,23 +3605,20 @@
    "citation": "test 218: you made the same mistake as last time .",
    "verdict": "wrong",
    "output": "あなたは最後の時間として同じな間違いをした。",
-   "cause": "morphology",
    "reason": "同じな is not a form, and 'the same … as last time' is 前回と同じ; 最後の時間として is word for word.",
    "judge": "model"
   },
   {
    "citation": "test 220: being tired , she went to bed early .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "疲れているので彼女はベッドに早く行った。",
-   "cause": "literal",
    "reason": "Understood, but going to bed is 寝る; ベッドに行った is the English wording.",
    "judge": "model"
   },
   {
    "citation": "test 221: the weather is unusual today .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "今日天気は珍しい。",
-   "cause": "sense",
    "reason": "Understood, but unusual weather is おかしい / 異常だ; 珍しい is 'rare'.",
    "judge": "model"
   },
@@ -4009,15 +3633,13 @@
    "citation": "test 223: it is hard for an old man to change his way of thinking .",
    "verdict": "wrong",
    "output": "古い男が彼の考え方を変えるのは難しい。",
-   "cause": "sense",
    "reason": "An old man is 老人 / 年寄り; 古い is for things.",
    "judge": "model"
   },
   {
    "citation": "test 224: you had better go to bed early .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "あなたはベッドに早く行ったほうがいい。",
-   "cause": "literal",
    "reason": "Understood, but going to bed is 寝る: 早く寝たほうがいい.",
    "judge": "model"
   },
@@ -4037,9 +3659,8 @@
   },
   {
    "citation": "test 229: why don 't you give up smoking ?",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "あなたはなぜ喫煙を諦めませんか。",
-   "cause": "idiom",
    "reason": "Grammatical as a question, but 'why don't you' suggests (やめたらどうですか), and quitting is やめる, not 諦める.",
    "judge": "model"
   },
@@ -4047,7 +3668,6 @@
    "citation": "test 230: they were the first to get into the bus .",
    "verdict": "wrong",
    "output": "彼らは最初にバスに得た人だった。",
-   "cause": "idiom",
    "reason": "'get into the bus' is 乗る; バスに得た is word for word.",
    "judge": "model"
   },
@@ -4055,7 +3675,6 @@
    "citation": "test 231: it 's a pity that you should leave japan .",
    "verdict": "wrong",
    "output": "あなたが日本を出るべきなのは残念だ。",
-   "cause": "tense",
    "reason": "'that you should leave' is emotive (日本を去るとは残念だ); べき makes it an obligation.",
    "judge": "model"
   },
@@ -4063,7 +3682,6 @@
    "citation": "test 232: that is surprising .",
    "verdict": "wrong",
    "output": "それは驚かしている。",
-   "cause": "sense",
    "reason": "'surprising' is 驚くべきことだ; 驚かしている is 'is startling someone'.",
    "judge": "model"
   },
@@ -4071,7 +3689,6 @@
    "citation": "test 234: please leave my things alone .",
    "verdict": "wrong",
    "output": "私のことを一人で出てください。",
-   "cause": "idiom",
    "reason": "'leave my things alone' is 私の物に触らないで; 私のことを一人で出て is word for word.",
    "judge": "model"
   },
@@ -4091,9 +3708,8 @@
   },
   {
    "citation": "test 240: the airplane fell to the earth .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "飛行機は地球に落ちた。",
-   "cause": "sense",
    "reason": "Understood, but a plane falls to the ground (地面に落ちた); 地球 is the planet.",
    "judge": "model"
   },
@@ -4101,7 +3717,6 @@
    "citation": "test 241: she put down her pen .",
    "verdict": "wrong",
    "output": "彼女はペンを置く。",
-   "cause": "tense",
    "reason": "'she put down' is past with this subject: ペンを置いた.",
    "judge": "model"
   },
@@ -4116,7 +3731,6 @@
    "citation": "test 243: i do not think it will rain this afternoon .",
    "verdict": "wrong",
    "output": "私はこの午後を雨が降ると思わない。",
-   "cause": "case",
    "reason": "'this afternoon' is a time (今日の午後は), not an object with を; and the negation belongs inside: 降らないと思う.",
    "judge": "model"
   },
@@ -4124,15 +3738,13 @@
    "citation": "test 245: you have a genius for music .",
    "verdict": "wrong",
    "output": "あなたは音楽のために天才を持っている。",
-   "cause": "idiom",
    "reason": "'have a genius for music' is 音楽の才能がある; 音楽のために天才を持っている is word for word.",
    "judge": "model"
   },
   {
    "citation": "test 246: she is great at skiing .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼女はスキーで素晴らしい。",
-   "cause": "literal",
    "reason": "Understood, but being good at skiing is スキーが上手だ; スキーで素晴らしい is the English wording.",
    "judge": "model"
   },
@@ -4145,9 +3757,8 @@
   },
   {
    "citation": "test 249: he stopped smoking .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼は吸うのをやめた。",
-   "cause": "omission",
    "reason": "Understood in context, but Japanese names what is smoked: タバコを吸うのをやめた.",
    "judge": "model"
   },
@@ -4155,7 +3766,6 @@
    "citation": "test 250: he engaged to pay the bill as soon as possible .",
    "verdict": "wrong",
    "output": "彼は請求書をできるだけ早く払うために約束した。",
-   "cause": "structure",
    "reason": "'engaged to pay' is 払うと約束した; 払うために makes paying the purpose of the promise.",
    "judge": "model"
   },
@@ -4163,7 +3773,6 @@
    "citation": "test 253: there is a beautiful walk along the river .",
    "verdict": "wrong",
    "output": "川に沿って美しい散歩がある。",
-   "cause": "sense",
    "reason": "'a beautiful walk' is a path (散歩道); 散歩がある is 'a stroll exists'.",
    "judge": "model"
   },
@@ -4178,7 +3787,6 @@
    "citation": "test 256: few people know each other well .",
    "verdict": "wrong",
    "output": "少しの人々はお互いを上手に知っている。",
-   "cause": "quantity",
    "reason": "'few people' is ほとんどいない; 少しの人々…知っている says a few do, and 上手に is 'skilfully'.",
    "judge": "model"
   },
@@ -4186,7 +3794,6 @@
    "citation": "test 257: how did the accident come about ?",
    "verdict": "wrong",
    "output": "事故はどうについて来ましたか。",
-   "cause": "idiom",
    "reason": "'come about' is 起こる; どうについて来ました is word for word.",
    "judge": "model"
   },
@@ -4194,7 +3801,6 @@
    "citation": "test 259: mary became a typist .",
    "verdict": "wrong",
    "output": "メアリーはタイピストをなった。",
-   "cause": "case",
    "reason": "One becomes something with に: タイピストになった.",
    "judge": "model"
   },
@@ -4202,7 +3808,6 @@
    "citation": "test 261: he acquainted me with the change of the plan .",
    "verdict": "wrong",
    "output": "彼は計画の変更で私を知らせた。",
-   "cause": "case",
    "reason": "'acquainted me with the change' is 私に変更を知らせた; 変更で私を知らせた has the particles reversed.",
    "judge": "model"
   },
@@ -4224,7 +3829,6 @@
    "citation": "test 266: his novels are too deep for me .",
    "verdict": "wrong",
    "output": "彼の小説は私のためにすぎ深い。",
-   "cause": "morphology",
    "reason": "すぎ深い is not a form (深すぎる), and 'for me' is 私には, not 私のために.",
    "judge": "model"
   },
@@ -4239,15 +3843,13 @@
    "citation": "test 268: you are old enough to be independent of your parents .",
    "verdict": "wrong",
    "output": "あなたはあなたの両親から独立しているのに十分古い。",
-   "cause": "sense",
    "reason": "'old enough' of a person is 十分な年だ; 古い is for things.",
    "judge": "model"
   },
   {
    "citation": "test 269: we walked to the river .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私たちは川に歩いた。",
-   "cause": "preposition",
    "reason": "Understood, but walking to a place is 川まで歩いた; 川に歩いた is the English shape.",
    "judge": "model"
   },
@@ -4260,9 +3862,8 @@
   },
   {
    "citation": "test 272: he could not go on a trip for lack of money .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼は旅行にお金の不足のために行けなかった。",
-   "cause": "literal",
    "reason": "Understood, but 'for lack of money' is お金がなくて; お金の不足のために is the English wording.",
    "judge": "model"
   },
@@ -4270,15 +3871,13 @@
    "citation": "test 273: i commute to work for an hour .",
    "verdict": "wrong",
    "output": "私は時間のために働いているために通勤する。",
-   "cause": "structure",
    "reason": "'commute to work for an hour' is １時間かけて通勤する; the output turns both phrases into purposes.",
    "judge": "model"
   },
   {
    "citation": "test 274: they jumped into the water one after another .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼らは水に次々に飛んだ。",
-   "cause": "sense",
    "reason": "Understood, but jumping into water is 飛び込んだ; 飛んだ is 'flew / leapt'.",
    "judge": "model"
   },
@@ -4293,7 +3892,6 @@
    "citation": "test 276: please drop in on your way home .",
    "verdict": "wrong",
    "output": "あなたの道で家に立ち寄ってください。",
-   "cause": "idiom",
    "reason": "'on your way home' is 帰る途中で; the output asks you to drop in at home, on your road.",
    "judge": "model"
   },
@@ -4308,7 +3906,6 @@
    "citation": "test 279: someone is at the door .",
    "verdict": "wrong",
    "output": "誰かはドアにいる。",
-   "cause": "case",
    "reason": "誰か takes が, not は (誰かがドアのところにいる).",
    "judge": "model"
   },
@@ -4316,7 +3913,6 @@
    "citation": "test 280: he gradually came to love his father .",
    "verdict": "wrong",
    "output": "彼は彼の父を愛しに徐々に来た。",
-   "cause": "idiom",
    "reason": "'came to love' is 愛するようになった; 愛しに来た is 'came in order to love'.",
    "judge": "model"
   },
@@ -4324,7 +3920,6 @@
    "citation": "test 281: i saw the moon above the roof .",
    "verdict": "wrong",
    "output": "私は屋根の上で月を見た。",
-   "cause": "preposition",
    "reason": "'the moon above the roof' is 屋根の上に月が見えた; 屋根の上で puts me on the roof.",
    "judge": "model"
   },
@@ -4332,7 +3927,6 @@
    "citation": "test 282: he is supposed to be at home today .",
    "verdict": "wrong",
    "output": "彼は今日家にある想定だ。",
-   "cause": "idiom",
    "reason": "'is supposed to be at home' is 家にいるはずだ; 家にある想定だ is word for word, with ある for a person.",
    "judge": "model"
   },
@@ -4347,7 +3941,6 @@
    "citation": "test 284: you must think of your old parents at home .",
    "verdict": "wrong",
    "output": "あなたは家で古い両親を思いつかなければならない。",
-   "cause": "sense",
    "reason": "Old parents are 年老いた両親, and 'think of' is 〜のことを考える; 古い and 思いつく are both the wrong sense.",
    "judge": "model"
   },
@@ -4355,15 +3948,13 @@
    "citation": "test 286: if it rains tomorrow , will you stay at home ?",
    "verdict": "wrong",
    "output": "明日雨が降ったらあなたは家に泊まりますか。",
-   "cause": "sense",
    "reason": "'stay at home' is 家にいる; 泊まる is to stay overnight as a guest.",
    "judge": "model"
   },
   {
    "citation": "test 287: do you have a student fare ?",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "あなたは学生の運賃を持っていますか。",
-   "cause": "literal",
    "reason": "Understood, but availability is 学生割引はありますか; 運賃を持っていますか is the English wording.",
    "judge": "model"
   },
@@ -4378,7 +3969,6 @@
    "citation": "test 290: you need not take the trouble to go .",
    "verdict": "wrong",
    "output": "あなたは行くために困ったことを取る必要はない。",
-   "cause": "idiom",
    "reason": "'need not take the trouble to go' is わざわざ行く必要はない; 困ったことを取る is word for word.",
    "judge": "model"
   },
@@ -4393,7 +3983,6 @@
    "citation": "test 293: would you put on the air conditioning ?",
    "verdict": "wrong",
    "output": "あなたはエアコンに置きますか。",
-   "cause": "idiom",
    "reason": "'put on the air conditioning' is エアコンをつける, as a request; エアコンに置きますか is 'will you place on it'.",
    "judge": "model"
   },
@@ -4401,7 +3990,6 @@
    "citation": "test 294: i didn 't want to be defeated in front of my friends .",
    "verdict": "wrong",
    "output": "私は私の友達の前で負けていなかった。",
-   "cause": "omission",
    "reason": "'didn't want to' is dropped: 負けたくなかった; the output says I was not losing.",
    "judge": "model"
   },
@@ -4428,9 +4016,8 @@
   },
   {
    "citation": "test 301: he was terribly poor when he was young .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼が若かったとき彼はひどく貧しかった。",
-   "cause": "pronoun",
    "reason": "Faithful; the repeated 彼 is not how it is said (彼は若いころ).",
    "judge": "model"
   },
@@ -4438,7 +4025,6 @@
    "citation": "test 302: you may open the window .",
    "verdict": "wrong",
    "output": "あなたは窓を開けるかもしれない。",
-   "cause": "tense",
    "reason": "'You may open' gives permission (開けてもよい); かもしれない is possibility.",
    "judge": "model"
   },
@@ -4467,7 +4053,6 @@
    "citation": "test 307: please tell me where the bus stop is .",
    "verdict": "wrong",
    "output": "私にバス停がどこか話してください。",
-   "cause": "sense",
    "reason": "'tell me where' is 教える; 話す is to speak.",
    "judge": "model"
   },
@@ -4475,7 +4060,6 @@
    "citation": "test 310: can you account for why our team lost ?",
    "verdict": "wrong",
    "output": "あなたは私たちのチームがなぜ失ったか説明できますか。",
-   "cause": "sense",
    "reason": "A team that lost is 負けた; 失った is 'lost (a thing)'.",
    "judge": "model"
   },
@@ -4490,7 +4074,6 @@
    "citation": "test 313: it took them two years to build the house .",
    "verdict": "wrong",
    "output": "それは家を建てるために彼らを２年間取った。",
-   "cause": "idiom",
    "reason": "'it took them two years' is 彼らは２年かかった; それは…彼らを２年間取った is word for word.",
    "judge": "model"
   },
@@ -4498,7 +4081,6 @@
    "citation": "test 314: i want to see my friends in canada .",
    "verdict": "wrong",
    "output": "私はカナダで友達を見たい。",
-   "cause": "sense",
    "reason": "To see friends is 会う, and they are in Canada (カナダの友達); 見たい and カナダで are both off.",
    "judge": "model"
   },
@@ -4506,15 +4088,13 @@
    "citation": "test 315: i 'll let you know in advance .",
    "verdict": "wrong",
    "output": "私はあなたを前もって知らせる。",
-   "cause": "case",
    "reason": "One informs a person with に: あなたに前もって知らせる.",
    "judge": "model"
   },
   {
    "citation": "test 316: i thought i must do it .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私は私がそれをしなければならないと思った。",
-   "cause": "pronoun",
    "reason": "Faithful; 私は私が repeats the pronoun (それをしなければならないと思った).",
    "judge": "model"
   },
@@ -4529,7 +4109,6 @@
    "citation": "test 319: i 'll get him to carry this box upstairs .",
    "verdict": "wrong",
    "output": "私は彼にこの箱を二階に運ぶように得る。",
-   "cause": "idiom",
    "reason": "'get him to carry' is 彼に運んでもらう; 運ぶように得る is word for word.",
    "judge": "model"
   },
@@ -4542,9 +4121,8 @@
   },
   {
    "citation": "test 323: where should i sit ?",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私はどこで座るべきですか。",
-   "cause": "case",
    "reason": "Understood, but one sits どこに, not どこで.",
    "judge": "model"
   },
@@ -4552,7 +4130,6 @@
    "citation": "test 324: the secret of success is not to think of failure .",
    "verdict": "wrong",
    "output": "成功の秘密は失敗を思いつくことになっている。",
-   "cause": "structure",
    "reason": "'is not to think of failure' is 失敗を考えないことだ; the output drops the negation, reads 'is to' as an arrangement and has 思いつく for 'think of'.",
    "judge": "model"
   },
@@ -4560,7 +4137,6 @@
    "citation": "test 325: she goes by the name of amy .",
    "verdict": "wrong",
    "output": "彼女はエイミーの名前のそばに行く。",
-   "cause": "idiom",
    "reason": "'goes by the name of Amy' is エイミーという名で通っている; 名前のそばに行く is word for word.",
    "judge": "model"
   },
@@ -4575,7 +4151,6 @@
    "citation": "test 327: can you fix him up for the night ?",
    "verdict": "wrong",
    "output": "あなたは夜のために彼が用意できますか。",
-   "cause": "idiom",
    "reason": "'fix him up for the night' is 今晩泊めてやる; 夜のために彼が用意できる is word for word.",
    "judge": "model"
   },
@@ -4583,7 +4158,6 @@
    "citation": "test 329: mr smith and i have been acquainted with each other for a long time .",
    "verdict": "wrong",
    "output": "スミスさんと私はお互いと長い時間のために知り合いだ。",
-   "cause": "preposition",
    "reason": "'for a long time' is 長い間; 長い時間のために is purpose.",
    "judge": "model"
   },
@@ -4591,7 +4165,6 @@
    "citation": "test 330: he has seen much of the world .",
    "verdict": "wrong",
    "output": "彼は世界のたくさん見た。",
-   "cause": "morphology",
    "reason": "世界のたくさん見た is not a phrase: 世界を広く見てきた.",
    "judge": "model"
   },
@@ -4599,7 +4172,6 @@
    "citation": "test 331: i wish i could speak english .",
    "verdict": "wrong",
    "output": "私は私が英語が話せたと願う。",
-   "cause": "idiom",
    "reason": "'I wish I could speak' is 話せたらいいのに; 話せたと願う is word for word.",
    "judge": "model"
   },
@@ -4614,7 +4186,6 @@
    "citation": "test 334: she does not take a rest for an instant .",
    "verdict": "wrong",
    "output": "彼女は瞬間のために休まない。",
-   "cause": "preposition",
    "reason": "'not for an instant' is 一瞬も休まない; 瞬間のために is purpose.",
    "judge": "model"
   },
@@ -4622,15 +4193,13 @@
    "citation": "test 335: he shook hands with his friend .",
    "verdict": "wrong",
    "output": "彼は彼の友達と手を振った。",
-   "cause": "idiom",
    "reason": "'shook hands' is 握手した; 手を振った is waving.",
    "judge": "model"
   },
   {
    "citation": "test 336: i 'll be fine if i take a little rest .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私が休んだら私は元気だ。",
-   "cause": "pronoun",
    "reason": "Understood; the repeated 私 and 元気だ for 'will be fine' are not how it is said (少し休めば元気になる).",
    "judge": "model"
   },
@@ -4638,7 +4207,6 @@
    "citation": "test 339: i do not quite agree with you .",
    "verdict": "wrong",
    "output": "私はあなたにかなり賛成しない。",
-   "cause": "negation",
    "reason": "'do not quite agree' is partial (全く同意見というわけではない); かなり賛成しない is strong disagreement.",
    "judge": "model"
   },
@@ -4653,7 +4221,6 @@
    "citation": "test 342: he finished this work for himself .",
    "verdict": "wrong",
    "output": "彼は自分のためにこの仕事を終えた。",
-   "cause": "idiom",
    "reason": "'finished this work for himself' is by himself (独力で / 自分で); 自分のために is 'for his own benefit'.",
    "judge": "model"
   },
@@ -4661,31 +4228,27 @@
    "citation": "test 343: his answer was to strike me on the head .",
    "verdict": "wrong",
    "output": "彼の答えは頭で私を打つことになっている。",
-   "cause": "structure",
    "reason": "'his answer was to strike me' is 私の頭を殴ることだった; ことになっている makes it an arrangement, and 頭で is 'with his head'.",
    "judge": "model"
   },
   {
    "citation": "test 344: if you are going to have a party , please count me in .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "あなたがパーティーを持つつもりだったら私を数に入れてください。",
-   "cause": "sense",
    "reason": "Understood, but one 開く a party; パーティーを持つ is the English wording.",
    "judge": "model"
   },
   {
    "citation": "test 345: they got to a village under a hill .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼らは丘の下で村に着いた。",
-   "cause": "preposition",
    "reason": "Understood, but the village is under the hill (丘のふもとの村); 丘の下で places the arriving.",
    "judge": "model"
   },
   {
    "citation": "test 347: speak clearly so that everyone may hear you .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "みんながあなたが聞けるように明らかに話してください。",
-   "cause": "sense",
    "reason": "Understood, but speaking clearly is はっきりと; 明らかに is 'evidently', and hearing a person is あなたの声が聞こえる.",
    "judge": "model"
   },
@@ -4693,7 +4256,6 @@
    "citation": "test 349: she is in bed with a cold .",
    "verdict": "wrong",
    "output": "彼女は風邪とベッドにいる。",
-   "cause": "preposition",
    "reason": "'in bed with a cold' is 風邪で寝ている; 風邪と is 'together with a cold'.",
    "judge": "model"
   },
@@ -4701,7 +4263,6 @@
    "citation": "test 352: he is in service .",
    "verdict": "wrong",
    "output": "彼は勤務にいる。",
-   "cause": "idiom",
    "reason": "'is in service' is 兵役についている / 勤めている; 勤務にいる is not said.",
    "judge": "model"
   },
@@ -4714,9 +4275,8 @@
   },
   {
    "citation": "test 356: my sister is now bound up in her work .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "今私の姉は彼女の仕事に夢中だ。",
-   "cause": "pronoun",
    "reason": "Faithful; 彼女の仕事 repeats the pronoun (仕事に夢中だ).",
    "judge": "model"
   },
@@ -4724,7 +4284,6 @@
    "citation": "test 357: none of the telephones are working .",
    "verdict": "wrong",
    "output": "電話の何も働いていない。",
-   "cause": "quantity",
    "reason": "'none of the telephones' is 電話はどれも; 電話の何も is not a phrase, and a telephone 通じる, not 働く.",
    "judge": "model"
   },
@@ -4739,7 +4298,6 @@
    "citation": "test 360: we thought we had the game in the bag .",
    "verdict": "wrong",
    "output": "私たちは私たちがかばんで試合を持っていたと思った。",
-   "cause": "idiom",
    "reason": "'had the game in the bag' is 勝ったも同然だと思った; かばんで試合を持っていた is word for word.",
    "judge": "model"
   },
@@ -4754,15 +4312,13 @@
    "citation": "test 362: can other people catch it ?",
    "verdict": "wrong",
    "output": "他の人々はそれが捕まえられますか。",
-   "cause": "sense",
    "reason": "To catch an illness is うつる; 捕まえる is to capture.",
    "judge": "model"
   },
   {
    "citation": "test 363: she felt as if she had seen a ghost .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼女が幽霊を見たかのように彼女は感じた。",
-   "cause": "pronoun",
    "reason": "Faithful; the repeated 彼女 is not how it is said (幽霊を見たかのように感じた).",
    "judge": "model"
   },
@@ -4770,7 +4326,6 @@
    "citation": "test 364: i might well tell you this .",
    "verdict": "wrong",
    "output": "私はあなたにこれを上手に話すかもしれない。",
-   "cause": "idiom",
    "reason": "'might well tell you' is 話しておいたほうがいい; 上手に話すかもしれない is 'may tell skilfully'.",
    "judge": "model"
   },
@@ -4778,7 +4333,6 @@
    "citation": "test 365: takeshi did come , but didn 't stay long .",
    "verdict": "wrong",
    "output": "タケシは確かに来たが、長く泊まらなかった。",
-   "cause": "sense",
    "reason": "'didn't stay long' is 長くはいなかった; 泊まる is to stay overnight.",
    "judge": "model"
   },
@@ -4786,7 +4340,6 @@
    "citation": "test 366: compare your answer with tom 's .",
    "verdict": "wrong",
    "output": "トムのものであなたの答えを比べてください。",
-   "cause": "case",
    "reason": "One compares A with B: トムのと比べて; トムのもので makes it the instrument.",
    "judge": "model"
   },
@@ -4794,15 +4347,13 @@
    "citation": "test 367: give me the details of it .",
    "verdict": "wrong",
    "output": "私にそれの詳細をあげてください。",
-   "cause": "giving",
    "reason": "A request to give to the speaker is ください / 教えて; あげてください sends the details away from me.",
    "judge": "model"
   },
   {
    "citation": "test 368: this morning i got up later than usual .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "今朝私はより遅くいつもより起きた。",
-   "cause": "order",
    "reason": "Understood, but the order is いつもより遅く起きた; より is said twice.",
    "judge": "model"
   },
@@ -4810,7 +4361,6 @@
    "citation": "test 370: shall i cook dinner today ?",
    "verdict": "wrong",
    "output": "今日私は夕食を料理しますか。",
-   "cause": "tense",
    "reason": "'Shall I' offers (作りましょうか); 料理しますか asks whether I will.",
    "judge": "model"
   },
@@ -4818,23 +4368,20 @@
    "citation": "test 371: he made his way through the crowd .",
    "verdict": "wrong",
    "output": "彼は人混みを通って道を作った。",
-   "cause": "idiom",
    "reason": "'made his way through the crowd' is 人混みをかき分けて進んだ; 道を作った builds a road.",
    "judge": "model"
   },
   {
    "citation": "test 372: i can hear someone talking in the next room .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私は誰かが次の部屋で話すのが聞ける。",
-   "cause": "sense",
    "reason": "Understood, but the next room is 隣の部屋 and hearing is 聞こえる.",
    "judge": "model"
   },
   {
    "citation": "test 373: where do we get the textbooks ?",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私たちはどこで教科書を得ますか。",
-   "cause": "sense",
    "reason": "Understood, but getting textbooks is 手に入れる / もらう; 得ます is bookish.",
    "judge": "model"
   },
@@ -4849,15 +4396,13 @@
    "citation": "test 376: do you have small change with you ?",
    "verdict": "wrong",
    "output": "あなたはあなたと小銭を持っていますか。",
-   "cause": "idiom",
    "reason": "'have small change with you' is 小銭の持ち合わせがある; あなたと is 'together with you'.",
    "judge": "model"
   },
   {
    "citation": "test 377: nothing is more valuable than health .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "何も健康よりもっと貴重ではない。",
-   "cause": "literal",
    "reason": "Understood, but it is said 健康より貴重なものはない; 何も…貴重ではない is the English shape.",
    "judge": "model"
   },
@@ -4865,7 +4410,6 @@
    "citation": "test 378: i finished reading the book last night .",
    "verdict": "wrong",
    "output": "昨夜私は本を読むのをやめた。",
-   "cause": "sense",
    "reason": "'finished reading' is 読み終えた; 読むのをやめた is 'stopped reading'.",
    "judge": "model"
   },
@@ -4887,7 +4431,6 @@
    "citation": "test 382: you don 't have to get up so early .",
    "verdict": "wrong",
    "output": "あなたはとても早く起きるために持っていない。",
-   "cause": "idiom",
    "reason": "'don't have to get up' is 起きる必要はない; 起きるために持っていない is word for word.",
    "judge": "model"
   },
@@ -4902,7 +4445,6 @@
    "citation": "test 387: she tried not to shed tears .",
    "verdict": "wrong",
    "output": "彼女は涙を流さないようにする。",
-   "cause": "tense",
    "reason": "'tried' is past: 流さないようにした.",
    "judge": "model"
   },
@@ -4910,7 +4452,6 @@
    "citation": "test 388: the story came home to her .",
    "verdict": "wrong",
    "output": "話は彼女に帰った。",
-   "cause": "idiom",
    "reason": "'came home to her' is 彼女の胸にこたえた; 彼女に帰った is word for word.",
    "judge": "model"
   },
@@ -4925,15 +4466,13 @@
    "citation": "test 390: he will stay in tokyo for several weeks .",
    "verdict": "wrong",
    "output": "彼は東京にいくつかの週のために泊まる。",
-   "cause": "preposition",
    "reason": "'for several weeks' is 数週間; いくつかの週のために is purpose, and 泊まる is overnight lodging.",
    "judge": "model"
   },
   {
    "citation": "test 392: i was walking to the station then .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "その時私は駅に歩いていた。",
-   "cause": "preposition",
    "reason": "Understood, but walking towards a place is 駅に向かって歩いていた.",
    "judge": "model"
   },
@@ -4948,7 +4487,6 @@
    "citation": "test 394: if you telephone her again , that 'll be the last straw !",
    "verdict": "wrong",
    "output": "あなたが彼女をまた電話したらそれは我慢の限界だ。",
-   "cause": "case",
    "reason": "One telephones a person with に: 彼女にまた電話したら.",
    "judge": "model"
   },
@@ -4963,23 +4501,20 @@
    "citation": "test 396: the girls are facing each other .",
    "verdict": "wrong",
    "output": "少女はお互いを向かい合っている。",
-   "cause": "case",
    "reason": "向かい合う takes に / と: お互いに向かい合っている.",
    "judge": "model"
   },
   {
    "citation": "test 397: money cannot buy freedom .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "お金は自由が買えない。",
-   "cause": "literal",
    "reason": "Understood, but it is said お金で自由は買えない; money as the buyer is the English shape.",
    "judge": "model"
   },
   {
    "citation": "test 398: i have no homework today .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "今日私は宿題を持っていない。",
-   "cause": "literal",
    "reason": "Understood, but homework is ない (宿題がない); 持っていない is the English wording.",
    "judge": "model"
   },
@@ -4987,7 +4522,6 @@
    "citation": "test 399: this old coat has had it .",
    "verdict": "wrong",
    "output": "この古いコートはそれを持った。",
-   "cause": "idiom",
    "reason": "'has had it' is もう駄目だ; それを持った is word for word.",
    "judge": "model"
   },
@@ -4995,7 +4529,6 @@
    "citation": "test 400: there is little water in the bucket .",
    "verdict": "wrong",
    "output": "バケツに小さい水がある。",
-   "cause": "quantity",
    "reason": "'little water' is ほとんどない; 小さい水がある is 'there is small water'.",
    "judge": "model"
   },
@@ -5003,15 +4536,13 @@
    "citation": "test 401: when he got into trouble , he turned to his parents for help .",
    "verdict": "wrong",
    "output": "彼が困ったことに得たとき彼は助けのために両親に頼った。",
-   "cause": "idiom",
    "reason": "'got into trouble' is 困ったとき; 困ったことに得た is word for word, and 助けのために is 'for the sake of help'.",
    "judge": "model"
   },
   {
    "citation": "test 402: the sun went behind the clouds .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "太陽は雲の後ろに行った。",
-   "cause": "literal",
    "reason": "Understood, but the sun 雲に隠れた; 雲の後ろに行った is the English wording.",
    "judge": "model"
   },
@@ -5019,7 +4550,6 @@
    "citation": "test 403: his talk was a mere game .",
    "verdict": "wrong",
    "output": "彼の話は単なる試合だった。",
-   "cause": "sense",
    "reason": "'a mere game' is 遊び / 冗談; 試合 is a match.",
    "judge": "model"
   },
@@ -5032,9 +4562,8 @@
   },
   {
    "citation": "test 405: she stood up when her teacher came in .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼女の先生が入ったとき彼女は立った。",
-   "cause": "pronoun",
    "reason": "Faithful; 彼女の先生…彼女は repeats the pronoun (先生が入ってくると彼女は立ち上がった).",
    "judge": "model"
   },
@@ -5049,15 +4578,13 @@
    "citation": "test 407: the rain came down in buckets .",
    "verdict": "wrong",
    "output": "雨はバケツに下に来た。",
-   "cause": "idiom",
    "reason": "'came down in buckets' is 土砂降りになった; バケツに下に来た is word for word.",
    "judge": "model"
   },
   {
    "citation": "test 409: i 'll pick you up at your home .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私はあなたの家であなたを拾う。",
-   "cause": "literal",
    "reason": "Understood, but picking someone up is 迎えに行く, and あなた is said twice.",
    "judge": "model"
   },
@@ -5065,7 +4592,6 @@
    "citation": "test 410: let me know by wire .",
    "verdict": "wrong",
    "output": "電線で知らせてください。",
-   "cause": "sense",
    "reason": "'by wire' is by telegram (電報で); 電線 is an electric cable.",
    "judge": "model"
   },
@@ -5078,9 +4604,8 @@
   },
   {
    "citation": "test 412: it 's our pleasure .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "それは私たちの喜びだ。",
-   "cause": "literal",
    "reason": "Understood, but the reply is こちらこそ / どういたしまして; 私たちの喜びだ is the English wording.",
    "judge": "model"
   },
@@ -5088,7 +4613,6 @@
    "citation": "test 417: the child played the baby to his mother .",
    "verdict": "wrong",
    "output": "子供は彼の母に赤ちゃんを遊んだ。",
-   "cause": "idiom",
    "reason": "'played the baby to his mother' is 母親に甘えた; 赤ちゃんを遊んだ is word for word.",
    "judge": "model"
   },
@@ -5103,7 +4627,6 @@
    "citation": "test 419: he wants to dispose of his books .",
    "verdict": "wrong",
    "output": "彼は本を処分したい。",
-   "cause": "morphology",
    "reason": "たい is for one's own wish; of him it is 処分したがっている.",
    "judge": "model"
   },
@@ -5111,15 +4634,13 @@
    "citation": "test 420: you will do exactly as i say .",
    "verdict": "wrong",
    "output": "私が言うのであなたは正確にする。",
-   "cause": "structure",
    "reason": "'do exactly as I say' is 私の言うとおりにする; the output reads 'as' as 'because'.",
    "judge": "model"
   },
   {
    "citation": "test 421: put that book aside for me .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私のためにその本を脇に置いてください。",
-   "cause": "literal",
    "reason": "Understood, but putting a book aside for someone is とっておく; 脇に置く is the English wording.",
    "judge": "model"
   },
@@ -5127,7 +4648,6 @@
    "citation": "test 422: when she heard it , she just cried .",
    "verdict": "wrong",
    "output": "彼女がそれを聞いたとき彼女はちょうど泣いた。",
-   "cause": "sense",
    "reason": "'she just cried' is ただ泣いた; ちょうど is 'exactly'.",
    "judge": "model"
   },
@@ -5135,7 +4655,6 @@
    "citation": "test 423: i have just now finished doing my english homework .",
    "verdict": "wrong",
    "output": "私は英語の宿題をたった今するのをやめた。",
-   "cause": "sense",
    "reason": "'finished doing my homework' is 終えた; するのをやめた is 'stopped doing'.",
    "judge": "model"
   },
@@ -5157,15 +4676,13 @@
    "citation": "test 427: can you sit for the exam next week ?",
    "verdict": "wrong",
    "output": "来週あなたは試験のために座れますか。",
-   "cause": "idiom",
    "reason": "'sit for the exam' is 試験を受ける; 試験のために座れます is word for word.",
    "judge": "model"
   },
   {
    "citation": "test 428: she turned off the lights .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼女は光を消した。",
-   "cause": "sense",
    "reason": "Understood, but lights are 明かり / 電気; 光 is light as such.",
    "judge": "model"
   },
@@ -5173,7 +4690,6 @@
    "citation": "test 429: i meet him from time to time .",
    "verdict": "wrong",
    "output": "私は時間から時間まで彼を会う。",
-   "cause": "idiom",
    "reason": "'from time to time' is 時々; 時間から時間まで is word for word, and one meets a person with に.",
    "judge": "model"
   },
@@ -5181,7 +4697,6 @@
    "citation": "test 430: i asked her if she could go to the party .",
    "verdict": "wrong",
    "output": "私は彼女に彼女がパーティーに行けたかどうか尋ねた。",
-   "cause": "tense",
    "reason": "'if she could go' is 行けるかどうか; 行けたか asks whether she had been able to.",
    "judge": "model"
   },
@@ -5194,9 +4709,8 @@
   },
   {
    "citation": "test 433: i made an effort to finish my work .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私は私の仕事を終えるために努力をした。",
-   "cause": "pronoun",
    "reason": "Faithful; 私は私の仕事 repeats the pronoun (仕事を終えようと努力した).",
    "judge": "model"
   },
@@ -5211,23 +4725,20 @@
    "citation": "test 435: it 's touch and go .",
    "verdict": "wrong",
    "output": "それは危ういだ。",
-   "cause": "morphology",
    "reason": "危ういだ is not a form (an i-adjective takes no だ), and 'touch and go' is きわどいところだ.",
    "judge": "model"
   },
   {
    "citation": "test 437: would you mind waiting a few minutes ?",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "少しの分を待ってもらえませんか。",
-   "cause": "quantity",
    "reason": "Understood, but a few minutes is 数分 / 少し; 少しの分を is the English shape.",
    "judge": "model"
   },
   {
    "citation": "test 439: how long will you stay in japan ?",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "あなたはどのくらい日本に泊まりますか。",
-   "cause": "sense",
    "reason": "Understood, but a stay in a country is 滞在する; 泊まる is lodging for the night.",
    "judge": "model"
   },
@@ -5240,9 +4751,8 @@
   },
   {
    "citation": "test 441: she retorted against him .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼女は彼に反対して言い返した。",
-   "cause": "preposition",
    "reason": "Understood, but 言い返した already holds 'against him'; 彼に反対して says it twice.",
    "judge": "model"
   },
@@ -5250,15 +4760,13 @@
    "citation": "test 442: his composition was free from mistakes .",
    "verdict": "wrong",
    "output": "彼の作文は間違いがない。",
-   "cause": "tense",
    "reason": "'was free from mistakes' is past: 間違いがなかった.",
    "judge": "model"
   },
   {
    "citation": "test 443: we got to know each other rather well on our recent trip .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私たちは私たちの最近の旅行でお互いとかなりよく知り合った。",
-   "cause": "pronoun",
    "reason": "Faithful; 私たちは私たちの repeats the pronoun (最近の旅行でかなりよく知り合った).",
    "judge": "model"
   },
@@ -5273,7 +4781,6 @@
    "citation": "test 446: i have no face to turn to .",
    "verdict": "wrong",
    "output": "私は頼る顔を持っていない。",
-   "cause": "idiom",
    "reason": "'no face to turn to' is 合わせる顔がない / 頼る人がいない; 頼る顔を持っていない is word for word.",
    "judge": "model"
   },
@@ -5288,7 +4795,6 @@
    "citation": "test 448: all boys like to play baseball .",
    "verdict": "wrong",
    "output": "全ての少年たちは野球を遊ぶのが好きだ。",
-   "cause": "sense",
    "reason": "One plays baseball with する; 遊ぶ is to amuse oneself and takes no object.",
    "judge": "model"
   },
@@ -5301,9 +4807,8 @@
   },
   {
    "citation": "test 450: i waited and waited .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私は待って待った。",
-   "cause": "literal",
    "reason": "Understood, but the set form is 待ちに待った.",
    "judge": "model"
   },
@@ -5325,15 +4830,13 @@
    "citation": "test 458: he said that he goes for a long walk every morning .",
    "verdict": "wrong",
    "output": "彼は毎朝彼が長い散歩のために行くと言った。",
-   "cause": "structure",
    "reason": "'every morning' belongs to the walk (毎朝長い散歩に行く、と言った); the output attaches it to 'said', and 散歩のために行く is the English wording.",
    "judge": "model"
   },
   {
    "citation": "test 459: i was astonished at the news .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "私はニュースで驚いていた。",
-   "cause": "preposition",
    "reason": "Understood, but one is astonished at news with に: 知らせに驚いた.",
    "judge": "model"
   },
@@ -5348,15 +4851,13 @@
    "citation": "test 463: he promised not to tell .",
    "verdict": "wrong",
    "output": "彼は話さないと約束する。",
-   "cause": "tense",
    "reason": "'promised' is past: 約束した.",
    "judge": "model"
   },
   {
    "citation": "test 464: he looks young considering his age .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼は彼の年齢を考えると若い。",
-   "cause": "pronoun",
    "reason": "Understood; 彼は彼の年齢 repeats the pronoun, and 'looks young' is 若く見える (年のわりに若く見える).",
    "judge": "model"
   },
@@ -5383,9 +4884,8 @@
   },
   {
    "citation": "test 469: my sister washes her hair every morning .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "毎朝私の姉は彼女の髪を洗う。",
-   "cause": "pronoun",
    "reason": "Faithful; 彼女の髪 repeats the pronoun (姉は毎朝髪を洗う).",
    "judge": "model"
   },
@@ -5398,9 +4898,8 @@
   },
   {
    "citation": "test 472: nothing can be better than that .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "何もそれより良くない。",
-   "cause": "literal",
    "reason": "Understood, but it is said それより良いものはない; 何も…良くない is the English shape.",
    "judge": "model"
   },
@@ -5408,15 +4907,13 @@
    "citation": "test 473: this will do for now .",
    "verdict": "wrong",
    "output": "これは今のためにする。",
-   "cause": "idiom",
    "reason": "'this will do for now' is 今のところこれで間に合う; 今のためにする is word for word.",
    "judge": "model"
   },
   {
    "citation": "test 475: she has a son who is a doctor .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼女は医者である息子を持っている。",
-   "cause": "literal",
    "reason": "Understood, but a son is いる (医者の息子がいる); 持っている is the English wording.",
    "judge": "model"
   },
@@ -5424,15 +4921,13 @@
    "citation": "test 476: the teacher looked over the examination papers .",
    "verdict": "wrong",
    "output": "先生は試験の紙の上で見た。",
-   "cause": "idiom",
    "reason": "'looked over the papers' is 目を通した; 紙の上で見た is 'looked on top of the paper'.",
    "judge": "model"
   },
   {
    "citation": "test 477: he had the luck to catch the train .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "彼は電車に乗る運を持っていた。",
-   "cause": "literal",
    "reason": "Understood, but it is 運よく電車に間に合った; 運を持っていた is the English wording.",
    "judge": "model"
   },
@@ -5459,9 +4954,8 @@
   },
   {
    "citation": "test 482: i went fishing in the river yesterday .",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "昨日私は川で釣りに行った。",
-   "cause": "preposition",
    "reason": "Understood, but one goes fishing 川に; 川で釣りに行った mixes the place of fishing with the going.",
    "judge": "model"
   },
@@ -5469,7 +4963,6 @@
    "citation": "test 484: he put some coins in the box .",
    "verdict": "wrong",
    "output": "彼は箱に硬貨を置く。",
-   "cause": "tense",
    "reason": "'he put' is past with this subject, and coins go in with 入れる: 硬貨を入れた.",
    "judge": "model"
   },
@@ -5491,7 +4984,6 @@
    "citation": "test 487: i reached school before the rain started .",
    "verdict": "wrong",
    "output": "雨が始めた前に私は学校を着いた。",
-   "cause": "case",
    "reason": "One reaches school with に (学校に着いた), and rain 降り始める; 雨が始めた前に is not a form.",
    "judge": "model"
   },
@@ -5499,7 +4991,6 @@
    "citation": "test 488: the country was gearing up for war .",
    "verdict": "wrong",
    "output": "国は戦争のために上に準備していた。",
-   "cause": "idiom",
    "reason": "'gearing up for war' is 戦争の準備をしていた; 上に準備していた reads 'up' as a direction.",
    "judge": "model"
   },
@@ -5514,7 +5005,6 @@
    "citation": "test 490: time will tell which is right .",
    "verdict": "wrong",
    "output": "時間はどれが正しいか話す。",
-   "cause": "idiom",
    "reason": "'Time will tell' is 時がたてばわかる; 時間は…話す has time speaking.",
    "judge": "model"
   },
@@ -5536,7 +5026,6 @@
    "citation": "test 494: may i have a road map ?",
    "verdict": "wrong",
    "output": "私は道路の地図を持っているかもしれないですか。",
-   "cause": "tense",
    "reason": "'May I have' asks for something (道路地図をください); 持っているかもしれない is possibility.",
    "judge": "model"
   },
@@ -5544,15 +5033,13 @@
    "citation": "test 496: it took a long time to accustom myself to the noise .",
    "verdict": "wrong",
    "output": "それは騒音に自分を慣れるために長い時間を取った。",
-   "cause": "idiom",
    "reason": "'it took a long time to accustom myself' is 慣れるのに長い時間がかかった; それは…取った and 自分を慣れる are word for word.",
    "judge": "model"
   },
   {
    "citation": "test 500: where do you come from ?",
-   "verdict": "stiff",
+   "verdict": "wrong",
    "output": "あなたはどこから来ますか。",
-   "cause": "literal",
    "reason": "Understood, but origin is どこから来ましたか / ご出身は; 来ますか asks about a coming.",
    "judge": "model"
   }
